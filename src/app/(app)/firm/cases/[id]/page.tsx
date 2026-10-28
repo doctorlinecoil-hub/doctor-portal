@@ -1,0 +1,36 @@
+import { notFound } from 'next/navigation';
+import { requireUser } from '@/lib/auth';
+import type { CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
+import { FirmCaseView } from '@/views/FirmViews';
+import CaseActions from './CaseActions';
+
+export const dynamic = 'force-dynamic';
+
+export default async function FirmCasePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { supabase, profile } = await requireUser(['firm']);
+  const { data: a } = await supabase.from('appointments').select('*, firm:firms(id, name, kind, contact_name, phone, email, tax_id)').eq('id', id).maybeSingle();
+  if (!a) notFound();
+  const [{ data: notes }, { data: docs }, { data: fin }, { data: pays }] = await Promise.all([
+    supabase.from('case_notes').select('id, body, created_at').eq('appointment_id', id).order('created_at'),
+    supabase.from('documents').select('id, file_name, mime_type, size_bytes, created_at').eq('appointment_id', id).order('created_at'),
+    supabase.rpc('final_letter', { p_id: id }),
+    supabase.rpc('case_payments', { p_id: id }),
+  ]);
+  const final = Array.isArray(fin) && fin.length ? fin[0] : null;
+  const payments = ((pays as PaymentRow[] | null) ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
+  const paid = payments.reduce((s, p) => s + p.amount, 0);
+  const c = { ...a, price: Number(a.price) } as unknown as CaseDetail;
+  const canCancel = (c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
+  return (
+    <FirmCaseView
+      c={c}
+      notes={(notes as NoteRow[]) ?? []}
+      docs={(docs as DocRow[]) ?? []}
+      payments={payments}
+      paid={paid}
+      letter={{ ready: !!final, awaitingPayment: c.status === 'done' && !final, finalizedAt: final?.finalized_at ?? null }}
+      actions={<CaseActions appointmentId={id} firmId={profile.firm_id!} canAdd={c.status !== 'cancelled'} canCancel={canCancel} />}
+    />
+  );
+}
