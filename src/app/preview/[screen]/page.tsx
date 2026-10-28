@@ -1,0 +1,65 @@
+import { notFound } from 'next/navigation';
+import AppShell from '@/components/AppShell';
+import AuthFrame from '@/components/AuthFrame';
+import LoginForm from '@/app/login/LoginForm';
+import BookingForm from '@/app/(app)/firm/book/BookingForm';
+import CaseActions from '@/app/(app)/firm/cases/[id]/CaseActions';
+import LetterEditor from '@/app/(app)/doctor/cases/[id]/LetterEditor';
+import PaymentPanel from '@/app/(app)/doctor/cases/[id]/PaymentPanel';
+import DoctorCancel from '@/app/(app)/doctor/cases/[id]/DoctorCancel';
+import SettingsForm from '@/app/(app)/admin/SettingsForm';
+import UsersAdmin from '@/app/(app)/admin/users/UsersAdmin';
+import { PageHead } from '@/components/ui';
+import { availableSlots } from '@/lib/slots';
+import { FirmCaseView, FirmCasesView, FirmDashboardView } from '@/views/FirmViews';
+import { DoctorAgendaView, DoctorCaseView, payerName } from '@/views/DoctorViews';
+import { PaymentsView } from '@/views/PaymentsView';
+import { LogView } from '@/views/LogView';
+import LetterPaper from '@/views/LetterPaper';
+import PrintButton from '@/app/letters/[id]/print/PrintButton';
+import { todayIL } from '@/lib/dates';
+import * as fx from '@/preview/fixtures';
+
+export const dynamic = 'force-dynamic';
+
+export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
+  if (process.env.PREVIEW !== '1') notFound();
+  const { screen } = await params;
+  const clinic = fx.settings.lh_name;
+  const firmShell = (active: string, body: React.ReactNode) => <AppShell role="firm" userName="עו״ד דנה לוי" orgName={fx.firms[0].name} clinicName={clinic} active={active}>{body}</AppShell>;
+  const staffShell = (active: string, body: React.ReactNode) => <AppShell role="admin" userName="אלי" clinicName={clinic} active={active}>{body}</AppShell>;
+  const c = fx.caseDetail;
+  const paid = fx.payments.reduce((s, p) => s + p.amount, 0);
+
+  switch (screen) {
+    case 'login':
+      return <AuthFrame><div className="panel"><div><h1>כניסה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>הזינו את פרטי הכניסה שקיבלתם מהמרפאה</p></div><LoginForm /></div></AuthFrame>;
+    case 'firm-home':
+      return firmShell('/firm', <FirmDashboardView firmName={fx.firms[0].name} clinicName={clinic} rows={fx.firmRows} />);
+    case 'firm-book':
+      return firmShell('/firm/book', <BookingForm firmId="f1" slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} horizon={30} prices={fx.settings.prices} clinicName={clinic} preview />);
+    case 'firm-cases':
+      return firmShell('/firm/cases', <FirmCasesView rows={fx.firmRows} filter="all" />);
+    case 'firm-case':
+      return firmShell('/firm/cases', <FirmCaseView c={c} notes={fx.notes} docs={fx.docs} payments={fx.payments} paid={paid}
+        letter={{ ready: false, awaitingPayment: false, finalizedAt: null }} actions={<CaseActions appointmentId={c.id} firmId="f1" canAdd canCancel />} />);
+    case 'doctor-home':
+      return staffShell('/doctor', <DoctorAgendaView rows={fx.rows} past={false} isAdmin name="ד״ר חנוך" />);
+    case 'doctor-case':
+      return staffShell('/doctor', <DoctorCaseView c={c} notes={fx.notes} docs={fx.docs} cancel={<DoctorCancel appointmentId={c.id} />}
+        payment={<PaymentPanel appointmentId={c.id} price={c.price} payer={c.payer} paid={paid} payments={fx.payments} morning payerName={payerName(c)} preview />}
+        letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={fx.letter} docCount={fx.docs.length} cancelled={false} preview />} />);
+    case 'admin-payments':
+      return staffShell('/admin/payments', <PaymentsView rows={fx.rows} filter="open" q="" collectedThisMonth={27400} />);
+    case 'admin-users':
+      return staffShell('/admin/users', <><PageHead title="מפנים ומשתמשים" sub="רק מי שמופיע כאן יכול להיכנס. כל מפנה רואה רק את התיקים שלו." /><UsersAdmin firms={fx.firms} users={fx.users} me="u0" preview /></>);
+    case 'admin-settings':
+      return staffShell('/admin', <><PageHead title="הגדרות" sub="זמני קבלה, מחירים, נייר מכתבים ואבטחה" /><SettingsForm initial={fx.settings} morning preview /></>);
+    case 'letter':
+      return <LetterPaper settings={fx.settings} letter={{ ...fx.letter, letter_date: todayIL() }} patient={{ name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob }} backHref={`/doctor/cases/${c.id}`} draft printButton={<PrintButton />} />;
+    case 'admin-log':
+      return staffShell('/admin/log', <LogView rows={fx.log} />);
+    default:
+      notFound();
+  }
+}
