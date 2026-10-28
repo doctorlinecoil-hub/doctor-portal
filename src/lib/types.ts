@@ -1,0 +1,52 @@
+import type { ApptStatus, Payer, PayMethod, ReferralType, ReferrerKind } from './constants';
+
+export type ApptRow = {
+  id: string;
+  case_no: number;
+  starts_at: string;
+  referral_type: ReferralType;
+  patient_name: string;
+  status: ApptStatus;
+  payer: Payer;
+  price: number;
+  paid: number;
+  firm_name?: string;
+  firm_kind?: ReferrerKind;
+};
+
+export type FirmInfo = { id: string; name: string; kind: ReferrerKind; contact_name: string; phone: string; email: string; tax_id: string };
+
+export type CaseDetail = {
+  id: string;
+  case_no: number;
+  starts_at: string;
+  referral_type: ReferralType;
+  patient_name: string;
+  patient_id_number: string;
+  patient_dob: string | null;
+  patient_phone: string;
+  notes: string;
+  status: ApptStatus;
+  payer: Payer;
+  price: number;
+  firm: FirmInfo;
+};
+
+export type NoteRow = { id: string; body: string; created_at: string };
+export type DocRow = { id: string; file_name: string; mime_type: string; size_bytes: number; created_at: string; url?: string | null };
+export type PaymentRow = {
+  id?: string;
+  amount: number;
+  method: PayMethod;
+  paid_on: string;
+  receipt_no: string;
+  receipt_url: string;
+  note?: string;
+  invoice_error?: string;
+};
+
+/** Joins appointments with paid totals. */
+export function withPaid<T extends { id: string; price: number | string }>(rows: T[], totals: { appointment_id: string; paid: number | string }[] | null) {
+  const m = new Map((totals ?? []).map((t) => [t.appointment_id, Number(t.paid)]));
+  return rows.map((r) => ({ ...r, price: Number(r.price), paid: m.get(r.id) ?? 0 }));
+}
