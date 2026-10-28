@@ -2,6 +2,7 @@
 import type { Settings } from '@/lib/constants';
 import { dayNum, fromDayNum, ilToUtc, todayIL, weekday } from '@/lib/dates';
 import type { ApptRow, CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
+import type { IntakeRow } from '@/lib/intakeTypes';
 
 export const settings: Settings = {
   slot_minutes: 30, horizon_days: 30, notice_hours: 24, max_open_per_firm: 30, require_staff_mfa: true,
@@ -20,6 +21,7 @@ export const settings: Settings = {
   lh_phone: '052-4266440',
   lh_email: 'd.m.elranhanoch@gmail.com',
   lh_education: '',
+  require_approval: true, notify_email: '', bring_items: 'תעודת זהות\nכל המסמכים הרפואיים\nרשימת תרופות עדכנית', summons_note: '', reminders_on: true, email_letters: true, auto_intake: true,
 };
 
 /** Next working day at or after `offset` days from today. */
@@ -54,6 +56,8 @@ export const rows: ApptRow[] = [
   row(1, '10:30', 'עומר חדד', 'nii', 'booked', F3, 2500, 0),
   row(2, '09:30', 'תמר אוחיון', 'legal', 'booked', F2, 10000, 5000),
   row(4, '11:30', 'אבי מלכה', 'summary', 'booked', F1, 900, 0),
+  row(3, '10:00', 'יעל ברגר', 'legal', 'pending', F2, 10000, 0),
+  row(5, '12:00', 'רון אזולאי', 'nii', 'pending', F1, 2500, 0),
 ];
 
 export const firmRows = rows.filter((r) => r.firm_name === F1.name);
@@ -68,7 +72,53 @@ export const caseDetail: CaseDetail = {
 };
 
 export const notes: NoteRow[] = [
-  { id: 'n1', body: 'צירפנו גם סיכום מחלה מבית החולים מיום האירוע.', created_at: at(-1, '16:20') },
+  { id: 'n1', body: 'צירפנו גם סיכום מחלה מבית החולים מיום האירוע.', created_at: at(-1, '16:20'), kind: 'note' },
+  { id: 'n2', body: '- החלטת הוועדה הרפואית הקודמת של ביטוח לאומי\n- תיעוד פיזיותרפיה מ־2025', created_at: at(-1, '18:00'), kind: 'request', resolved_at: null },
+];
+
+export const intake: IntakeRow = {
+  status: 'done', error: '', doc_count: 4, started_at: at(-1, '16:23'), finished_at: at(-1, '16:25'),
+  data: {
+    summary: 'גבר בן 46, עובד בניין, שנפל מסולם מגובה כ־2 מטר בעבודה ב־03.2025. מאז סובל מכאבי צוואר עם הקרנה ליד שמאל ונימול באצבעות 1–2. ב־MRI בלט דיסק C5-C6 עם לחץ על שורש C6 משמאל, וב־EMG רדיקולופתיה C6 משמאל. המפנה מבקש חוות דעת לוועדה הרפואית של ביטוח לאומי לגבי נכות מעבודה והקשר הסיבתי לתאונה.',
+    request: { goal: 'חוות דעת לוועדה הרפואית של ב.ל. – נכות מעבודה בעמ"ש צווארי וקשר סיבתי לתאונה', recipient: 'המוסד לביטוח לאומי, סניף חדרה', event: 'נפילה מסולם באתר בנייה', event_date: '2025-03-14',
+      questions: ['האם קיים קשר סיבתי בין התאונה לבין הפגיעה בעמ"ש הצווארי?', 'מהי הנכות הרפואית לפי תקנות ב.ל.?', 'האם קיים מצב קודם שיש לנכות?'] },
+    patient_check: [],
+    diagnoses: [{ name: 'בלט דיסק C5-C6', date: '2025-04', source: 'MRI עמוד שדרה צווארי 04-2025.pdf' }, { name: 'רדיקולופתיה C6 משמאל', date: '2025-05', source: 'EMG גפיים עליונות.pdf' }],
+    timeline: [
+      { date: '2025-03-14', title: 'התאונה – פינוי למיון', detail: 'נפילה מסולם. CT צוואר ללא שבר. שוחרר עם משככי כאבים.', source: 'סיכום מחלה – בית חולים.pdf' },
+      { date: '2025-04-02', title: 'MRI עמ"ש צווארי', detail: 'בלט דיסק C5-C6 עם לחץ על שורש C6 משמאל. שינויים ניווניים קלים C4-C5.', source: 'MRI עמוד שדרה צווארי 04-2025.pdf' },
+      { date: '2025-05-20', title: 'EMG', detail: 'רדיקולופתיה C6 משמאל, פעילה חלקית.', source: 'EMG גפיים עליונות.pdf' },
+      { date: '2025-06', title: 'הגשת תביעה לב.ל.', detail: 'טופס ב.ל. 200 – תביעה לנכות מעבודה.', source: 'טופס בל 200.jpg' },
+    ],
+    imaging: [
+      { date: '2025-04-02', test: 'MRI עמ"ש צווארי', finding: 'בלט דיסק C5-C6 עם לחץ על שורש C6 משמאל', source: 'MRI עמוד שדרה צווארי 04-2025.pdf' },
+      { date: '2025-05-20', test: 'EMG גפיים עליונות', finding: 'רדיקולופתיה C6 משמאל', source: 'EMG גפיים עליונות.pdf' },
+    ],
+    medications: ['Etodolac 400mg', 'Lyrica 75mg'],
+    treatments: ['פיזיותרפיה (מוזכרת, ללא תיעוד)'],
+    function_work: 'לא חזר לעבודה בבנייה מאז האירוע. מדווח על קושי בהרמת משאות.',
+    red_flags: [
+      { text: 'ב־MRI שינויים ניווניים ב־C4-C5 – לבחון מצב קודם לפני התאונה.', level: 'high' },
+      { text: 'אין תיעוד רפואי מקופת החולים בין המיון ל־MRI (כ־3 שבועות).', level: 'medium' },
+    ],
+    missing: [
+      { item: 'החלטת הוועדה הרפואית הקודמת של ביטוח לאומי', why: 'לדעת אילו אחוזים כבר נקבעו' },
+      { item: 'תיעוד פיזיותרפיה', why: 'מוזכר במסמכים, אבל לא צורף' },
+      { item: 'תיק רפואי מקופ"ח לשנתיים שלפני התאונה', why: 'לשלול מצב קודם בצוואר' },
+    ],
+    documents: [
+      { file: 'MRI עמוד שדרה צווארי 04-2025.pdf', kind: 'MRI', date: '2025-04-02', gist: 'בלט C5-C6 עם לחץ שורשי משמאל.' },
+      { file: 'סיכום מחלה – בית חולים.pdf', kind: 'סיכום מיון', date: '2025-03-14', gist: 'נפילה מסולם, CT ללא שבר.' },
+    ],
+    exam_focus: ['טווחי תנועה בצוואר (במעלות)', 'כוח ותחושה בדרמטום C6 משמאל, החזרים', 'מבחן ספרלינג', 'לשאול על כאבי צוואר לפני התאונה'],
+    suggested_type: 'nii', type_note: '', readiness: 72,
+  },
+};
+
+export const emails = [
+  { id: 3, kind: 'doc_request', to_addr: 'dana@example.co.il', status: 'sent' as const, error: '', created_at: at(-1, '18:00') },
+  { id: 2, kind: 'summons_firm', to_addr: 'dana@example.co.il', status: 'sent' as const, error: '', created_at: at(-4, '09:30') },
+  { id: 1, kind: 'summons_patient', to_addr: 'israel@example.com', status: 'sent' as const, error: '', created_at: at(-4, '09:30') },
 ];
 
 export const docs: DocRow[] = [
