@@ -7,6 +7,8 @@ import { fmtStamp, todayIL } from '@/lib/dates';
 import { PLACEHOLDER_RE, parseDraft } from '@/lib/letter';
 import Icon from '@/components/Icon';
 import { sendLetter } from '../../actions';
+import Dictate from '@/components/Dictate';
+import TemplatePicker from './TemplatePicker';
 
 export type LetterRow = {
   appointment_id: string;
@@ -41,6 +43,24 @@ export default function LetterEditor({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chain = useRef<Promise<void>>(Promise.resolve());
   const abort = useRef<AbortController | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /** inserts text at the cursor in the letter body (or at the end) */
+  const posRef = useRef<number | null>(null);
+  const insertBody = (text: string) => {
+    const cur = latest.current.body;
+    const pos = Math.min(posRef.current ?? cur.length, cur.length);
+    const before = cur.slice(0, pos);
+    const after = cur.slice(pos);
+    const sep = before && !before.endsWith('\n') ? '\n' : '';
+    const tail = after && !after.startsWith('\n') ? '\n' : '';
+    posRef.current = (before + sep + text + tail).length;
+    update({ body: before + sep + text + tail + after });
+  };
+  const appendExam = (text: string) => {
+    const cur = latest.current.exam_notes;
+    update({ exam_notes: cur ? `${cur}${cur.endsWith('\n') ? '' : ' '}${text}` : text });
+  };
 
   const save = useCallback(() => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
@@ -158,7 +178,8 @@ export default function LetterEditor({
           <input id="ltTo" value={d.recipient} onChange={(e) => update({ recipient: e.target.value })} placeholder="המוסד לביטוח לאומי | סניף חדרה" disabled={ai.running} />
         </label>
       </div>
-      <label className="field" htmlFor="ltExam"><span>ממצאי הבדיקה שלי <small>ה־AI ישתמש בהם בטיוטה. אפשר בקיצור.</small></span>
+      <div className="field-tools"><Dictate onText={appendExam} label="הכתבת ממצאים" /></div>
+      <label className="field" htmlFor="ltExam"><span>ממצאי הבדיקה שלי <small>ה־AI ישתמש בהם בטיוטה. אפשר בקיצור, בהקלדה או בהכתבה.</small></span>
         <textarea id="ltExam" rows={3} value={d.exam_notes} onChange={(e) => update({ exam_notes: e.target.value })} placeholder="לדוגמה: הליכה תקינה. כוח 5/5 בארבע הגפיים. ירידה בתחושה בדרמטום C6 משמאל. ספרלינג חיובי משמאל." />
       </label>
       <div className="editor-tools">
@@ -170,8 +191,12 @@ export default function LetterEditor({
       <label className="field" htmlFor="ltSubj"><span>הנדון</span>
         <input id="ltSubj" value={d.subject} onChange={(e) => update({ subject: e.target.value })} disabled={ai.running} />
       </label>
+      <div className="field-tools">
+        <TemplatePicker letterType={d.letter_type} onInsert={insertBody} selection={() => { const el = bodyRef.current; return el ? el.value.slice(el.selectionStart, el.selectionEnd) : ''; }} />
+        <Dictate onText={insertBody} />
+      </div>
       <label className="field" htmlFor="ltBody"><span>גוף המכתב <small>שורה קצרה שמסתיימת בנקודתיים = כותרת · שורה שמתחילה ב־״- ״ = סעיף</small></span>
-        <textarea id="ltBody" rows={22} value={shownBody} readOnly={ai.running} onChange={(e) => update({ body: e.target.value })} placeholder="לחצו על ״ניסוח טיוטה״ או כתבו כאן…" />
+        <textarea id="ltBody" ref={bodyRef} onSelect={(e) => { posRef.current = e.currentTarget.selectionEnd; }} rows={22} value={shownBody} readOnly={ai.running} onChange={(e) => update({ body: e.target.value })} placeholder="לחצו על ״ניסוח טיוטה״ או כתבו כאן…" />
       </label>
       <p className="hint">נייר המכתבים, פרטי המטופל, החתימה והתאריך נוספים לבד בהדפסה.</p>
       {finalState.msg && <p className={finalState.ok ? 'ok-msg' : 'err'} role="status">{finalState.msg}</p>}

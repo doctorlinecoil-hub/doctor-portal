@@ -6,7 +6,9 @@ import { mailEnabled } from '@/lib/mail';
 import { clinicOf } from '@/lib/emails';
 import type { CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
 import type { IntakeRow } from '@/lib/intakeTypes';
-import { DoctorCaseView, payerName } from '@/views/DoctorViews';
+import { DoctorCaseView, PatientHistory, payerName, type HistoryRow } from '@/views/DoctorViews';
+import RescheduleDecision, { type RescheduleRow } from '../../RescheduleDecision';
+import { DAYS, fmtDate, ilParts, weekday } from '@/lib/dates';
 import LetterEditor, { type LetterRow } from './LetterEditor';
 import PaymentPanel from './PaymentPanel';
 import DoctorCancel from './DoctorCancel';
@@ -34,6 +36,12 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
     supabase.from('case_intake').select('status, data, error, doc_count, started_at, finished_at').eq('appointment_id', id).maybeSingle(),
     supabase.from('email_log').select('id, kind, to_addr, status, error, created_at').eq('appointment_id', id).order('created_at', { ascending: false }).limit(30),
   ]);
+  const [{ data: hist }, { data: resched }] = await Promise.all([
+    supabase.from('appointments').select('id, case_no, starts_at, referral_type, status, firms(name)').eq('patient_id_number', a.patient_id_number).neq('id', id).order('starts_at', { ascending: false }).limit(30),
+    supabase.from('reschedule_requests').select('id, appointment_id, requested_starts_at, reason, created_at').eq('appointment_id', id).eq('status', 'pending').maybeSingle(),
+  ]);
+  const history: HistoryRow[] = ((hist as unknown as (HistoryRow & { firms: { name: string } | null })[] | null) ?? []).map(({ firms, ...r }) => ({ ...r, firm_name: firms?.name ?? '' }));
+  const label = (iso: string) => { const p = ilParts(iso); return `יום ${DAYS[weekday(p.date)]} ${fmtDate(p.date)} ${p.time}`; };
   const paths = (docs ?? []).map((d) => d.storage_path);
   const { data: signed } = paths.length ? await supabase.storage.from(BUCKET).createSignedUrls(paths, 3600) : { data: [] };
   const urlFor = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]));
@@ -52,6 +60,8 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
       docs={docRows}
       cancel={open ? <DoctorCancel appointmentId={id} /> : null}
       approval={<ApprovalButtons id={id} />}
+      history={<PatientHistory rows={history} />}
+      reschedule={resched ? <RescheduleDecision req={resched as RescheduleRow} fromLabel={label(a.starts_at)} toLabel={label((resched as RescheduleRow).requested_starts_at)} /> : null}
       resolve={(n) => <ResolveButton noteId={n.id} caseId={id} />}
       intake={<IntakePanel appointmentId={id} intake={(intake as IntakeRow | null) ?? null} docCount={docRows.length} requestedType={c.referral_type} cancelled={c.status === 'cancelled'} />}
       comms={
