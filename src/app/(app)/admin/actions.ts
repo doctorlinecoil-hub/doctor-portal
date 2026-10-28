@@ -89,7 +89,7 @@ type FirmInput = { name: string; kind: ReferrerKind; taxId: string; contactName:
 
 function firmRow(i: FirmInput) {
   return {
-    name: clean(i.name, 160), kind: i.kind === 'broker' ? 'broker' : 'law', tax_id: clean(i.taxId, 20).replace(/[^\d]/g, ''),
+    name: clean(i.name, 160), kind: i.kind === 'broker' || i.kind === 'private' ? i.kind : 'law', tax_id: clean(i.taxId, 20).replace(/[^\d]/g, ''),
     contact_name: clean(i.contactName, 120), phone: clean(i.phone, 40), email: clean(i.firmEmail, 120),
   };
 }
