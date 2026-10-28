@@ -3,13 +3,15 @@ import { requireUser } from '@/lib/auth';
 import type { CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
 import { FirmCaseView } from '@/views/FirmViews';
 import CaseActions from './CaseActions';
+import RescheduleRequest, { type MyReschedule } from './RescheduleRequest';
+import { availableSlots, type Busy } from '@/lib/slots';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export default async function FirmCasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase, profile } = await requireUser(['firm']);
+  const { supabase, profile, settings } = await requireUser(['firm']);
   const { data: a } = await supabase.from('appointments').select('*, firm:firms(id, name, kind, contact_name, phone, email, tax_id)').eq('id', id).maybeSingle();
   if (!a) notFound();
   const [{ data: notes }, { data: docs }, { data: fin }, { data: pays }] = await Promise.all([
@@ -22,6 +24,19 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
   const payments = ((pays as PaymentRow[] | null) ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
   const paid = payments.reduce((s, p) => s + p.amount, 0);
   const c = { ...a, price: Number(a.price) } as unknown as CaseDetail;
+  const movable = canCancel0(c);
+  let slots: ReturnType<typeof availableSlots> = [];
+  let last: MyReschedule = null;
+  if (movable) {
+    const now = new Date();
+    const until = new Date(now.getTime() + (settings.horizon_days + 2) * 86400000);
+    const [{ data: busy }, { data: rq }] = await Promise.all([
+      supabase.rpc('busy_slots', { p_from: now.toISOString(), p_to: until.toISOString() }),
+      supabase.from('reschedule_requests').select('status, requested_starts_at, response, created_at').eq('appointment_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    slots = availableSlots(settings, (busy as Busy[] | null) ?? [], now);
+    last = (rq as MyReschedule) ?? null;
+  }
   const canCancel = (c.status === 'pending' || c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
   return (
     <FirmCaseView
@@ -31,7 +46,14 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
       payments={payments}
       paid={paid}
       letter={{ ready: !!final, awaitingPayment: c.status === 'done' && !final, finalizedAt: final?.finalized_at ?? null }}
-      actions={<CaseActions appointmentId={id} firmId={profile.firm_id!} canAdd={c.status !== 'cancelled'} canCancel={canCancel} />}
+      actions={<>
+        {movable && <RescheduleRequest appointmentId={id} firmId={profile.firm_id!} slots={slots} last={last} />}
+        <CaseActions appointmentId={id} firmId={profile.firm_id!} canAdd={c.status !== 'cancelled'} canCancel={canCancel} />
+      </>}
     />
   );
+}
+
+function canCancel0(c: CaseDetail) {
+  return (c.status === 'pending' || c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
 }
