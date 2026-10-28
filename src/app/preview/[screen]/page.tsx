@@ -22,6 +22,12 @@ import LetterPaper from '@/views/LetterPaper';
 import PrintButton from '@/app/letters/[id]/print/PrintButton';
 import { todayIL } from '@/lib/dates';
 import * as fx from '@/preview/fixtures';
+import { CalendarView } from '@/views/CalendarView';
+import { ReportsView } from '@/views/ReportsView';
+import { buildReport } from '@/lib/reports';
+import TemplatesAdmin from '@/app/(app)/doctor/templates/TemplatesAdmin';
+import { FreeSlot, RemoveBlock, BlockForm } from '@/app/(app)/doctor/calendar/CalendarTools';
+import RescheduleRequest from '@/app/(app)/firm/cases/[id]/RescheduleRequest';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +71,22 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         intake={<IntakePanel appointmentId={c.id} intake={{ ...fx.intake, status: 'running', data: null }} docCount={fx.docs.length} requestedType={c.referral_type} cancelled={false} preview />}
         letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={null} docCount={fx.docs.length} cancelled={false} preview />} />);
     }
+    case 'doctor-calendar':
+    case 'doctor-month': {
+      const view = screen === 'doctor-month' ? 'month' : 'week';
+      return staffShell('/doctor/calendar', <CalendarView view={view} date={todayIL()} settings={fx.settings} blocks={fx.blocks}
+        rows={fx.rows.map((r) => ({ ...r, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() }))}
+        tools={<div className="row"><BlockForm today={todayIL()} /></div>}
+        slotAction={(iso, label) => <FreeSlot iso={iso} label={label} minutes={30} />} blockAction={(b) => <RemoveBlock id={b.id} />} />);
+    }
+    case 'admin-reports':
+      return staffShell('/admin/reports', <ReportsView report={buildReport(fx.rows.map((r) => ({ id: r.id, case_no: r.case_no, starts_at: r.starts_at, status: r.status, referral_type: r.referral_type, price: r.price, payer: r.payer, firm_id: r.firm_name ?? '', firm_name: r.firm_name ?? '', patient_name: r.patient_name })),
+        fx.rows.filter((r) => r.paid > 0).map((r) => ({ appointment_id: r.id, amount: r.paid, paid_on: todayIL(), method: 'transfer' })), [], todayIL())} />);
+    case 'doctor-templates':
+      return staffShell('/doctor/templates', <><PageHead title="תבניות למכתבים" /><TemplatesAdmin list={fx.templates} preview /></>);
+    case 'firm-resched':
+      return firmShell('/firm/cases', <RescheduleRequest appointmentId={c.id} firmId="f1" preview last={null}
+        slots={availableSlots(fx.settings, [])} />);
     case 'admin-payments':
       return staffShell('/admin/payments', <PaymentsView rows={fx.rows} filter="open" q="" collectedThisMonth={27400} />);
     case 'admin-users':
