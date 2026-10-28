@@ -10,7 +10,7 @@ function owes(r: ApptRow) {
   return r.status !== 'cancelled' && r.payer === 'referrer' ? Math.max(0, r.price - r.paid) : 0;
 }
 
-export function ApptItem({ r, href, staff }: { r: ApptRow; href: string; staff?: boolean }) {
+export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; staff?: boolean; extra?: React.ReactNode }) {
   const p = ilParts(r.starts_at);
   return (
     <Link href={href} className="item">
@@ -23,6 +23,7 @@ export function ApptItem({ r, href, staff }: { r: ApptRow; href: string; staff?:
           <span className="num">תיק {r.case_no}</span>
           {r.firm_name && <><span>·</span><span>{r.firm_name}</span></>}
         </span>
+        {extra}
       </span>
       <span className="item-side"><StatusBadge status={r.status} staff={staff} /></span>
     </Link>
@@ -32,7 +33,8 @@ export function ApptItem({ r, href, staff }: { r: ApptRow; href: string; staff?:
 export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: string; clinicName: string; rows: ApptRow[] }) {
   const today = todayIL();
   const upcoming = rows.filter((r) => r.status !== 'cancelled' && ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const open = rows.filter((r) => r.status === 'booked' || r.status === 'draft').length;
+  const open = rows.filter((r) => r.status === 'pending' || r.status === 'booked' || r.status === 'draft').length;
+  const pending = rows.filter((r) => r.status === 'pending').length;
   const ready = rows.filter((r) => r.status === 'done').sort((a, b) => b.starts_at.localeCompare(a.starts_at));
   const balance = rows.reduce((a, r) => a + owes(r), 0);
   return (
@@ -42,7 +44,7 @@ export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: st
       </PageHead>
       <div className="stats">
         <Stat icon="calendar" label="תורים קרובים" value={upcoming.length} tone="info" />
-        <Stat icon="folder" label="תיקים בטיפול" value={open} tone="warn" />
+        <Stat icon="folder" label="תיקים בטיפול" value={open} tone="warn" sub={pending ? `${pending} ממתינים לאישור הרופא` : undefined} />
         <Stat icon="fileCheck" label="מכתבים מוכנים" value={ready.length} tone="ok" />
         <Stat icon="wallet" label="יתרה לתשלום" value={ils(balance)} tone={balance > 0 ? 'bad' : 'violet'} />
       </div>
@@ -102,7 +104,7 @@ export function filterFirmRows(rows: ApptRow[], f: string) {
   const today = todayIL();
   switch (f) {
     case 'upcoming': return rows.filter((r) => r.status !== 'cancelled' && ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-    case 'open': return rows.filter((r) => r.status === 'booked' || r.status === 'draft');
+    case 'open': return rows.filter((r) => r.status === 'pending' || r.status === 'booked' || r.status === 'draft');
     case 'done': return rows.filter((r) => r.status === 'done');
     case 'cancelled': return rows.filter((r) => r.status === 'cancelled');
     default: return rows;
@@ -178,14 +180,35 @@ export function CaseHero({ c, staff, children }: { c: CaseDetail; staff?: boolea
   );
 }
 
-export function NotesPanel({ notes, extra }: { notes: string; extra: NoteRow[] }) {
+export function NotesPanel({ notes, extra, resolve }: { notes: string; extra: NoteRow[]; resolve?: (n: NoteRow) => React.ReactNode }) {
   return (
     <section className="panel">
-      <div className="panel-head"><h2><Icon name="info" />בקשת המפנה</h2></div>
+      <div className="panel-head"><h2><Icon name="info" />בקשת המפנה והתכתבות</h2></div>
       <p className="note">{notes || <span className="muted">לא נכתבו הערות</span>}</p>
-      {extra.map((n) => (
-        <div className="note-item" key={n.id}><span className="hint">נוסף {fmtStamp(n.created_at)}</span><p className="note">{n.body}</p></div>
+      {extra.map((n) => n.kind === 'request' ? (
+        <div className={`note-item req${n.resolved_at ? ' resolved' : ''}`} key={n.id}>
+          <div className="between"><span className="hint"><Icon name="flag" size={14} />בקשת המרפאה · {fmtStamp(n.created_at)}{n.resolved_at ? ' · טופל' : ''}</span>{!n.resolved_at && resolve?.(n)}</div>
+          <p className="note">{n.body}</p>
+        </div>
+      ) : (
+        <div className="note-item" key={n.id}><span className="hint">הערת המפנה · {fmtStamp(n.created_at)}</span><p className="note">{n.body}</p></div>
       ))}
+    </section>
+  );
+}
+
+/** Open requests from the clinic, shown on top of the referrer's case page. */
+export function RequestsCallout({ notes }: { notes: NoteRow[] }) {
+  const open = notes.filter((n) => n.kind === 'request' && !n.resolved_at);
+  if (!open.length) return null;
+  return (
+    <section className="request-card">
+      <div className="request-ic"><Icon name="flag" /></div>
+      <div className="stack-sm" style={{ minWidth: 0 }}>
+        <b>הרופא מבקש השלמות לתיק</b>
+        {open.map((n) => <p key={n.id} className="note">{n.body}</p>)}
+        <span className="hint">העלו את המסמכים בטופס ״הוספה לתיק״ למטה. הרופא יקבל הודעה.</span>
+      </div>
     </section>
   );
 }
@@ -249,6 +272,13 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions }
     <>
       <PageHead title="" crumbs={[{ href: '/firm/cases', label: 'התיקים שלי' }]} />
       <CaseHero c={c} />
+      {c.status === 'pending' && (
+        <div className="callout warn"><div><Icon name="clock" />הבקשה ממתינה לאישור הרופא. מיד אחרי האישור יישלח זימון במייל{c.patient_email ? ' לכם ולמטופל' : ' אליכם'}.</div></div>
+      )}
+      {c.status === 'cancelled' && c.decline_reason && (
+        <div className="callout bad"><div><Icon name="x" />הבקשה לא אושרה: {c.decline_reason}</div><a className="btn" href="/firm/book"><Icon name="calendarPlus" />בחירת מועד אחר</a></div>
+      )}
+      <RequestsCallout notes={notes} />
       {letter.ready && (
         <div className="callout">
           <div><Icon name="checkCircle" />המכתב של הרופא מוכן{letter.finalizedAt ? ` · ${fmtStamp(letter.finalizedAt)}` : ''}</div>

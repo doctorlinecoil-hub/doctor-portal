@@ -7,7 +7,7 @@ export type LogRow = { id: number; user_id: string | null; action: string; entit
 
 const ACTIONS: Record<string, string> = {
   book: 'קביעת תור', status: 'שינוי סטטוס', upload: 'העלאת מסמך', note: 'הערה בתיק', letter: 'טיוטת מכתב', finalize: 'מכתב סופי',
-  view_case: 'צפייה בתיק', ai_draft: 'ניסוח AI', print_draft: 'הדפסת טיוטה', print_final: 'הורדת מכתב סופי', payment: 'רישום תשלום', payment_deleted: 'מחיקת תשלום',
+  view_case: 'צפייה בתיק', ai_draft: 'ניסוח AI', ai_intake: 'סריקת AI של התיק', print_draft: 'הדפסת טיוטה', print_final: 'הורדת מכתב סופי', payment: 'רישום תשלום', payment_deleted: 'מחיקת תשלום',
 };
 
 function details(r: LogRow) {
