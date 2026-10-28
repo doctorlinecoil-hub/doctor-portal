@@ -33,10 +33,10 @@ function FirmFields({ v, set, idp }: { v: typeof EMPTY_FIRM; set: (v: typeof EMP
     <div className="grid-2">
       <label className="field" htmlFor={`${idp}Kind`}><span>סוג מפנה</span>
         <select id={`${idp}Kind`} value={v.kind} onChange={(e) => set({ ...v, kind: e.target.value as ReferrerKind })}>
-          <option value="law">{KIND.law}</option><option value="broker">{KIND.broker}</option>
+          <option value="law">{KIND.law}</option><option value="broker">{KIND.broker}</option><option value="private">{KIND.private} (מטופל, חברת ביטוח, אחר)</option>
         </select>
       </label>
-      <label className="field" htmlFor={`${idp}Name`}><span>{v.kind === 'broker' ? 'שם המתווך / העסק' : 'שם המשרד'}</span><input id={`${idp}Name`} value={v.name} onChange={(e) => set({ ...v, name: e.target.value })} /></label>
+      <label className="field" htmlFor={`${idp}Name`}><span>{v.kind === 'broker' ? 'שם המתווך / העסק' : v.kind === 'private' ? 'שם' : 'שם המשרד'}</span><input id={`${idp}Name`} value={v.name} onChange={(e) => set({ ...v, name: e.target.value })} /></label>
       <label className="field" htmlFor={`${idp}Tax`}><span>ח.פ / ע.מ / ת.ז <small>לחשבוניות</small></span><input id={`${idp}Tax`} dir="ltr" inputMode="numeric" value={v.taxId} onChange={(e) => setTax(e.target.value)} /></label>
       <label className="field" htmlFor={`${idp}Contact`}><span>איש קשר</span><input id={`${idp}Contact`} value={v.contactName} onChange={(e) => set({ ...v, contactName: e.target.value })} /></label>
       <label className="field" htmlFor={`${idp}Phone`}><span>טלפון</span><input id={`${idp}Phone`} dir="ltr" value={v.phone} onChange={(e) => set({ ...v, phone: e.target.value })} /></label>
