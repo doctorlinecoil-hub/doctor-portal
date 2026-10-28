@@ -26,9 +26,10 @@ function AiChip({ i }: { i?: IntakeChip }) {
   );
 }
 
-export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals }: {
+export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [] }: {
   rows: ApptRow[]; past: boolean; isAdmin: boolean; name: string; now?: Date; intake?: Record<string, IntakeChip>; openRequests?: number;
   approvals?: (id: string) => React.ReactNode;
+  reschedules?: React.ReactNode[];
 }) {
   const today = todayIL();
   const active = rows.filter((r) => r.status !== 'cancelled');
@@ -68,7 +69,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
         )}
       </section>
       <div className="stats">
-        <Stat icon="inbox" label="בקשות לאישור" value={pending.length} tone={pending.length ? 'warn' : 'violet'} href="#approvals" />
+        <Stat icon="inbox" label="בקשות לאישור" value={pending.length + reschedules.length} tone={pending.length ? 'warn' : 'violet'} href="#approvals" />
         <Stat icon="calendar" label="תורים השבוע" value={week.length} tone="info" sub={todays.length ? `${todays.length} היום` : undefined} />
         <Stat icon="file" label="ממתינים למכתב" value={waiting.length} tone={waiting.length ? 'bad' : 'ok'} sub={openRequests ? `${openRequests} בקשות מסמכים פתוחות` : undefined} />
         {isAdmin ? <Stat icon="wallet" label="יתרה לגבייה" value={ils(outstanding)} tone="bad" href="/admin/payments" />
@@ -96,6 +97,13 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
               );
             })}
           </div>
+        </section>
+      )}
+
+      {reschedules.length > 0 && (
+        <section className="panel approvals">
+          <div className="panel-head"><h2><Icon name="calendar" />בקשות לשינוי מועד</h2><span className="badge b-pending">{reschedules.length}</span></div>
+          <div className="stack-sm">{reschedules}</div>
         </section>
       )}
 
@@ -137,9 +145,30 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
   );
 }
 
-export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake, comms, approval, resolve }: {
+export type HistoryRow = { id: string; case_no: number; starts_at: string; referral_type: CaseDetail['referral_type']; status: CaseDetail['status']; firm_name: string };
+
+export function PatientHistory({ rows }: { rows: HistoryRow[] }) {
+  if (!rows.length) return null;
+  return (
+    <section className="panel flush">
+      <div className="panel-head"><h2><Icon name="timeline" />ביקורים קודמים של המטופל</h2><span className="hint">{rows.length}</span></div>
+      <div className="list">
+        {rows.map((r) => (
+          <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '84px minmax(0,1fr) auto' }}>
+            <span className="item-time num" style={{ fontSize: 14 }}>{fmtDate(ilParts(r.starts_at).date)}<small>תיק {r.case_no}</small></span>
+            <span className="item-main"><b>{TYPES[r.referral_type].label}</b><span className="item-meta">{r.firm_name}</span></span>
+            <StatusBadge status={r.status} staff />
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake, comms, approval, resolve, history, reschedule }: {
   c: CaseDetail; notes: NoteRow[]; docs: DocRow[]; payment?: React.ReactNode; letter: React.ReactNode; cancel?: React.ReactNode;
   intake?: React.ReactNode; comms?: React.ReactNode; approval?: React.ReactNode; resolve?: (n: NoteRow) => React.ReactNode;
+  history?: React.ReactNode; reschedule?: React.ReactNode;
 }) {
   const openReq = notes.filter((n) => n.kind === 'request' && !n.resolved_at).length;
   return (
@@ -157,6 +186,7 @@ export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake
           {approval}
         </section>
       )}
+      {reschedule}
       {c.status === 'cancelled' && c.decline_reason && <div className="callout bad"><div><Icon name="x" />הבקשה נדחתה: {c.decline_reason}</div></div>}
       {openReq > 0 && <div className="callout warn"><div><Icon name="flag" />{openReq === 1 ? 'בקשה אחת פתוחה' : `${openReq} בקשות פתוחות`} למפנה להשלמת מסמכים.</div></div>}
       <div className="cols case-cols">
@@ -164,6 +194,7 @@ export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake
           {intake}
           <NotesPanel notes={c.notes} extra={notes} resolve={resolve} />
           <DocsPanel docs={docs} open />
+          {history}
         </div>
         <div className="stack">
           {letter}
