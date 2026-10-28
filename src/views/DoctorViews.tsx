@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Icon from '@/components/Icon';
+import Tabs from '@/components/Tabs';
 import { Empty, PageHead, Stat } from '@/components/ui';
 import { KindBadge, StatusBadge } from '@/components/Badges';
 import { TYPES, ils } from '@/lib/constants';
@@ -26,10 +27,11 @@ function AiChip({ i }: { i?: IntakeChip }) {
   );
 }
 
-export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [] }: {
+export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup }: {
   rows: ApptRow[]; past: boolean; isAdmin: boolean; name: string; now?: Date; intake?: Record<string, IntakeChip>; openRequests?: number;
   approvals?: (id: string) => React.ReactNode;
   reschedules?: React.ReactNode[];
+  setup?: React.ReactNode;
 }) {
   const today = todayIL();
   const active = rows.filter((r) => r.status !== 'cancelled');
@@ -68,6 +70,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
           </Link>
         )}
       </section>
+      {setup}
       <div className="stats">
         <Stat icon="inbox" label="בקשות לאישור" value={pending.length + reschedules.length} tone={pending.length ? 'warn' : 'violet'} href="#approvals" />
         <Stat icon="calendar" label="תורים השבוע" value={week.length} tone="info" sub={todays.length ? `${todays.length} היום` : undefined} />
@@ -189,19 +192,28 @@ export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake
       {reschedule}
       {c.status === 'cancelled' && c.decline_reason && <div className="callout bad"><div><Icon name="x" />הבקשה נדחתה: {c.decline_reason}</div></div>}
       {openReq > 0 && <div className="callout warn"><div><Icon name="flag" />{openReq === 1 ? 'בקשה אחת פתוחה' : `${openReq} בקשות פתוחות`} למפנה להשלמת מסמכים.</div></div>}
-      <div className="cols case-cols">
-        <div className="stack">
-          {intake}
-          <NotesPanel notes={c.notes} extra={notes} resolve={resolve} />
-          <DocsPanel docs={docs} open />
-          {history}
-        </div>
-        <div className="stack">
-          {letter}
-          {comms}
-          {payment}
-        </div>
-      </div>
+      <Tabs
+        initial={c.status === 'draft' || c.status === 'done' ? 'letter' : 'overview'}
+        tabs={[
+          { key: 'overview', label: 'סקירת התיק', icon: 'sparkles', badge: openReq || null, content: (
+            <div className="cols case-cols">
+              <div className="stack">{intake}</div>
+              <div className="stack">
+                <NotesPanel notes={c.notes} extra={notes} resolve={resolve} />
+                <DocsPanel docs={docs} open />
+                {history}
+              </div>
+            </div>
+          ) },
+          { key: 'letter', label: 'המכתב', icon: 'file', content: <div className="letter-wrap">{letter}</div> },
+          { key: 'send', label: comms && payment ? 'שליחה ותשלום' : 'זימונים ושליחה', icon: 'send', content: (
+            <div className="cols case-cols">
+              <div className="stack">{comms}</div>
+              <div className="stack">{payment}</div>
+            </div>
+          ) },
+        ].filter((t) => t.key !== 'send' || comms || payment)}
+      />
     </>
   );
 }
