@@ -665,3 +665,26 @@ svg.flip { transform: scaleX(-1); }
 .bar-n { font-size: 11px; color: var(--fg-2); }
 @media (max-width: 640px) { .bars { gap: 3px; } .bar-lbl { font-size: 9.5px; } }
 @media (prefers-reduced-motion: reduce) { .btn.rec { animation: none; } }
+
+/* setup checklist (admin) */
+.setup { border-color: var(--warn-soft); box-shadow: 0 0 0 3px var(--warn-soft), var(--shadow); }
+.setup .panel-head h2 svg { color: var(--warn); }
+.setup-list { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 12px; }
+.setup-list > li > b { display: block; }
+.setup-list > li > span { display: block; font-size: 14px; }
+.setup-list details { margin-top: 4px; font-size: 14px; }
+.setup-list summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+.setup-list details ol { margin: 6px 0 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+/* case page steps */
+.ctabs { display: flex; flex-direction: column; gap: 16px; }
+.ctabs-bar { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: var(--shadow); overflow-x: auto; position: sticky; top: 8px; z-index: 5; }
+.ctab { flex: 1; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 0; border-radius: 10px; background: transparent; color: var(--fg-2); font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; }
+.ctab svg { width: 18px; height: 18px; }
+.ctab:hover { background: var(--surface-2); }
+.ctab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 12px rgba(11, 122, 117, .25); }
+.ctab-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.ctab[aria-selected="true"] .ctab-n { background: rgba(255, 255, 255, .22); color: #fff; }
+.ctab-badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--warn); color: #fff; font-size: 11.5px; display: grid; place-items: center; }
+.letter-wrap { max-width: 920px; width: 100%; margin: 0 auto; }
+@media (max-width: 640px) { .ctab span:not(.ctab-n):not(.ctab-badge) { display: none; } .ctab { padding: 10px; } }
