@@ -1,5 +1,14 @@
 // Stroke icons (24x24, 1.75 stroke), drawn inline so the app needs no icon library.
 const P: Record<string, React.ReactNode> = {
+  message: <><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.3A8.5 8.5 0 1 1 20.5 11.5Z" /><path d="M8.5 10.5c.3 1.8 2.2 3.8 4.2 4.3l1.3-1.1 1.6.8" /></>,
+  scan: <><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><path d="M7 12h10" /></>,
+  flag: <><path d="M5 21V4M5 4h11l-1.5 4L16 12H5" /></>,
+  timeline: <><circle cx="6" cy="6" r="2" /><circle cx="6" cy="18" r="2" /><path d="M6 8v8M10 6h10M10 18h10M10 12h7" /><circle cx="6" cy="12" r="1" /></>,
+  refresh: <><path d="M20 11a8 8 0 0 0-14.3-4.5L4 8.5" /><path d="M4 4v4.5h4.5M4 13a8 8 0 0 0 14.3 4.5l1.7-2" /><path d="M20 20v-4.5h-4.5" /></>,
+  pill: <><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)" /><path d="m9.5 9.5 5 5" /></>,
+  inbox: <><path d="M3 13.5 5.5 5h13L21 13.5V19a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M3 13.5h5l1.5 2.5h5l1.5-2.5h5" /></>,
+  navigation: <><path d="m3 11 18-8-8 18-2-8Z" /></>,
+  bolt: <><path d="M13 2 4 14h7l-1 8 9-12h-7Z" /></>,
   logo: <><path d="M12 3v18" /><path d="M5 8h14" /><path d="M8 3h8" /><path d="M7 21h10" /><circle cx="12" cy="8" r="0.5" /></>,
   home: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5" /></>,
   calendar: <><rect x="3" y="4.5" width="18" height="16.5" rx="2.5" /><path d="M3 9.5h18M8 2.5v4M16 2.5v4" /></>,

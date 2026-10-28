@@ -23,13 +23,14 @@ export function PageHead({ title, sub, crumbs, children }: { title: React.ReactN
   );
 }
 
-export function Stat({ icon, label, value, tone }: { icon: string; label: string; value: React.ReactNode; tone?: 'info' | 'warn' | 'ok' | 'bad' | 'violet' }) {
-  return (
-    <div className="stat">
+export function Stat({ icon, label, value, tone, sub, href }: { icon: string; label: string; value: React.ReactNode; tone?: 'info' | 'warn' | 'ok' | 'bad' | 'violet'; sub?: React.ReactNode; href?: string }) {
+  const inner = (
+    <>
       <div className={`stat-ic ${tone ?? ''}`}><Icon name={icon} /></div>
-      <div><span>{label}</span><b>{value}</b></div>
-    </div>
+      <div><span>{label}</span><b>{value}</b>{sub && <small className="stat-sub">{sub}</small>}</div>
+    </>
   );
+  return href ? <Link href={href} className="stat stat-link">{inner}</Link> : <div className="stat">{inner}</div>;
 }
 
 export function Empty({ icon = 'folder', children }: { icon?: string; children: React.ReactNode }) {
