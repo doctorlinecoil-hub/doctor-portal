@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { supabaseConfig } from '@/lib/env';
 import { SupabaseProvider } from '@/lib/supabase/browser';
@@ -7,6 +7,14 @@ export const metadata: Metadata = {
   title: 'מרפאת ד״ר אלרן חנוך',
   description: 'תורים, תיקים, מכתבים רפואיים ותשלומים',
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: 'ד״ר חנוך', statusBarStyle: 'black-translucent' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0D1B2A',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
