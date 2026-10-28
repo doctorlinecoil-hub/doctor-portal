@@ -1,10 +1,12 @@
 'use server';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { deliverLetter } from '@/lib/notify';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { tempPassword } from '@/lib/password';
 import { issueReceipt, morningEnabled, type ChequeInfo } from '@/lib/morning';
-import { PAY_METHODS, TYPES, type Payer, type PayMethod, type ReferralType, type ReferrerKind, type WeekDay } from '@/lib/constants';
+import { EMAIL_RE, PAY_METHODS, TYPES, type Payer, type PayMethod, type ReferralType, type ReferrerKind, type WeekDay } from '@/lib/constants';
 
 type Result = { ok: boolean; error?: string; email?: string; password?: string; info?: string };
 
@@ -25,6 +27,7 @@ export async function saveSettings(input: {
   weekly: Record<string, WeekDay>; slot_minutes: number; horizon_days: number; notice_hours: number; blocked_dates: string[];
   require_staff_mfa: boolean; max_open_per_firm: number; prices: Record<ReferralType, number>; letter_requires_payment: boolean; invoice_item: string;
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
+  require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -35,6 +38,8 @@ export async function saveSettings(input: {
     if (d.on && d.from >= d.to) return { ok: false, error: 'שעת הסיום צריכה להיות אחרי שעת ההתחלה.' };
     weekly[String(i)] = { on: !!d.on, from: d.from, to: d.to };
   }
+  const notifyEmail = clean(input.notify_email, 200).toLowerCase();
+  if (notifyEmail && !EMAIL_RE.test(notifyEmail)) return { ok: false, error: 'כתובת המייל להתראות לא תקינה.' };
   const prices = Object.fromEntries((Object.keys(TYPES) as ReferralType[]).map((k) => [k, Math.max(0, Math.min(999999, money(input.prices?.[k] || 0)))]));
   const { error } = await supabase.from('settings').update({
     weekly,
@@ -50,6 +55,13 @@ export async function saveSettings(input: {
     lh_name: clean(input.lh_name, 120) || 'ד״ר אלרן חנוך',
     lh_titles: clean(input.lh_titles), lh_licenses: clean(input.lh_licenses, 200), lh_address: clean(input.lh_address, 300),
     lh_phone: clean(input.lh_phone, 40), lh_email: clean(input.lh_email, 120), lh_education: clean(input.lh_education, 4000),
+    require_approval: !!input.require_approval,
+    notify_email: notifyEmail,
+    bring_items: clean(input.bring_items, 2000),
+    summons_note: clean(input.summons_note, 2000),
+    reminders_on: !!input.reminders_on,
+    email_letters: !!input.email_letters,
+    auto_intake: !!input.auto_intake,
   }).eq('id', 1);
   if (error) return { ok: false, error: 'השמירה נכשלה.' };
   revalidatePath('/', 'layout');
@@ -228,6 +240,8 @@ export async function recordPayment(input: {
     const err = await issueFor(supabase, data.id, input.sendEmail, input.cheque);
     info = err ? `התשלום נרשם, אבל החשבונית לא הופקה: ${err}` : 'התשלום נרשם והחשבונית הופקה במורנינג';
   }
+  // a letter that waited for payment goes out by itself once the case is paid in full
+  after(() => deliverLetter(input.appointmentId, { onlyIfAwaitingPayment: true }).then(() => undefined).catch(() => undefined));
   revalidatePath(`/doctor/cases/${input.appointmentId}`);
   revalidatePath('/admin/payments');
   return { ok: true, info };

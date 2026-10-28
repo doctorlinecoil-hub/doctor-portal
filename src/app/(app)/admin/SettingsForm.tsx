@@ -1,12 +1,12 @@
 'use client';
 import { useState } from 'react';
 import Icon from '@/components/Icon';
-import { TYPES, type ReferralType, type Settings, type WeekDay } from '@/lib/constants';
+import { SETTINGS_DEFAULTS, TYPES, type ReferralType, type Settings, type WeekDay } from '@/lib/constants';
 import { DAYS, fmtDate } from '@/lib/dates';
 import { saveSettings } from './actions';
 
-export default function SettingsForm({ initial, morning, preview }: { initial: Settings; morning: boolean; preview?: boolean }) {
-  const [s, setS] = useState<Settings>({ ...initial, prices: Object.assign({ referral: 0, summary: 0, nii: 0, legal: 0 }, initial.prices) });
+export default function SettingsForm({ initial, morning, mail, cron, preview }: { initial: Settings; morning: boolean; mail: boolean; cron: boolean; preview?: boolean }) {
+  const [s, setS] = useState<Settings>({ ...SETTINGS_DEFAULTS, ...initial, prices: Object.assign({ referral: 0, summary: 0, nii: 0, legal: 0 }, initial.prices) });
   const [newBlock, setNewBlock] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -86,6 +86,31 @@ export default function SettingsForm({ initial, morning, preview }: { initial: S
 
         <div className="stack">
           <section className="panel">
+            <div className="panel-head"><h2><Icon name="mail" />אישור תורים, זימונים ומיילים</h2></div>
+            <label className="check"><input type="checkbox" checked={s.require_approval} onChange={(e) => setS({ ...s, require_approval: e.target.checked })} />
+              <span>תור ממפנה נכנס כבקשה וממתין לאישור הרופא<small>אחרי האישור נשלח זימון במייל למפנה ולמטופל. בלי סימון: התור נקבע מיד והזימון נשלח מיד.</small></span></label>
+            <label className="field" htmlFor="notify"><span>מייל לקבלת התראות על בקשות חדשות <small>ריק = המייל של הרופא במערכת</small></span>
+              <input id="notify" type="email" dir="ltr" value={s.notify_email} onChange={text('notify_email')} placeholder="doctor@example.com" /></label>
+            <label className="field" htmlFor="bring"><span>מה להביא לביקור <small>שורה לכל פריט. מופיע בזימון ובתזכורת.</small></span>
+              <textarea id="bring" rows={4} value={s.bring_items} onChange={text('bring_items')} /></label>
+            <label className="field" htmlFor="snote"><span>הערה בזימון <small>למשל: חניה, קומה, איך מגיעים</small></span>
+              <textarea id="snote" rows={2} value={s.summons_note} onChange={text('summons_note')} placeholder="חניון ציבורי בבניין. עולים במעליות המזרחיות לקומה 23." /></label>
+            <label className="check"><input type="checkbox" checked={s.reminders_on} onChange={(e) => setS({ ...s, reminders_on: e.target.checked })} />
+              <span>תזכורת אוטומטית במייל יום לפני התור<small>{cron ? 'נשלחת כל יום בסביבות 17:00–18:00.' : 'כדי שזה יעבוד צריך להגדיר CRON_SECRET בהגדרות Vercel.'}</small></span></label>
+            <label className="check"><input type="checkbox" checked={s.email_letters} onChange={(e) => setS({ ...s, email_letters: e.target.checked })} />
+              <span>שליחת המכתב הסופי במייל כ־PDF<small>למפנה, ולמטופל אם הוזן מייל. אם המכתב נפתח רק אחרי תשלום, הוא יישלח אחרי שהתשלום יירשם.</small></span></label>
+            <div className={`callout ${mail ? '' : 'info'}`}>
+              <div><Icon name="mail" />{mail ? 'שליחת מיילים מחוברת.' : 'שליחת מיילים עוד לא הוגדרה (RESEND_API_KEY ו־MAIL_FROM בהגדרות Vercel). עד אז אפשר לשלוח זימונים בכפתורי הוואטסאפ שבתיק.'}</div>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-head"><h2><Icon name="sparkles" />סריקת AI</h2></div>
+            <label className="check"><input type="checkbox" checked={s.auto_intake} onChange={(e) => setS({ ...s, auto_intake: e.target.checked })} />
+              <span>סריקה אוטומטית של כל פנייה חדשה<small>ה־AI קורא את המסמכים ומכין לרופא סיכום, ציר זמן, דגלים אדומים ורשימת מסמכים חסרים. נסרק שוב כשהמפנה מוסיף מסמכים.</small></span></label>
+          </section>
+
+          <section className="panel">
             <div className="panel-head"><h2><Icon name="file" />נייר מכתבים</h2></div>
             <p className="muted">מופיע בראש כל מכתב ובחתימה.</p>
             <label className="field" htmlFor="lhName"><span>שם</span><input id="lhName" value={s.lh_name} onChange={text('lh_name')} /></label>
@@ -103,6 +128,7 @@ export default function SettingsForm({ initial, morning, preview }: { initial: S
             <div className="panel-head"><h2><Icon name="shield" />אבטחה</h2></div>
             <label className="check"><input type="checkbox" checked={s.require_staff_mfa} onChange={(e) => setS({ ...s, require_staff_mfa: e.target.checked })} />
               <span>אימות דו־שלבי חובה לרופא ולמנהל<small>מומלץ להשאיר מסומן. בכניסה מקלידים גם קוד מאפליקציה בטלפון.</small></span></label>
+            {!s.require_staff_mfa && <div className="callout warn"><div><Icon name="alert" />האימות הדו־שלבי כבוי. במערכת יש מסמכים רפואיים ומספרי ת״ז, ולכן מומלץ להפעיל אותו: סיסמה שדולפת לבדה תספיק כדי להיכנס.</div></div>}
           </section>
         </div>
       </div>
