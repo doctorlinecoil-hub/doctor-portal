@@ -6,6 +6,7 @@ import { TYPES, type ReferralType } from '@/lib/constants';
 import { fmtStamp, todayIL } from '@/lib/dates';
 import { PLACEHOLDER_RE, parseDraft } from '@/lib/letter';
 import Icon from '@/components/Icon';
+import { sendLetter } from '../../actions';
 
 export type LetterRow = {
   appointment_id: string;
@@ -131,7 +132,10 @@ export default function LetterEditor({
       final_letter_type: cur.letter_type, final_recipient: cur.recipient, final_subject: cur.subject, final_body: cur.body,
     }).eq('appointment_id', appointmentId);
     if (error) return setFinalState({ armed: false, ok: false, msg: 'השליחה נכשלה. נסו שוב.' });
-    setFinalState({ armed: false, ok: true, msg: 'המכתב נשלח למפנה. הוא יכול להוריד אותו מתוך התיק.' });
+    setFinalState({ armed: false, ok: true, msg: 'המכתב סומן כסופי. שולח במייל…' });
+    // a first final version goes out by email (PDF); an update to an existing final version is re-sent from "זימונים והודעות"
+    const r = initial?.is_final ? null : await sendLetter(appointmentId).catch(() => null);
+    setFinalState({ armed: false, ok: true, msg: r?.ok ? `המכתב זמין למפנה בתיק. ${r.info || ''}` : `המכתב זמין למפנה בתיק.${r?.error ? ` המייל לא נשלח: ${r.error}` : ''}` });
     router.refresh();
   }
 
