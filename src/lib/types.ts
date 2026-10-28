@@ -29,10 +29,15 @@ export type CaseDetail = {
   status: ApptStatus;
   payer: Payer;
   price: number;
+  patient_email?: string;
+  decline_reason?: string;
+  confirmed_at?: string | null;
+  reminder_sent_at?: string | null;
+  letter_sent_at?: string | null;
   firm: FirmInfo;
 };
 
-export type NoteRow = { id: string; body: string; created_at: string };
+export type NoteRow = { id: string; body: string; created_at: string; kind?: 'note' | 'request'; resolved_at?: string | null };
 export type DocRow = { id: string; file_name: string; mime_type: string; size_bytes: number; created_at: string; url?: string | null };
 export type PaymentRow = {
   id?: string;

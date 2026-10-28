@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'doctor' | 'firm';
 export type ReferralType = 'referral' | 'summary' | 'nii' | 'legal';
-export type ApptStatus = 'booked' | 'draft' | 'done' | 'cancelled';
+export type ApptStatus = 'pending' | 'booked' | 'draft' | 'done' | 'cancelled';
 export type Payer = 'referrer' | 'patient';
 export type PayMethod = 'transfer' | 'bit' | 'check' | 'cash' | 'card' | 'other';
 export type ReferrerKind = 'law' | 'broker';
@@ -31,10 +31,10 @@ export const TYPES: Record<ReferralType, { label: string; desc: string; icon: st
 };
 
 export const STATUS_FIRM: Record<ApptStatus, string> = {
-  booked: 'תור נקבע', draft: 'בטיפול הרופא', done: 'המכתב מוכן', cancelled: 'בוטל',
+  pending: 'ממתין לאישור הרופא', booked: 'תור מאושר', draft: 'בטיפול הרופא', done: 'המכתב מוכן', cancelled: 'בוטל',
 };
 export const STATUS_STAFF: Record<ApptStatus, string> = {
-  booked: 'ממתין לביקור', draft: 'מכתב בטיוטה', done: 'המכתב נשלח', cancelled: 'בוטל',
+  pending: 'ממתין לאישורך', booked: 'ממתין לביקור', draft: 'מכתב בטיוטה', done: 'המכתב נשלח', cancelled: 'בוטל',
 };
 
 export type WeekDay = { on: boolean; from: string; to: string };
@@ -49,6 +49,13 @@ export type Settings = {
   prices: Record<ReferralType, number>;
   letter_requires_payment: boolean;
   invoice_item: string;
+  require_approval: boolean;
+  notify_email: string;
+  bring_items: string;
+  summons_note: string;
+  reminders_on: boolean;
+  email_letters: boolean;
+  auto_intake: boolean;
   lh_name: string;
   lh_titles: string;
   lh_licenses: string;
@@ -71,6 +78,8 @@ const DB_ERRORS: Record<string, string> = {
   SLOT_TOO_FAR: 'התור רחוק מדי. בחרו תור קרוב יותר.',
   TOO_MANY_BOOKINGS: 'למשרד יש כבר הרבה תורים פתוחים. פנו למרפאה.',
   CANNOT_CANCEL: 'אי אפשר לבטל את התור הזה.',
+  CANNOT_APPROVE: 'הבקשה כבר טופלה.',
+  CANNOT_DECLINE: 'הבקשה כבר טופלה.',
   IN_PAST: 'אי אפשר לבטל תור שכבר עבר.',
   FORBIDDEN: 'אין לכם הרשאה לפעולה הזו.',
   NOT_FOUND: 'התיק לא נמצא.',
@@ -84,3 +93,16 @@ export function dbError(e: { code?: string; message?: string } | null | undefine
   if (e.code === '42501' || e.message?.includes('row-level security')) return 'אין לכם הרשאה לפעולה הזו.';
   return 'הפעולה נכשלה. בדקו את החיבור ונסו שוב.';
 }
+
+export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** Default settings for the new fields, for rows that predate them. */
+export const SETTINGS_DEFAULTS = {
+  require_approval: true,
+  notify_email: '',
+  bring_items: 'תעודת זהות\nכל המסמכים הרפואיים הרלוונטיים, גם אם כבר הועלו למערכת\nרשימת תרופות עדכנית\nבדיקות הדמיה (דיסק או קישור לצפייה)',
+  summons_note: '',
+  reminders_on: true,
+  email_letters: true,
+  auto_intake: true,
+} as const;

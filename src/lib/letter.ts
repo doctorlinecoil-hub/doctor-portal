@@ -66,6 +66,7 @@ export type PromptInput = {
   notes: string[];
   attached: string[];
   skipped: string[];
+  intake?: string;
 };
 
 export function buildPrompt(p: PromptInput) {
@@ -89,6 +90,7 @@ export function buildPrompt(p: PromptInput) {
     `בקשת המפנה והערותיו:\n"""\n${p.notes.filter(Boolean).join('\n') || '(אין הערות)'}\n"""`,
     `ממצאי הרופא מהבדיקה:\n"""\n${p.exam.trim() || '(הרופא עוד לא רשם ממצאים)'}\n"""`,
     docs + skipped,
+    p.intake ? `סיכום מקדים של התיק שהוכן בסריקה אוטומטית (עזר בלבד – המקור הקובע הוא המסמכים עצמם):\n"""\n${p.intake}\n"""` : '',
     `כללים:
 1. השתמש רק במידע מהמסמכים, מבקשת המפנה ומממצאי הרופא. אל תמציא ממצאים, תוצאות, תאריכים, אבחנות או אחוזי נכות.
 2. איפה שחסר מידע שהרופא צריך להשלים, כתוב בסוגריים מרובעים: [להשלמת הרופא: ...].
@@ -104,7 +106,7 @@ export function buildPrompt(p: PromptInput) {
 הנדון: <נושא קצר>
 ---
 <גוף המכתב>`,
-  ].join('\n\n');
+  ].filter(Boolean).join('\n\n');
 }
 
 export function parseDraft(text: string) {

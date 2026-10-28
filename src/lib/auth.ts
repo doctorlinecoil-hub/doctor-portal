@@ -1,7 +1,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import type { Role, Settings } from '@/lib/constants';
+import { SETTINGS_DEFAULTS, type Role, type Settings } from '@/lib/constants';
 
 export type Profile = {
   id: string;
@@ -37,7 +37,7 @@ export async function requireUser(roles?: Role[]) {
     if (!firm) redirect('/login?e=noaccess');
   }
   if (roles && !roles.includes(profile.role)) redirect('/');
-  return { supabase, claims, profile, settings: settings as Settings, staff };
+  return { supabase, claims, profile, settings: { ...SETTINGS_DEFAULTS, ...(settings as Settings) } as Settings, staff };
 }
 
 export function homeFor(role: Role) {
