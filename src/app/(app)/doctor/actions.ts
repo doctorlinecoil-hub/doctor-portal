@@ -93,3 +93,18 @@ export async function sendLetter(id: string, force = false): Promise<Result> {
   done(id);
   return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
+
+/** Approve (the appointment moves and an updated summons goes out) or decline a referrer's reschedule request. */
+export async function decideReschedule(requestId: string, caseId: string, approve: boolean, response = ''): Promise<Result> {
+  const c = await staffCase(caseId);
+  if (!c || !UUID.test(requestId)) return { ok: false, error: 'אין הרשאה.' };
+  const { error } = await c.supabase.rpc('decide_reschedule', { p_id: requestId, p_approve: approve, p_response: String(response || '').slice(0, 500) });
+  if (error) return { ok: false, error: dbError(error) };
+  let info = approve ? 'המועד עודכן' : 'הבקשה נדחתה והמפנה עודכן';
+  if (approve) {
+    const r = await sendSummons(caseId, { force: true });
+    info = r.sent ? 'המועד עודכן ונשלח זימון מעודכן במייל' : 'המועד עודכן. אפשר לשלוח זימון מעודכן בוואטסאפ.';
+  }
+  done(caseId);
+  return { ok: true, info };
+}
