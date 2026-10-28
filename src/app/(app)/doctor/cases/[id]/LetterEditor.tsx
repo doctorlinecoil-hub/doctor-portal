@@ -36,7 +36,7 @@ export default function LetterEditor({
     exam_notes: initial?.exam_notes ?? '',
   });
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
-  const [ai, setAi] = useState<{ running: boolean; text: string; note: string }>({ running: false, text: '', note: '' });
+  const [ai, setAi] = useState<{ running: boolean; text: string; note: string; bad?: boolean }>({ running: false, text: '', note: '' });
   const [finalState, setFinalState] = useState<{ armed: boolean; msg: string; ok: boolean }>({ armed: false, msg: '', ok: false });
   const latest = useRef(d);
   const dirty = useRef(false);
@@ -109,7 +109,7 @@ export default function LetterEditor({
       });
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}));
-        setAi({ running: false, text: '', note: j.error || 'הניסוח נכשל. נסו שוב.' });
+        setAi({ running: false, text: '', note: j.error || 'הניסוח נכשל. נסו שוב.', bad: true });
         return;
       }
       const reader = res.body.getReader();
@@ -118,7 +118,14 @@ export default function LetterEditor({
         const { value, done } = await reader.read();
         if (done) break;
         text += dec.decode(value, { stream: true });
-        setAi((s) => ({ ...s, text, note: 'כותב…' }));
+        setAi((s) => ({ ...s, text: text.split('\u0000ERR:')[0], note: 'כותב…' }));
+      }
+      const [good, err] = text.split('\u0000ERR:');
+      if (err !== undefined) {
+        // the AI failed: keep whatever was written so far, and say why
+        if (good.trim()) { const p = parseDraft(good); update({ body: p.body }); await save(); }
+        setAi({ running: false, text: '', note: err, bad: true });
+        return;
       }
       const r = parseDraft(text);
       update({ recipient: r.recipient || before.recipient, subject: r.subject || before.subject, body: r.body });
@@ -184,7 +191,7 @@ export default function LetterEditor({
       </label>
       <div className="editor-tools">
         <span className="ai-ic"><Icon name="sparkles" /></span>
-        <p aria-live="polite">{ai.note || 'ה־AI קורא את המסמכים, את בקשת המפנה ואת הממצאים שלך, ומנסח טיוטה לפי סוג המכתב.'}</p>
+        <p aria-live="polite" className={ai.bad ? 'err' : undefined}>{ai.note || 'ה־AI קורא את המסמכים, את בקשת המפנה ואת הממצאים שלך, ומנסח טיוטה לפי סוג המכתב. אפשר גם לכתוב את המכתב ידנית למטה.'}</p>
         <button type="button" className="btn btn-primary" onClick={preview ? undefined : runAI} disabled={ai.running}>{ai.running ? 'מנסח…' : d.body ? 'ניסוח מחדש' : 'ניסוח טיוטה'}</button>
         {ai.running && <button type="button" className="btn" onClick={() => abort.current?.abort()}>עצירה</button>}
       </div>
