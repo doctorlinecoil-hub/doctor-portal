@@ -2,6 +2,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from './supabase/admin';
 import { loadDocBlocks } from './caseDocs';
+import { aiErrorText } from './aiErrors';
 import { TYPES, type ReferralType } from './constants';
 import { age, fmtDate, ilParts, todayIL } from './dates';
 import type { IntakeData } from './intakeTypes';
@@ -140,7 +141,7 @@ export async function runIntake(appointmentId: string, opts: { force?: boolean }
     await db.from('audit_log').insert({ action: 'ai_intake', entity: 'appointment', entity_id: appointmentId, details: { model, docs: attached.length } });
   } catch (e) {
     console.error('intake failed', (e as Error).message);
-    await mark({ status: 'error', error: ((e as Error).message || 'תקלה').slice(0, 900), finished_at: new Date().toISOString() });
+    await mark({ status: 'error', error: aiErrorText(e), finished_at: new Date().toISOString() });
   }
 }
 
