@@ -40,7 +40,7 @@ function FirmFields({ v, set, idp }: { v: typeof EMPTY_FIRM; set: (v: typeof EMP
       <label className="field" htmlFor={`${idp}Tax`}><span>ח.פ / ע.מ / ת.ז <small>לחשבוניות</small></span><input id={`${idp}Tax`} dir="ltr" inputMode="numeric" value={v.taxId} onChange={(e) => setTax(e.target.value)} /></label>
       <label className="field" htmlFor={`${idp}Contact`}><span>איש קשר</span><input id={`${idp}Contact`} value={v.contactName} onChange={(e) => set({ ...v, contactName: e.target.value })} /></label>
       <label className="field" htmlFor={`${idp}Phone`}><span>טלפון</span><input id={`${idp}Phone`} dir="ltr" value={v.phone} onChange={(e) => set({ ...v, phone: e.target.value })} /></label>
-      <label className="field" htmlFor={`${idp}Email`}><span>אימייל לחשבוניות</span><input id={`${idp}Email`} dir="ltr" value={v.firmEmail} onChange={(e) => set({ ...v, firmEmail: e.target.value })} /></label>
+      <label className="field" htmlFor={`${idp}Email`}><span>אימייל המשרד <small>חשבוניות, זימונים ומכתבים. המשתמשים מקבלים גם הם במייל שלהם.</small></span><input id={`${idp}Email`} dir="ltr" value={v.firmEmail} onChange={(e) => set({ ...v, firmEmail: e.target.value })} /></label>
     </div>
   );
   function setTax(t: string) { set({ ...v, taxId: t.replace(/[^\d]/g, '') }); }
