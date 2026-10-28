@@ -177,3 +177,12 @@ export const log = [
   { id: 2, user_id: 'u2', who: 'עו״ד דנה לוי', action: 'note', entity: 'case_note', entity_id: null, details: null, at: at(-1, '16:20') },
   { id: 1, user_id: 'u2', who: 'עו״ד דנה לוי', action: 'book', entity: 'appointment', entity_id: caseDetail.id, details: null, at: at(-5, '09:12') },
 ];
+
+export const blocks = [
+  { id: 'b1', starts_at: at(1, '12:00'), ends_at: at(1, '14:00'), note: 'ניתוח' },
+];
+
+export const templates = [
+  { id: 't1', title: 'בדיקה גופנית תקינה – עמ"ש צווארי', body: 'בדיקה גופנית:\nהליכה תקינה. טווחי תנועה מלאים. כוח 5/5.', letter_type: null },
+  { id: 't2', title: 'קשר סיבתי – פסקת דיון', body: 'דיון:\nלאור התיעוד הרפואי הסמוך לאירוע…', letter_type: 'legal' as const },
+];
