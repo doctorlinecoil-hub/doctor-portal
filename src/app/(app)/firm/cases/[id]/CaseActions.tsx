@@ -6,6 +6,7 @@ import { dbError } from '@/lib/constants';
 import { uploadCaseFiles } from '@/lib/upload';
 import FilePicker from '@/components/FilePicker';
 import Icon from '@/components/Icon';
+import { afterCaseUpdate } from '../../actions';
 
 export default function CaseActions({ appointmentId, firmId, canAdd, canCancel }: { appointmentId: string; firmId: string; canAdd: boolean; canCancel: boolean }) {
   const supabase = useSupabase();
@@ -25,10 +26,11 @@ export default function CaseActions({ appointmentId, firmId, canAdd, canCancel }
       if (error) { setBusy(false); return setMsg({ ok: false, text: dbError(error) }); }
     }
     const failed = files.length ? await uploadCaseFiles(supabase, firmId, appointmentId, files) : [];
+    await afterCaseUpdate(appointmentId, { notes: note.trim() ? 1 : 0, files: files.length - failed.length }).catch(() => undefined);
     setBusy(false);
     setNote('');
     setFiles([]);
-    setMsg(failed.length ? { ok: false, text: `לא הועלו: ${failed.join(', ')}` } : { ok: true, text: 'התיק עודכן' });
+    setMsg(failed.length ? { ok: false, text: `לא הועלו: ${failed.join(', ')}` } : { ok: true, text: 'התיק עודכן והרופא קיבל הודעה' });
     router.refresh();
   }
 

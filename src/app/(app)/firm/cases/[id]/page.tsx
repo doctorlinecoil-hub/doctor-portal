@@ -5,6 +5,7 @@ import { FirmCaseView } from '@/views/FirmViews';
 import CaseActions from './CaseActions';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 export default async function FirmCasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,7 +13,7 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
   const { data: a } = await supabase.from('appointments').select('*, firm:firms(id, name, kind, contact_name, phone, email, tax_id)').eq('id', id).maybeSingle();
   if (!a) notFound();
   const [{ data: notes }, { data: docs }, { data: fin }, { data: pays }] = await Promise.all([
-    supabase.from('case_notes').select('id, body, created_at').eq('appointment_id', id).order('created_at'),
+    supabase.from('case_notes').select('id, body, created_at, kind, resolved_at').eq('appointment_id', id).order('created_at'),
     supabase.from('documents').select('id, file_name, mime_type, size_bytes, created_at').eq('appointment_id', id).order('created_at'),
     supabase.rpc('final_letter', { p_id: id }),
     supabase.rpc('case_payments', { p_id: id }),
@@ -21,7 +22,7 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
   const payments = ((pays as PaymentRow[] | null) ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
   const paid = payments.reduce((s, p) => s + p.amount, 0);
   const c = { ...a, price: Number(a.price) } as unknown as CaseDetail;
-  const canCancel = (c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
+  const canCancel = (c.status === 'pending' || c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
   return (
     <FirmCaseView
       c={c}
