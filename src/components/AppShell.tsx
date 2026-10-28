@@ -3,6 +3,7 @@ import type { Role } from '@/lib/constants';
 import Icon from './Icon';
 import SideNav from './SideNav';
 import LogoutButton from './LogoutButton';
+import NotificationBell from './NotificationBell';
 
 export type NavItem = { href: string; label: string; icon: string };
 
@@ -15,10 +16,15 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     ] }];
   }
   const doctor = { title: 'מרפאה', items: [
-    { href: '/doctor', label: 'יומן ותיקים', icon: 'calendar' },
+    { href: '/doctor', label: 'לוח בקרה', icon: 'home' },
+    { href: '/doctor/calendar', label: 'יומן', icon: 'calendar' },
+    { href: '/doctor/book', label: 'קביעת תור', icon: 'calendarPlus' },
+    { href: '/doctor/search', label: 'חיפוש מטופל', icon: 'search' },
+    { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
   ] };
   if (role === 'doctor') return [doctor];
   return [doctor, { title: 'ניהול', items: [
+    { href: '/admin/reports', label: 'דוחות והכנסות', icon: 'chart' },
     { href: '/admin/payments', label: 'תשלומים', icon: 'wallet' },
     { href: '/admin/users', label: 'מפנים ומשתמשים', icon: 'users' },
     { href: '/admin', label: 'הגדרות', icon: 'settings' },
@@ -42,7 +48,12 @@ export default function AppShell({ role, userName, orgName, clinicName, active, 
     <div className="app">
       <input type="checkbox" id="nav-toggle" className="nav-toggle" aria-label="פתיחת תפריט" />
       <aside className="side no-print" aria-label="תפריט ראשי">
-        {brand}
+        <div className="side-top">{brand}<NotificationBell dark on="desktop" /></div>
+        {role !== 'firm' && (
+          <form action="/doctor/search" role="search" className="side-search">
+            <Icon name="search" /><input name="q" placeholder="חיפוש מטופל, ת״ז, תיק" aria-label="חיפוש" />
+          </form>
+        )}
         {groups.map((g) => (
           <div key={g.title} className="stack-sm">
             <div className="side-label">{g.title}</div>
@@ -64,7 +75,10 @@ export default function AppShell({ role, userName, orgName, clinicName, active, 
       <div className="main">
         <header className="topbar no-print">
           {brand}
-          <label htmlFor="nav-toggle" className="menu-btn" aria-label="תפריט"><Icon name="menu" /></label>
+          <div className="row" style={{ gap: 4 }}>
+            <NotificationBell on="mobile" />
+            <label htmlFor="nav-toggle" className="menu-btn" aria-label="תפריט"><Icon name="menu" /></label>
+          </div>
         </header>
         <main className="content">{children}</main>
       </div>

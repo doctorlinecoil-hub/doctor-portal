@@ -13,5 +13,5 @@ export function PayBadge({ state }: { state: PayState }) {
 }
 
 export function KindBadge({ kind }: { kind: ReferrerKind }) {
-  return <span className={`badge ${kind === 'broker' ? 'b-broker' : 'b-type'}`}>{KIND[kind]}</span>;
+  return <span className={`badge ${kind === 'broker' ? 'b-broker' : kind === 'private' ? 'b-pending' : 'b-type'}`}>{KIND[kind]}</span>;
 }
