@@ -1,25 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
-import { BUCKET, TYPES, type ReferralType, type Settings } from '@/lib/constants';
+import { TYPES, type ReferralType, type Settings } from '@/lib/constants';
+import { loadDocBlocks } from '@/lib/caseDocs';
+import { intakeForPrompt, type IntakeData } from '@/lib/intake';
 import { buildPrompt } from '@/lib/letter';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const MAX_DOC_BYTES = 22 * 1024 * 1024; // keeps the request under the API's 32MB limit after base64
 const DEFAULT_MODEL = 'claude-opus-5-5';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-type Kind = 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp';
-
-/** The file's real type from its first bytes (never trust the uploaded label). */
-function sniff(b: Buffer): Kind | null {
-  if (b.length > 4 && b.subarray(0, 4).toString('latin1') === '%PDF') return 'application/pdf';
-  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-  if (b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
-  if (b.length > 12 && b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
-  return null;
-}
 
 const fail = (status: number, error: string) => Response.json({ error }, { status });
 
@@ -37,34 +28,16 @@ export async function POST(req: Request) {
   const exam = String(input?.exam || '').slice(0, 20000);
   if (!UUID.test(appointmentId) || !(letterType in TYPES)) return fail(400, 'בקשה לא תקינה.');
 
-  const [{ data: a }, { data: notes }, { data: docs }, { data: settings }] = await Promise.all([
+  const [{ data: a }, { data: notes }, { data: docs }, { data: settings }, { data: intake }] = await Promise.all([
     supabase.from('appointments').select('*, firms(name)').eq('id', appointmentId).maybeSingle(),
     supabase.from('case_notes').select('body').eq('appointment_id', appointmentId).order('created_at').limit(100),
     supabase.from('documents').select('file_name, storage_path').eq('appointment_id', appointmentId).order('created_at').limit(60),
     supabase.from('settings').select('*').eq('id', 1).single(),
+    supabase.from('case_intake').select('status, data').eq('appointment_id', appointmentId).maybeSingle(),
   ]);
   if (!a || !settings) return fail(404, 'התיק לא נמצא.');
 
-  const content: Anthropic.ContentBlockParam[] = [];
-  const attached: string[] = [];
-  const skipped: string[] = [];
-  let used = 0;
-  for (const d of docs ?? []) {
-    if (used >= MAX_DOC_BYTES) { skipped.push(d.file_name); continue; }
-    const { data: blob, error } = await supabase.storage.from(BUCKET).download(d.storage_path);
-    if (error || !blob || used + blob.size > MAX_DOC_BYTES) { skipped.push(d.file_name); continue; }
-    const buf = Buffer.from(await blob.arrayBuffer());
-    const kind = sniff(buf);
-    if (!kind) { skipped.push(d.file_name); continue; }
-    used += buf.length;
-    const data = buf.toString('base64');
-    if (kind === 'application/pdf') {
-      content.push({ type: 'document', source: { type: 'base64', media_type: kind, data }, title: d.file_name.slice(0, 200) });
-    } else {
-      content.push({ type: 'image', source: { type: 'base64', media_type: kind, data } });
-    }
-    attached.push(d.file_name);
-  }
+  const { content, attached, skipped } = await loadDocBlocks(supabase, docs ?? []);
 
   const s = settings as Settings;
   content.push({
@@ -79,6 +52,7 @@ export async function POST(req: Request) {
       notes: [a.notes, ...(notes ?? []).map((n) => `(הערה נוספת) ${n.body}`)].join('\n').slice(0, 40000).split('\n'),
       attached,
       skipped,
+      intake: intake?.status === 'done' ? intakeForPrompt(intake.data as IntakeData) : '',
     }),
   });
 
