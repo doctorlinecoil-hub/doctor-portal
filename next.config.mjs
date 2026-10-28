@@ -9,6 +9,12 @@ const securityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  // headless Chromium for the letter PDF (emails). Its binary is loaded at runtime, so it must not be bundled.
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  outputFileTracingIncludes: {
+    '/doctor/**': ['./node_modules/@sparticuz/chromium/bin/**'],
+    '/admin/**': ['./node_modules/@sparticuz/chromium/bin/**'],
+  },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
