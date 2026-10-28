@@ -12,10 +12,18 @@ import FilePicker from '@/components/FilePicker';
 import Icon from '@/components/Icon';
 import { PageHead } from '@/components/ui';
 
-type Props = { firmId: string; slots: DaySlots[]; horizon: number; prices: Record<ReferralType, number>; clinicName: string; needsApproval: boolean; preview?: boolean };
+type Props = {
+  firmId: string; slots: DaySlots[]; horizon: number; prices: Record<ReferralType, number>; clinicName: string; needsApproval: boolean; preview?: boolean;
+  /** clinic mode: the doctor books for a referrer or for someone who called directly */
+  firms?: { id: string; name: string; kind: string }[];
+  /** a slot chosen in advance (from the calendar) */
+  initialSlot?: string;
+};
 const EMPTY = { name: '', id: '', dob: '', phone: '', email: '', notes: '' };
 
-export default function BookingForm({ firmId, slots, horizon, prices, clinicName, needsApproval, preview }: Props) {
+export default function BookingForm({ firmId: defaultFirm, slots, horizon, prices, clinicName, needsApproval, preview, firms, initialSlot }: Props) {
+  const staff = !!firms;
+  const [firmId, setFirmId] = useState(defaultFirm);
   const supabase = useSupabase();
   const router = useRouter();
   const [type, setType] = useState<ReferralType | null>(preview ? 'nii' : null);
@@ -24,8 +32,9 @@ export default function BookingForm({ firmId, slots, horizon, prices, clinicName
     () => slots.map((d) => ({ ...d, times: d.times.filter((t) => !taken.has(t.iso)) })).filter((d) => d.times.length),
     [slots, taken],
   );
-  const [day, setDay] = useState<string | null>(visible[0]?.date ?? null);
-  const [slot, setSlot] = useState<string | null>(preview ? visible[0]?.times[1]?.iso ?? null : null);
+  const pre = initialSlot ? visible.find((d) => d.times.some((t) => t.iso === initialSlot)) : undefined;
+  const [day, setDay] = useState<string | null>(pre?.date ?? visible[0]?.date ?? null);
+  const [slot, setSlot] = useState<string | null>(pre ? initialSlot! : preview ? visible[0]?.times[1]?.iso ?? null : null);
   const [payer, setPayer] = useState<Payer>('referrer');
   const [f, setF] = useState(preview ? { name: 'ישראל ישראלי', id: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', notes: 'תאונת עבודה מ־03.2025, נפילה מסולם. תביעה לביטוח לאומי.' } : EMPTY);
   const [files, setFiles] = useState<File[]>([]);
@@ -98,7 +107,7 @@ export default function BookingForm({ firmId, slots, horizon, prices, clinicName
           </dl>
           {done.failed.length > 0 && <p className="err">הקבצים האלה לא הועלו: {done.failed.join(', ')}. אפשר להוסיף אותם שוב מתוך התיק.</p>}
           <div className="row">
-            <Link className="btn btn-primary" href={`/firm/cases/${done.id}`}><Icon name="folder" />מעבר לתיק</Link>
+            <Link className="btn btn-primary" href={`/${staff ? 'doctor' : 'firm'}/cases/${done.id}`}><Icon name="folder" />מעבר לתיק</Link>
             <button type="button" className="btn" onClick={() => { setDone(null); setType(null); setSlot(null); setFiles([]); setF(EMPTY); }}><Icon name="plus" />תור נוסף</button>
           </div>
         </section>
@@ -108,9 +117,19 @@ export default function BookingForm({ firmId, slots, horizon, prices, clinicName
 
   return (
     <>
-      <PageHead title="קביעת תור חדש" sub={needsApproval ? 'בחרו סוג הפניה ומועד, מלאו את פרטי המטופל וצרפו מסמכים. הרופא יאשר את התור ותקבלו זימון במייל.' : 'בחרו סוג הפניה ומועד, מלאו את פרטי המטופל וצרפו מסמכים. התור נקבע מיד.'} />
+      <PageHead title="קביעת תור חדש" sub={staff ? 'קביעת תור עבור משרד, מתווך או מי שפנה ישירות. התור מאושר מיד והזימון נשלח במייל.' : needsApproval ? 'בחרו סוג הפניה ומועד, מלאו את פרטי המטופל וצרפו מסמכים. הרופא יאשר את התור ותקבלו זימון במייל.' : 'בחרו סוג הפניה ומועד, מלאו את פרטי המטופל וצרפו מסמכים. התור נקבע מיד.'} />
       <form className="wizard" onSubmit={submit} noValidate>
         <div className="step-card">
+          {staff && (
+            <section className="step">
+              <div className="step-title"><span className="step-no done"><Icon name="check" size={15} /></span><h2>עבור מי התור?</h2></div>
+              <label className="field" htmlFor="forFirm"><span>מפנה <small>מטופל שפנה בעצמו = ״פניות ישירות״</small></span>
+                <select id="forFirm" value={firmId} onChange={(e) => setFirmId(e.target.value)}>
+                  {firms!.map((x) => <option key={x.id} value={x.id}>{x.name}{x.kind === 'private' ? ' (מטופל / פנייה ישירה)' : ''}</option>)}
+                </select>
+              </label>
+            </section>
+          )}
           <section className="step">
             <div className="step-title"><span className={`step-no${type ? ' done' : ''}`}>{type ? <Icon name="check" size={15} /> : 1}</span><h2>מה צריך מהרופא?</h2></div>
             <div className="options">
@@ -163,7 +182,7 @@ export default function BookingForm({ firmId, slots, horizon, prices, clinicName
             <label className="field" htmlFor="pEmail"><span>אימייל המטופל <small>לא חובה</small></span>
               <input id="pEmail" type="email" dir="ltr" autoComplete="off" value={f.email} onChange={set('email')} aria-invalid={!emailOk} placeholder="name@example.com" />
             </label>
-            <p className={`field-help${emailOk ? '' : ' err'}`}><Icon name="mail" size={15} />{emailOk ? 'כך המטופל יקבל את הזימון ואת המכתב ישירות. אם לא תמלאו, הזימון יישלח אליכם ותעבירו אותו למטופל.' : 'כתובת המייל לא תקינה.'}</p>
+            <p className={`field-help${emailOk ? '' : ' err'}`}><Icon name="mail" size={15} />{!emailOk ? 'כתובת המייל לא תקינה.' : staff ? 'המטופל יקבל זימון, תזכורת ואת המכתב במייל. המפנה (אם יש) מקבל עותק.' : 'כך המטופל יקבל את הזימון ואת המכתב ישירות. אם לא תמלאו, הזימון יישלח אליכם ותעבירו אותו למטופל.'}</p>
           </section>
 
           <section className="step">
@@ -196,7 +215,7 @@ export default function BookingForm({ firmId, slots, horizon, prices, clinicName
           {err && <p className="err" role="alert">{err}</p>}
           {progress != null && <div className="progress"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>}
           <button className="btn btn-primary btn-lg" type="submit" disabled={busy}>
-            {busy ? (progress != null ? `מעלה מסמכים ${Math.round(progress * 100)}%` : 'שומר…') : <><Icon name="check" />{needsApproval ? 'שליחת הבקשה לרופא' : 'קביעת התור'}</>}
+            {busy ? (progress != null ? `מעלה מסמכים ${Math.round(progress * 100)}%` : 'שומר…') : <><Icon name="check" />{needsApproval && !staff ? 'שליחת הבקשה לרופא' : 'קביעת התור'}</>}
           </button>
           <p className="hint">אפשר לבטל או להוסיף מסמכים מתוך התיק.</p>
         </aside>
