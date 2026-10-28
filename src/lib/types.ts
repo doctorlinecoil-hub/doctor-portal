@@ -4,12 +4,14 @@ export type ApptRow = {
   id: string;
   case_no: number;
   starts_at: string;
+  ends_at?: string;
   referral_type: ReferralType;
   patient_name: string;
   status: ApptStatus;
   payer: Payer;
   price: number;
   paid: number;
+  patient_id_number?: string;
   firm_name?: string;
   firm_kind?: ReferrerKind;
 };

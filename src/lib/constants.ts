@@ -3,10 +3,10 @@ export type ReferralType = 'referral' | 'summary' | 'nii' | 'legal';
 export type ApptStatus = 'pending' | 'booked' | 'draft' | 'done' | 'cancelled';
 export type Payer = 'referrer' | 'patient';
 export type PayMethod = 'transfer' | 'bit' | 'check' | 'cash' | 'card' | 'other';
-export type ReferrerKind = 'law' | 'broker';
+export type ReferrerKind = 'law' | 'broker' | 'private';
 export type PayState = 'free' | 'unpaid' | 'partial' | 'paid';
 
-export const KIND: Record<ReferrerKind, string> = { law: 'משרד עורכי דין', broker: 'מתווך' };
+export const KIND: Record<ReferrerKind, string> = { law: 'משרד עורכי דין', broker: 'מתווך', private: 'פנייה ישירה' };
 export const PAYERS: Record<Payer, string> = { referrer: 'המפנה', patient: 'המטופל' };
 export const PAY_METHODS: Record<PayMethod, string> = {
   transfer: 'העברה בנקאית', bit: 'ביט', check: 'צ׳ק', cash: 'מזומן', card: 'כרטיס אשראי', other: 'אחר',
@@ -79,6 +79,8 @@ const DB_ERRORS: Record<string, string> = {
   TOO_MANY_BOOKINGS: 'למשרד יש כבר הרבה תורים פתוחים. פנו למרפאה.',
   CANNOT_CANCEL: 'אי אפשר לבטל את התור הזה.',
   CANNOT_APPROVE: 'הבקשה כבר טופלה.',
+  SLOT_TAKEN: 'המועד הזה כבר תפוס. בחרו מועד אחר.',
+  CANNOT_RESCHEDULE: 'אי אפשר לשנות את המועד של התור הזה.',
   CANNOT_DECLINE: 'הבקשה כבר טופלה.',
   IN_PAST: 'אי אפשר לבטל תור שכבר עבר.',
   FORBIDDEN: 'אין לכם הרשאה לפעולה הזו.',
