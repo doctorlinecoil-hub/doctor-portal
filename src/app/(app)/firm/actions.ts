@@ -26,8 +26,9 @@ export async function afterBooking(id: string): Promise<{ ok: boolean }> {
   // only right after the booking itself (the action can be called directly, so it must not repeat work)
   if (!c || Date.now() - new Date(c.createdAt).getTime() > 15 * 60_000) return { ok: false };
   const { data: existing } = await createAdminClient().from('case_intake').select('appointment_id').eq('appointment_id', id).maybeSingle();
+  const { data: staff } = await (await createClient()).rpc('is_staff');
   after(async () => {
-    await notifyNewRequest(id).catch(() => undefined);
+    if (!staff) await notifyNewRequest(id).catch(() => undefined);
     if (c.status === 'booked') await sendSummons(id).catch(() => undefined);
     if (c.settings.auto_intake && !existing) await runIntake(id).catch(() => undefined);
   });
