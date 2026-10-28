@@ -4,6 +4,7 @@ import { TYPES, type ReferralType, type Settings } from '@/lib/constants';
 import { loadDocBlocks } from '@/lib/caseDocs';
 import { intakeForPrompt, type IntakeData } from '@/lib/intake';
 import { buildPrompt } from '@/lib/letter';
+import { aiErrorText } from '@/lib/aiErrors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,7 +71,8 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error('draft failed', (e as Error).message);
-        controller.enqueue(enc.encode('\n\n[הניסוח נעצר בגלל תקלה. נסו שוב.]'));
+        // a marker the editor recognizes: the error is shown as a message and never written into the letter
+        controller.enqueue(enc.encode(`\u0000ERR:${aiErrorText(e)}`));
       } finally {
         controller.close();
       }
