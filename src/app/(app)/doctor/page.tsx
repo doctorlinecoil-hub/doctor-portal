@@ -3,6 +3,9 @@ import { loadAppointments } from '@/lib/queries';
 import type { IntakeData } from '@/lib/intakeTypes';
 import { DoctorAgendaView, type IntakeChip } from '@/views/DoctorViews';
 import ApprovalButtons from './ApprovalButtons';
+import { SetupStatus, type SetupItem } from '@/views/SetupStatus';
+import { mailEnabled } from '@/lib/mail';
+import { isAuthError } from '@/lib/aiErrors';
 import RescheduleDecision, { type RescheduleRow } from './RescheduleDecision';
 import { DAYS, fmtDate, ilParts, ilToUtc, todayIL, weekday } from '@/lib/dates';
 
@@ -28,6 +31,22 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
     const a = byId.get(r.appointment_id)!;
     return <RescheduleDecision key={r.id} req={r} compact fromLabel={`${a.patient_name} · ${label(a.starts_at)}`} toLabel={label(r.requested_starts_at)} />;
   });
+  // admin only: what is still missing in the server settings
+  let setupItems: SetupItem[] = [];
+  if (profile.role === 'admin') {
+    const { data: lastErr } = await supabase.from('case_intake').select('error').eq('status', 'error').order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const { data: lastOk } = await supabase.from('case_intake').select('updated_at').eq('status', 'done').order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const keyBad = !process.env.ANTHROPIC_API_KEY || (!!lastErr && isAuthError(lastErr.error) && !lastOk);
+    const vercel = 'ב־Vercel: Settings ← Environment Variables';
+    setupItems = [
+      { key: 'ai', ok: !keyBad, title: 'מפתח ה־AI לא עובד', why: 'בלי מפתח תקין אין סריקת תיקים ואין ניסוח מכתבים אוטומטי (אפשר לכתוב ידנית).',
+        how: ['ב־console.anthropic.com: API Keys ← Create Key, ולהעתיק את כל המפתח (מתחיל ב־sk-ant-)', `${vercel}: לערוך את ANTHROPIC_API_KEY ולהדביק בלי רווחים`, 'Deployments ← ⋯ ← Redeploy', 'בתיק: ״סריקה מחדש״'] },
+      { key: 'mail', ok: mailEnabled(), title: 'שליחת מיילים לא מוגדרת', why: 'זימונים, תזכורות והמכתב הסופי לא נשלחים במייל. בינתיים אפשר לשלוח בוואטסאפ מתוך התיק.',
+        how: ['להירשם בחינם ב־resend.com ולאמת את הדומיין של המרפאה (Domains)', 'API Keys ← Create, ולהעתיק', `${vercel}: RESEND_API_KEY = המפתח, MAIL_FROM = מרפאת ד״ר אלרן חנוך <clinic@הדומיין-שלכם>`, 'Redeploy'] },
+      { key: 'cron', ok: !!process.env.CRON_SECRET, title: 'תזכורות אוטומטיות לא פעילות', why: 'תזכורת יום לפני התור לא נשלחת.',
+        how: [`${vercel}: CRON_SECRET = טקסט אקראי ארוך כלשהו`, 'Redeploy'] },
+    ];
+  }
   const chips: Record<string, IntakeChip> = {};
   for (const i of (intake as { appointment_id: string; status: string; data: IntakeData | null }[] | null) ?? []) {
     chips[i.appointment_id] = {
@@ -47,6 +66,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       openRequests={openRequests ?? 0}
       approvals={(id) => <ApprovalButtons id={id} compact />}
       reschedules={reschedules}
+      setup={<SetupStatus items={setupItems} />}
     />
   );
 }
