@@ -19,7 +19,7 @@ import type { RxItem } from './rxTypes';
 
 type Appt = {
   id: string; case_no: number; starts_at: string; ends_at: string; referral_type: ReferralType; status: string;
-  patient_name: string; patient_id_number: string; patient_dob: string | null; patient_email: string; patient_phone: string;
+  service_label?: string; patient_name: string; patient_id_number: string; patient_dob: string | null; patient_email: string; patient_phone: string;
   price: number; firm_id: string; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
   firm: { name: string; email: string } | null;
 };
@@ -41,7 +41,7 @@ async function load(db: SupabaseClient, id: string) {
 
 function info(a: Appt): ApptInfo {
   const minutes = Math.max(10, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000));
-  return { caseNo: a.case_no, startsAt: a.starts_at, minutes, type: a.referral_type, patientName: a.patient_name, firmName: a.firm?.name || '' };
+  return { caseNo: a.case_no, startsAt: a.starts_at, minutes, type: a.referral_type, label: a.service_label || '', patientName: a.patient_name, firmName: a.firm?.name || '' };
 }
 
 async function firmEmails(db: SupabaseClient, firmId: string, office?: string | null) {

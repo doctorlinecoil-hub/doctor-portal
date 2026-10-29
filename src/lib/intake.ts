@@ -111,7 +111,7 @@ export async function runIntake(appointmentId: string, opts: { force?: boolean }
       type: 'text',
       text: [
         'אתה עוזר רפואי־משפטי בכיר במרפאה של רופא מומחה בישראל. הגיעה פנייה חדשה. קרא בעיון את כל המסמכים המצורפים (כולל סריקות וכתב יד) ואת הבקשה, והכן לרופא תדריך מובנה לפני הביקור.',
-        `סוג המסמך שהמפנה ביקש: ${typeOf(type).label}.`,
+        `סוג המסמך שהמפנה ביקש: ${a.service_label || typeOf(type).label}.`,
         `המפנה: ${firm?.name || 'לא ידוע'}.`,
         `פרטי המטופל בטופס: ${a.patient_name}, ת.ז. ${a.patient_id_number}${a.patient_dob ? `, תאריך לידה ${fmtDate(a.patient_dob)} (גיל ${ag})` : ''}.`,
         `מועד הביקור: ${fmtDate(ilParts(a.starts_at).date)}. היום: ${fmtDate(todayIL())}.`,

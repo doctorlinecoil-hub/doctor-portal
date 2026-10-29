@@ -15,6 +15,7 @@ export type ApptRow = {
   firm_name?: string;
   firm_kind?: ReferrerKind;
   details_at?: string | null;
+  service_label?: string;
 };
 
 export type FirmInfo = { id: string; name: string; kind: ReferrerKind; contact_name: string; phone: string; email: string; tax_id: string };
@@ -40,6 +41,8 @@ export type CaseDetail = {
   details_at?: string | null;
   submitted_by?: string;
   walk_in?: boolean;
+  service_label?: string;
+  service_id?: string | null;
   firm: FirmInfo;
 };
 

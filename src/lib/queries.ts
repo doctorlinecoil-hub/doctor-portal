@@ -2,7 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { withPaid, type ApptRow } from './types';
 
-const COLS = 'id, case_no, starts_at, ends_at, patient_id_number, referral_type, patient_name, status, payer, price, firms(name, kind)';
+const COLS = 'id, case_no, starts_at, ends_at, patient_id_number, referral_type, service_label, patient_name, status, payer, price, firms(name, kind)';
 
 type Raw = Omit<ApptRow, 'paid' | 'firm_name' | 'firm_kind'> & { firms: { name: string; kind: ApptRow['firm_kind'] } | null };
 
