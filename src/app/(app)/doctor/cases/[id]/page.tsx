@@ -92,17 +92,17 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
         />
       }
       rx={
-        <div className="cols case-cols">
+        <div className="cols-side rx-tab">
+          <div className="stack rx-main-col"><PrescriptionPanel appointmentId={id} paper={{ settings, patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} rows={(rxRows as RxRow[] | null) ?? []} favorites={(favs as FavRow[] | null) ?? []} patientEmail={c.patient_email || ''} readOnly={c.status === 'cancelled'}
+              past={((pastRx as unknown as (RxRow & { appointments: { case_no: number } })[] | null) ?? []).map(({ appointments, ...r }) => ({ ...r, case_no: appointments.case_no }))} /></div>
           <div className="stack"><DiagnosesPanel appointmentId={id} rows={(dx as DxRow[] | null) ?? []} suggestions={intakeDx} readOnly={c.status === 'cancelled'} /></div>
-          <div className="stack">
-            <PrescriptionPanel appointmentId={id} rows={(rxRows as RxRow[] | null) ?? []} favorites={(favs as FavRow[] | null) ?? []} patientEmail={c.patient_email || ''} readOnly={c.status === 'cancelled'}
-              past={((pastRx as unknown as (RxRow & { appointments: { case_no: number } })[] | null) ?? []).map(({ appointments, ...r }) => ({ ...r, case_no: appointments.case_no }))} />
-          </div>
         </div>
       }
       payment={isAdmin ? <PaymentPanel appointmentId={id} price={c.price} payer={c.payer} paid={paid} payments={payments} morning={morningEnabled()} payerName={payerName(c)} /> : null}
-      letter={<LetterEditor appointmentId={id} diagnoses={((dx as DxRow[] | null) ?? []).map((d) => ({ code: d.code, name: d.name, primary: d.is_primary }))} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
+      letter={<LetterEditor appointmentId={id} sendTo={[c.firm.kind !== 'private' ? `${c.firm.name} (המפנה)` : '', c.patient_email ? `${c.patient_email} (המטופל)` : ''].filter(Boolean)} diagnoses={((dx as DxRow[] | null) ?? []).map((d) => ({ code: d.code, name: d.name, primary: d.is_primary }))} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
         paper={{ lh_name: settings.lh_name, lh_titles: settings.lh_titles, lh_licenses: settings.lh_licenses, lh_address: settings.lh_address, lh_phone: settings.lh_phone, lh_email: settings.lh_email,
+          lh_footer: settings.lh_footer, lh_cv: settings.lh_cv, use_banner: settings.use_banner, cv_in_opinions: settings.cv_in_opinions, sign_final: settings.sign_final,
+          title: c.service_label || undefined, visitDate: ilParts(c.starts_at).date,
           patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />}
     />
   );

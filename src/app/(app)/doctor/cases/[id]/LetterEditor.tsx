@@ -51,8 +51,8 @@ function AutoText(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { m
  * Side panel: letter details, the doctor's findings, the AI draft and writing aids.
  */
 export default function LetterEditor({
-  appointmentId, defaultType, initial, docCount, cancelled, preview, paper, diagnoses = [],
-}: { diagnoses?: { code: string; name: string; primary: boolean }[]; appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
+  appointmentId, defaultType, initial, docCount, cancelled, preview, paper, diagnoses = [], sendTo = [],
+}: { sendTo?: string[]; diagnoses?: { code: string; name: string; primary: boolean }[]; appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
   const supabase = useSupabase();
   const router = useRouter();
   const [startHtml] = useState(() => bodyToHtml(cleanBody(initial?.body)));
@@ -67,6 +67,7 @@ export default function LetterEditor({
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
   const [ai, setAi] = useState<{ running: boolean; text: string; note: string; bad?: boolean }>({ running: false, text: '', note: '' });
   const [finalState, setFinalState] = useState<{ armed: boolean; msg: string; ok: boolean }>({ armed: false, msg: '', ok: false });
+  const [review, setReview] = useState<number | null>(null);
   const latest = useRef(d);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,13 +168,14 @@ export default function LetterEditor({
     else window.location.href = url;
   }
 
-  async function finalize() {
+  async function finalize(confirmed = false) {
     const cur = latest.current;
     const txt = bodyText(cur.body);
     if (!txt.trim()) return setFinalState({ armed: false, ok: false, msg: 'המכתב ריק.' });
     if (PLACEHOLDER_RE.test(txt)) return setFinalState({ armed: false, ok: false, msg: 'יש במכתב סימונים להשלמה (מסומנים בצהוב). השלימו ומחקו אותם לפני השליחה.' });
-    if (!finalState.armed) return setFinalState({ armed: true, ok: false, msg: '' });
-    await save();
+    // first: the exact document, as it will be sent, in a preview window
+    if (!confirmed) { await save(); setReview(Date.now()); return; }
+    setReview(null);
     const { error } = await supabase.from('letters').update({
       is_final: true, finalized_at: new Date().toISOString(), letter_date: todayIL(),
       final_letter_type: cur.letter_type, final_recipient: cur.recipient, final_subject: cur.subject, final_body: cur.body,
@@ -197,28 +199,46 @@ export default function LetterEditor({
   const to = d.recipient.split('|').map((x) => x.trim()).filter(Boolean);
   const ag = age(paper.patient.dob);
 
+  const opinion = d.letter_type === 'legal' || d.letter_type === 'nii';
+  const footLines = (paper.lh_footer || '').split('\n').filter(Boolean);
   const header = (
     <div className="page-top" contentEditable={false}>
-      <header className="lt-head">
-        <div>
-          <div className="lt-name">{paper.lh_name}</div>
-          {titles.map((t) => <div className="lt-small" key={t}>{t}</div>)}
-          {paper.lh_licenses && <div className="lt-small">{paper.lh_licenses}</div>}
-        </div>
-        <div className="lt-small lt-contact">
-          {paper.lh_address && <div>{paper.lh_address}</div>}
-          {paper.lh_phone && <div>טל׳ {paper.lh_phone}</div>}
-          {paper.lh_email && <div>{paper.lh_email}</div>}
-        </div>
-      </header>
+      {paper.use_banner !== false
+        ? <img className="pg-banner" src="/brand/letterhead.jpg" alt={paper.lh_name} />
+        : (
+          <header className="lt-head">
+            <div>
+              <div className="lt-name">{paper.lh_name}</div>
+              {titles.map((t) => <div className="lt-small" key={t}>{t}</div>)}
+              {paper.lh_licenses && <div className="lt-small">{paper.lh_licenses}</div>}
+            </div>
+            <div className="lt-small lt-contact">
+              {paper.lh_address && <div>{paper.lh_address}</div>}
+              {paper.lh_phone && <div>טל׳ {paper.lh_phone}</div>}
+              {paper.lh_email && <div>{paper.lh_email}</div>}
+            </div>
+          </header>
+        )}
       <div className="lt-date">תאריך: {fmtDate(todayIL())}</div>
       <div className="lt-to">{to.length ? <><div>לכבוד</div>{to.map((r) => <div key={r}><b>{r}</b></div>)}</> : <span className="ghost">לכבוד — ממלאים בפרטי המכתב</span>}</div>
+      <h1 className="pg-title">{opinion ? `חוות דעת רפואית${to[0] ? ` עבור ${to[0]}` : ''}` : (paper.title || typeOf(d.letter_type).label)}</h1>
       <div className="lt-subj">{d.subject ? <>הנדון: <u>{d.subject}</u></> : <span className="ghost">הנדון — ממלאים בפרטי המכתב</span>}</div>
       <div className="lt-pt">
         <span><b>שם:</b> {paper.patient.name}</span>
         <span><b>ת.ז.:</b> {paper.patient.idNumber}</span>
         {paper.patient.dob && <span><b>תאריך לידה:</b> {fmtDate(paper.patient.dob)}{ag != null ? ` (גיל ${ag})` : ''}</span>}
       </div>
+      {opinion && (
+        <div className="pg-intro">
+          <p>הנני מגיש בזאת את חוות דעתי הרפואית{paper.visitDate ? ` לאחר בדיקתי ב־${fmtDate(paper.visitDate)}` : ''}.</p>
+          {paper.cv_in_opinions !== false && paper.lh_cv && (
+            <details className="pg-cv">
+              <summary>פרטי השכלתי ותפקידי · מתווסף אוטומטית לחוות הדעת <small>(עריכה בהגדרות)</small></summary>
+              {paper.lh_cv.split('\n').filter(Boolean).map((l, i) => <div key={i} className={/[:：]$/.test(l.trim()) ? 'cv-h' : 'cv-l'}>{l}</div>)}
+            </details>
+          )}
+        </div>
+      )}
     </div>
   );
   const footer = (
@@ -226,10 +246,11 @@ export default function LetterEditor({
       {d.letter_type === 'legal' && <div className="lt-decl">{LEGAL_DECLARATION}</div>}
       <div className="lt-sign">
         <div>בכבוד רב,</div>
-        <div style={{ fontWeight: 700, marginTop: 12 }}>{paper.lh_name}</div>
-        {titles[0] && <div className="lt-small">{titles[0]}</div>}
-        {paper.lh_licenses && <div className="lt-small">{paper.lh_licenses}</div>}
+        {paper.sign_final !== false
+          ? <div className="pg-sigbox"><Icon name="checkCircle" size={14} />החתימה והחותמת שלך יתווספו לגרסה הסופית</div>
+          : <><div style={{ fontWeight: 700, marginTop: 12 }}>{paper.lh_name}</div>{paper.lh_licenses && <div className="lt-small">{paper.lh_licenses}</div>}</>}
       </div>
+      {footLines.length > 0 && <div className="pg-foot">{footLines.map((l, i) => <div key={i} className={i === 0 ? 'f1' : ''}>{l}</div>)}</div>}
     </div>
   );
 
@@ -325,11 +346,41 @@ export default function LetterEditor({
         <div className="row" style={{ gap: 8 }}>
           <button type="button" className="btn" onClick={preview ? undefined : printLetter} disabled={ai.running}><Icon name="printer" />הדפסה / PDF</button>
           {finalState.armed && <button type="button" className="btn btn-ghost" onClick={() => setFinalState({ armed: false, ok: false, msg: '' })}>ביטול</button>}
-          <button type="button" className={`btn btn-ok${finalState.armed ? ' armed' : ''}`} onClick={preview ? undefined : finalize} disabled={ai.running || cancelled}>
-            <Icon name="send" />{finalState.armed ? 'לחצו שוב לאישור השליחה' : initial?.is_final ? 'עדכון המכתב הסופי' : 'סימון כסופי ושליחה'}
+          <button type="button" className={`btn btn-ok${finalState.armed ? ' armed' : ''}`} onClick={preview ? undefined : () => finalize()} disabled={ai.running || cancelled}>
+            <Icon name="eye" />{initial?.is_final ? 'תצוגה ועדכון המכתב הסופי' : 'תצוגה לפני שליחה'}
           </button>
         </div>
       </div>
+      {review && (
+        <div className="review-wrap" role="dialog" aria-modal="true" aria-label="תצוגה לפני שליחה">
+          <div className="review-scrim" onClick={() => setReview(null)} />
+          <div className="review">
+            <div className="review-doc">
+              <iframe title="המסמך כפי שיישלח" src={`/letters/${appointmentId}/print?v=preview&embed=1&t=${review}`} />
+            </div>
+            <aside className="review-side">
+              <div className="review-h"><Icon name="eye" /><div><b>כך המסמך ייראה</b><small>בדיוק כפי שיישלח ויודפס</small></div></div>
+              <ul className="review-checks">
+                <li><Icon name="checkCircle" size={16} /><span>{typeOf(d.letter_type).label}{paper.title ? ` · ${paper.title}` : ''}</span></li>
+                <li><Icon name="checkCircle" size={16} /><span>לכבוד: {d.recipient ? d.recipient.split('|').join(', ') : <em>ללא נמען</em>}</span></li>
+                <li><Icon name="checkCircle" size={16} /><span>הנדון: {d.subject || <em>ללא נושא</em>}</span></li>
+                <li><Icon name="checkCircle" size={16} /><span>{paper.sign_final !== false ? 'עם החתימה והחותמת שלך' : 'בלי חתימה דיגיטלית'}</span></li>
+              </ul>
+              {!initial?.is_final && (
+                <div className="review-to">
+                  <span className="eyebrow">יישלח במייל אל</span>
+                  {sendTo.length ? sendTo.map((x) => <div key={x}><Icon name="mail" size={14} />{x}</div>) : <div className="hint">המכתב יהיה זמין בתיק</div>}
+                </div>
+              )}
+              <div className="review-actions">
+                <button type="button" className="btn btn-ok btn-lg" onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : 'אישור, חתימה ושליחה'}</button>
+                <a className="btn" href={`/letters/${appointmentId}/print?v=preview`} target="_blank" rel="noopener"><Icon name="printer" />פתיחה להדפסה</a>
+                <button type="button" className="btn btn-ghost" onClick={() => setReview(null)}>חזרה לעריכה</button>
+              </div>
+            </aside>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

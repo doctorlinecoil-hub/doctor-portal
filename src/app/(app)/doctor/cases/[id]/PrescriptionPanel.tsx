@@ -3,7 +3,9 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { fmtDate, fmtStamp } from '@/lib/dates';
-import { DURATIONS, FREQUENCIES, cleanItems, rxLine, type RxItem, type RxRow } from '@/lib/rxTypes';
+import { DURATIONS, FREQUENCIES, cleanItems, rxLine, rxTable, type RxItem, type RxRow } from '@/lib/rxTypes';
+import { docCss, docHtml, type DocInput } from '@/lib/letterDoc';
+import { todayIL } from '@/lib/dates';
 import Icon from '@/components/Icon';
 import Lookup from '@/components/Lookup';
 import { sendPrescription } from '../../actions';
@@ -15,12 +17,14 @@ type Info = { reg: string; nameHe: string; nameEn: string; formHe: string; stren
 const EMPTY: Omit<RxItem, 'name'> = { reg: '', form: '', strength: '', dose: '', frequency: '', duration: '', quantity: '', notes: '' };
 
 /** Prescriptions: drug search in the Ministry of Health registry, the doctor's own drug list, print, email, renew. */
-export default function PrescriptionPanel({ appointmentId, rows, past, favorites, patientEmail, readOnly }: {
+export default function PrescriptionPanel({ appointmentId, rows, past, favorites, patientEmail, readOnly, paper, initialItems }: {
+  initialItems?: RxItem[];
+  paper?: { settings: DocInput['settings']; patient: DocInput['patient'] };
   appointmentId: string; rows: RxRow[]; past: (RxRow & { case_no: number })[]; favorites: FavRow[]; patientEmail: string; readOnly?: boolean;
 }) {
   const supabase = useSupabase();
   const router = useRouter();
-  const [items, setItems] = useState<RxItem[]>([]);
+  const [items, setItems] = useState<RxItem[]>(initialItems ?? []);
   const [notes, setNotes] = useState('');
   const [favs, setFavs] = useState(favorites);
   const [busy, setBusy] = useState(false);
@@ -105,6 +109,7 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
           )}
 
           {editing && (
+            <div className="rx-compose">
             <div className="rx-items">
               {items.map((it, i) => (
                 <div key={i} className="rx-item">
@@ -138,6 +143,16 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
                 <button type="button" className="btn" disabled={busy} onClick={() => save(false)}><Icon name="save" />שמירה</button>
                 <button type="button" className="btn btn-ghost" onClick={() => { setItems([]); setNotes(''); }}>ביטול</button>
               </div>
+            </div>
+            {paper && (
+              <div className="rx-live" aria-label="תצוגה מקדימה של המרשם">
+                <span className="eyebrow"><Icon name="eye" size={13} />כך המרשם יודפס</span>
+                <div className="rx-sheet-wrap">
+                  <style>{docCss('.rx-sheet')}</style>
+                  <div className="rx-sheet" dangerouslySetInnerHTML={{ __html: docHtml({ settings: paper.settings, title: 'מרשם', date: todayIL(), patient: paper.patient, bodyHtml: rxTable({ items: cleanItems(items), notes }), banner: '/brand/letterhead.jpg', signLine: true }) }} />
+                </div>
+              </div>
+            )}
             </div>
           )}
         </div>
