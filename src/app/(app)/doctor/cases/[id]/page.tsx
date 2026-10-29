@@ -79,7 +79,9 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
         />
       }
       payment={isAdmin ? <PaymentPanel appointmentId={id} price={c.price} payer={c.payer} paid={paid} payments={payments} morning={morningEnabled()} payerName={payerName(c)} /> : null}
-      letter={<LetterEditor appointmentId={id} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'} />}
+      letter={<LetterEditor appointmentId={id} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
+        paper={{ lh_name: settings.lh_name, lh_titles: settings.lh_titles, lh_licenses: settings.lh_licenses, lh_address: settings.lh_address, lh_phone: settings.lh_phone, lh_email: settings.lh_email,
+          patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />}
     />
   );
 }
