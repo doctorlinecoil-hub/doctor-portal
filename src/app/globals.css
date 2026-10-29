@@ -1130,3 +1130,74 @@ svg.flip { transform: scaleX(-1); }
 .rx-sheet-wrap { background: #E6E9EF; border-radius: 12px; padding: 12px; border: 1px solid var(--line); }
 .rx-sheet { background: #fff; padding: 22px 26px; border-radius: 3px; box-shadow: 0 2px 10px rgba(0,0,0,.12); max-width: 720px; margin: 0 auto; zoom: .92; }
 .rx-sheet .doc-foot-space { height: 0; }
+
+/* v9: one calm palette from Dr. Hanoch's letterhead — navy, gold, warm ivory; muted status colors.
+   (overrides the tokens above; the system stays light, like his paper) */
+:root, :root:not(.x) {
+  color-scheme: light;
+  --bg: #F4F2ED;
+  --surface: #FFFFFF;
+  --surface-2: #FAF8F4;
+  --line: #E6E0D5;
+  --line-strong: #D3CBBC;
+  --fg: #14213D;
+  --fg-2: #39445E;
+  --muted: #7A7E8A;
+  --accent: #1B3A6B; --accent-hover: #142D55; --accent-ink: #FFFFFF; --accent-soft: #ECF0F7; --accent-line: #C3CEE2;
+  --gold: #B58E35; --gold-soft: #F8F1E1; --gold-line: #E4D3A6;
+  --ok: #2D7A57; --ok-soft: #E8F3ED;
+  --warn: #9A6A12; --warn-soft: #FAF1DE;
+  --bad: #A93A30; --bad-soft: #F9E9E6;
+  --info: #2C4F8A; --info-soft: #EAF0F9;
+  --violet: #8E2A47; --violet-soft: #F8EBEF;
+  --nav-bg: #0F1E3D; --nav-fg: #B9C2D6; --nav-fg-strong: #FFFFFF; --nav-hover: rgba(255, 255, 255, .06); --nav-active: rgba(212, 175, 55, .16); --nav-accent: #D9B65A;
+  --shadow: 0 1px 2px rgba(20, 33, 61, .05), 0 2px 6px rgba(20, 33, 61, .05);
+  --shadow-lg: 0 16px 40px rgba(20, 33, 61, .16);
+}
+body { background: var(--bg); color: var(--fg); }
+h1, h2, h3, .page-head h1 { color: var(--fg); }
+
+/* panels: white cards with a warm hairline */
+.panel, .stat, .case-hero, .step-card, .ctabs-bar, .stepper, .hero { border-color: var(--line); }
+.panel-head h2 svg, .card-h svg { color: var(--gold); }
+
+/* stat tiles: one family (navy), gold for money and attention */
+.stat-ic, .stat-ic.info, .stat-ic.bad { background: var(--accent-soft); color: var(--accent); }
+.stat-ic.warn, .stat-ic.violet { background: var(--gold-soft); color: var(--gold); }
+.stat-ic.ok { background: var(--ok-soft); color: var(--ok); }
+
+/* new requests: a gold frame instead of purple */
+.approvals { border-color: var(--gold-line); box-shadow: 0 0 0 3px var(--gold-soft), var(--shadow); }
+.req-when { background: var(--accent-soft); color: var(--accent); }
+.approval-bar { border-color: var(--gold-line); background: linear-gradient(90deg, var(--gold-soft), var(--surface)); }
+.pulse { background: var(--gold); box-shadow: 0 0 0 0 rgba(181, 142, 53, .5); }
+.resched { background: var(--gold-soft); }
+.resched-text .request-ic { color: var(--gold); }
+
+/* buttons */
+.btn { border-color: var(--line-strong); }
+.btn-primary { background: linear-gradient(180deg, #21447B, #1B3A6B); border-color: #1B3A6B; color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #142D55; border-color: #142D55; }
+.btn-ok { background: linear-gradient(180deg, #33865F, #2D7A57); border-color: #2D7A57; }
+.btn-ok:hover:not(:disabled) { background: #256A4B; border-color: #256A4B; }
+
+/* tabs, steps, chips */
+.ctab[aria-selected="true"] { background: linear-gradient(180deg, #21447B, #1B3A6B); color: #fff; }
+.ctab[aria-selected="true"] .ctab-n { background: rgba(255, 255, 255, .18); color: #fff; }
+.ctab-badge { background: var(--gold); color: #fff; }
+.callout { background: var(--accent-soft); color: var(--accent); }
+.callout.warn { background: var(--warn-soft); color: var(--warn); }
+.callout.bad { background: var(--bad-soft); color: var(--bad); }
+.ai-tag, .wait-chip { background: var(--gold-soft); color: #7E6220; }
+.field.from-ai input, .field.from-ai textarea { border-color: var(--gold-line); background: #FFFCF4; }
+.complete-bar { background: linear-gradient(120deg, var(--gold-soft), var(--accent-soft)); border-color: var(--gold-line); }
+.complete-ic { background: var(--gold); }
+.ai-callout { background: var(--gold-soft); border-color: var(--gold-line); color: #6B531A; }
+.ai-callout svg { color: var(--gold); }
+
+/* sidebar: deep navy with a gold marker on the active item */
+.side { background: linear-gradient(180deg, #0F1E3D 0%, #122447 100%); }
+.side a[aria-current="page"], .side .nav-item.active, .side a.active { box-shadow: inset -3px 0 0 var(--nav-accent); }
+.hero { border-inline-start: 4px solid var(--gold); background: linear-gradient(120deg, #FFFFFF 55%, #FBF6EA 100%); }
+.hero-date { color: var(--gold); font-weight: 500; }
+.hero-next { background: #F3F6FB; border-color: var(--accent-line); }
