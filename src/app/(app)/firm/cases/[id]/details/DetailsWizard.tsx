@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { EMAIL_RE, PAYERS, TYPES, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import { EMAIL_RE, PAYERS, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import type { Service } from '@/lib/services';
+import ServicePicker from '@/components/ServicePicker';
 import { fmtDate, fmtDay, ilParts } from '@/lib/dates';
 import { uploadCaseFiles } from '@/lib/upload';
 import type { Extracted } from '@/lib/extract';
@@ -14,7 +16,7 @@ import { afterDetails, extractFromDocs } from '../../../actions';
 import { Stepper } from '../../../book/SlotBooking';
 
 type C = {
-  id: string; caseNo: number; startsAt: string; status: string; type: ReferralType | null;
+  id: string; caseNo: number; startsAt: string; status: string; type: ReferralType | null; serviceId: string | null;
   name: string; idNumber: string; dob: string; phone: string; email: string; payer: Payer; notes: string; submittedBy: string;
   detailsAt: string | null; extract: Extracted | null;
 };
@@ -22,8 +24,8 @@ type Doc = { id: string; file_name: string; size_bytes: number; created_at: stri
 type Field = 'name' | 'idNumber' | 'dob' | 'phone' | 'email';
 const FROM: Record<Field, keyof Extracted> = { name: 'name', idNumber: 'id_number', dob: 'dob', phone: 'phone', email: 'email' };
 
-export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, preview }: {
-  c: C; firmId: string; docs: Doc[]; prices: Record<ReferralType, number>; preview?: boolean;
+export default function DetailsWizard({ c, firmId, docs: initialDocs, services, preview }: {
+  c: C; firmId: string; docs: Doc[]; services: Service[]; preview?: boolean;
 }) {
   const supabase = useSupabase();
   const router = useRouter();
@@ -35,7 +37,8 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
   const [ext, setExt] = useState<Extracted | null>(c.extract);
   const [ai, setAi] = useState<Set<string>>(new Set(preview && c.extract ? ['name', 'idNumber', 'dob', 'phone', 'type', 'notes'] : []));
   const [f, setF] = useState({ name: c.name, idNumber: c.idNumber, dob: c.dob, phone: c.phone, email: c.email, notes: c.notes, submittedBy: c.submittedBy });
-  const [type, setType] = useState<ReferralType | null>(c.type);
+  const [svc, setSvc] = useState<Service | null>(services.find((x) => x.id === c.serviceId) ?? (c.serviceId === null && c.type ? services.find((x) => x.base_type === c.type) ?? null : null));
+  const [suggested, setSuggested] = useState<string | null>(null);
   const [payer, setPayer] = useState<Payer>(c.payer);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -59,7 +62,8 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
     const req = [x.request, x.event && `האירוע: ${x.event}${x.event_date ? ` (${x.event_date})` : ''}`].filter(Boolean).join('\n');
     if (req && !cur.notes.trim()) { next.notes = req; filled.add('notes'); }
     setF(next);
-    if (x.suggested_type && !type) { setType(x.suggested_type as ReferralType); filled.add('type'); }
+    const match = x.suggested_type ? services.find((v) => v.base_type === x.suggested_type) : undefined;
+    if (match) { setSuggested(match.id); if (!svc) { setSvc(match); filled.add('type'); } }
     setAi(filled);
   }
 
@@ -101,12 +105,12 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
     if (ai.has(k)) setAi(new Set([...ai].filter((x) => x !== k)));
   };
   const emailOk = !f.email.trim() || EMAIL_RE.test(f.email.trim());
-  const ready = !!type && f.name.trim().length >= 2 && f.idNumber.trim().length >= 5 && f.phone.trim().length >= 7 && emailOk;
+  const ready = !!svc && f.name.trim().length >= 2 && f.idNumber.trim().length >= 5 && f.phone.trim().length >= 7 && emailOk;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const miss: string[] = [];
-    if (!type) miss.push('סיבת ההפניה');
+    if (!svc) miss.push('סיבת ההפניה');
     if (f.name.trim().length < 2) miss.push('שם המטופל');
     if (f.idNumber.trim().length < 5) miss.push('תעודת זהות');
     if (f.phone.trim().length < 7) miss.push('טלפון');
@@ -116,7 +120,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
     setBusy(true);
     setErr('');
     const { data, error } = await supabase.rpc('complete_case_details', {
-      p_id: c.id, p_type: type, p_name: f.name.trim(), p_id_number: f.idNumber.trim(), p_dob: f.dob || null, p_phone: f.phone.trim(),
+      p_id: c.id, p_service: svc!.id, p_name: f.name.trim(), p_id_number: f.idNumber.trim(), p_dob: f.dob || null, p_phone: f.phone.trim(),
       p_email: f.email.trim(), p_payer: payer, p_notes: f.notes.trim(), p_submitted_by: f.submittedBy.trim(),
     });
     if (error) { setErr(dbError(error)); setBusy(false); return; }
@@ -141,7 +145,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
           <h2 style={{ margin: 0 }}>הכול מוכן</h2>
           <dl className="kv">
             <dt>מועד</dt><dd>{fmtDay(when.date)} · {fmtDate(when.date)} · {when.time}{c.status === 'pending' ? ' · ממתין לאישור הרופא' : ''}</dd>
-            <dt>סיבת ההפניה</dt><dd>{type ? TYPES[type].label : ''}</dd>
+            <dt>סיבת ההפניה</dt><dd>{svc?.label ?? ''}</dd>
             <dt>מסמכים</dt><dd>{docs.length ? `${docs.length} קבצים` : 'ללא'}</dd>
             <dt>זימון</dt><dd>{f.email.trim() ? `יישלח למטופל (${f.email.trim()}) ואליכם` : 'יישלח אליכם במייל. נא להעביר למטופל.'}</dd>
           </dl>
@@ -229,14 +233,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
 
             <div className="form-sec">
               <h3><Icon name="flag" />סיבת ההפניה {tag('type')}</h3>
-              <div className="options">
-                {(Object.keys(TYPES) as ReferralType[]).map((k) => (
-                  <button key={k} type="button" className="opt" aria-pressed={type === k} onClick={() => { setType(k); setAi(new Set([...ai].filter((x) => x !== 'type'))); }}>
-                    <span className="opt-ic"><Icon name={TYPES[k].icon} /></span>
-                    <span><b>{TYPES[k].label}</b><span>{TYPES[k].desc}</span>{Number(prices?.[k]) > 0 && <span className="price">{ils(prices[k])}</span>}</span>
-                  </button>
-                ))}
-              </div>
+              <ServicePicker services={services} value={svc?.id ?? null} suggested={suggested} onChange={(v) => { setSvc(v); setAi(new Set([...ai].filter((x) => x !== 'type'))); }} />
             </div>
 
             <div className="form-sec">
@@ -272,9 +269,9 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, prices, pr
             <div className="sum-row"><span>תיק</span><b className="num">{c.caseNo}</b></div>
             <div className="sum-row"><span>מועד</span><b>{fmtDay(when.date)} · {when.time}</b></div>
             <div className="sum-row"><span>מטופל</span><b>{f.name.trim() || '—'}</b></div>
-            <div className="sum-row"><span>סיבה</span><b>{type ? TYPES[type].label : '—'}</b></div>
+            <div className="sum-row"><span>סיבה</span><b>{svc ? svc.label : '—'}</b></div>
             <div className="sum-row"><span>מסמכים</span><b>{docs.length || '—'}</b></div>
-            {type && Number(prices?.[type]) > 0 && <div className="sum-row"><span>מחיר (כולל מע״מ)</span><b className="money">{ils(prices[type])}</b></div>}
+            {svc && Number(svc.price) > 0 && <div className="sum-row"><span>מחיר (כולל מע״מ)</span><b className="money">{ils(Number(svc.price))}</b></div>}
           </div>
           <ol className="how">
             <li><b>מעלים מסמכים</b><span>PDF או תמונות</span></li>
