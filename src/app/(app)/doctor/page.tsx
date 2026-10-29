@@ -39,15 +39,19 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
     const { data: lastOk } = await supabase.from('case_intake').select('updated_at').eq('status', 'done').order('updated_at', { ascending: false }).limit(1).maybeSingle();
     const keyBad = !process.env.ANTHROPIC_API_KEY || (!!lastErr && isAuthError(lastErr.error) && !lastOk);
     const vercel = 'ב־Vercel: Settings ← Environment Variables';
+    const [{ data: cronOn }, { count: pricedServices }] = await Promise.all([
+      supabase.rpc('cron_active'),
+      supabase.from('services').select('id', { count: 'exact', head: true }).eq('active', true).gt('price', 0),
+    ]);
     setupItems = [
       { key: 'ai', ok: !keyBad, title: 'מפתח ה־AI לא עובד', why: 'בלי מפתח תקין אין סריקת תיקים ואין ניסוח מכתבים אוטומטי (אפשר לכתוב ידנית).',
         how: ['ב־console.anthropic.com: API Keys ← Create Key, ולהעתיק את כל המפתח (מתחיל ב־sk-ant-)', `${vercel}: לערוך את ANTHROPIC_API_KEY ולהדביק בלי רווחים`, 'Deployments ← ⋯ ← Redeploy', 'בתיק: ״סריקה מחדש״'] },
       { key: 'mail', ok: mailEnabled(), title: 'שליחת מיילים לא מוגדרת', why: 'זימונים, תזכורות והמכתב הסופי לא נשלחים במייל. בינתיים אפשר לשלוח בוואטסאפ מתוך התיק.',
         how: ['להירשם בחינם ב־resend.com ולאמת את הדומיין של המרפאה (Domains)', 'API Keys ← Create, ולהעתיק', `${vercel}: RESEND_API_KEY = המפתח, MAIL_FROM = מרפאת ד״ר אלרן חנוך <clinic@הדומיין-שלכם>`, 'Redeploy'] },
-      { key: 'prices', ok: Object.values(settings.prices || {}).some((v) => Number(v) > 0), title: 'לא הוגדרו מחירים', why: 'כל התיקים מסומנים ״ללא חיוב״, והדוחות והגבייה ריקים.',
-        how: ['הגדרות ← מחירים ותשלום: מחיר לכל סוג מכתב (כולל מע״מ)', 'שמירת ההגדרות'] },
-      { key: 'cron', ok: !!process.env.CRON_SECRET, title: 'תזכורות אוטומטיות לא פעילות', why: 'תזכורת יום לפני התור לא נשלחת.',
-        how: [`${vercel}: CRON_SECRET = טקסט אקראי ארוך כלשהו`, 'Redeploy'] },
+      { key: 'prices', ok: (pricedServices ?? 0) > 0 || Object.values(settings.prices || {}).some((v) => Number(v) > 0), title: 'לא הוגדרו מחירים', why: 'כל התיקים מסומנים ״ללא חיוב״, והדוחות והגבייה ריקים.',
+        how: ['בתפריט: סוגי שירות ומחירים ← מחיר לכל שירות (כולל מע״מ)', 'שמירה'] },
+      { key: 'cron', ok: !!process.env.CRON_SECRET || cronOn === true, title: 'תזכורות אוטומטיות לא פעילות', why: 'תזכורות 3 ימים ושעתיים לפני התור לא נשלחות.',
+        how: ['Vercel ← Deployments ← ⋯ ← Redeploy (ההתקנה נעשית אוטומטית בבנייה)', `אם עדיין לא פעיל: ${vercel}: CRON_SECRET = טקסט אקראי ארוך`] },
     ];
   }
   const chips: Record<string, IntakeChip> = {};
