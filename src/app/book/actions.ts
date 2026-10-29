@@ -3,8 +3,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import { after } from 'next/server';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ACCEPTED_TYPES, BUCKET, EMAIL_RE, MAX_FILE_BYTES, SETTINGS_DEFAULTS, dbError, type Settings } from '@/lib/constants';
-import { notifyNewRequest, sendSummons } from '@/lib/notify';
+import { ACCEPTED_TYPES, BUCKET, EMAIL_RE, MAX_FILE_BYTES, SETTINGS_DEFAULTS, dbError, payLines, type Settings } from '@/lib/constants';
+import { notifyNewRequest, sendDepositRequest, sendSummons } from '@/lib/notify';
+import { appUrl } from '@/lib/mail';
 import { runIntake } from '@/lib/intake';
 import { autoDraft } from '@/lib/autodraft';
 import { cleanExtract, extractFromFiles, type Extracted } from '@/lib/extract';
@@ -56,7 +57,7 @@ export type PublicBookingInput = {
   website?: string;
 };
 
-export async function publicBook(input: PublicBookingInput): Promise<R<{ id: string; caseNo: number; pending: boolean; key: string; docs: number }>> {
+export async function publicBook(input: PublicBookingInput): Promise<R<{ id: string; caseNo: number; pending: boolean; key: string; docs: number; deposit: number; holdHours: number; pay: ReturnType<typeof payLines> }>> {
   if (input.website) return { ok: false, error: 'הבקשה נחסמה.' };
   const db = createAdminClient();
   const { data: s0 } = await db.from('settings').select('*').eq('id', 1).single();
@@ -127,17 +128,18 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
     patient_name: pat.name, patient_id_number: pat.id, patient_dob: pat.dob, patient_phone: pat.phone, patient_email: pat.email,
     payer: input.payer === 'referrer' && r.kind !== 'private' ? 'referrer' : 'patient',
     notes: clean(input.notes, 5000), submitted_by: clean(r.contact, 120), source: 'public',
-    upload_key_hash: sha(key), upload_key_expires: new Date(Date.now() + 3 * 3600_000).toISOString(),
+    // a patient who books by himself may need the key until the deposit arrives
+    upload_key_hash: sha(key), upload_key_expires: new Date(Date.now() + (r.kind === 'private' && !input.code ? Math.max(3, (s.deposit_hold_hours || 48) + 24) : 3) * 3600_000).toISOString(),
     notify_emails: extra,
     ...(input.extract && typeof input.extract === 'object' ? { extract: cleanExtract(input.extract), extract_status: 'done' } : {}),
-  }).select('id, case_no, status').single();
+  }).select('id, case_no, status, deposit_amount').single();
   if (error || !a) {
     if (error?.code === '23505' || error?.code === '23P01') return { ok: false, error: 'המועד הזה נתפס הרגע. בחרו מועד אחר.' };
     return { ok: false, error: dbError(error) };
   }
   await db.from('audit_log').insert({ user_id: null, action: 'public_book', entity: 'appointment', entity_id: a.id, details: { who, firm_known: !!firmEmail } });
   const docs = input.upload ? await attachUploads(db, input.upload, firmId, a.id) : 0;
-  return { ok: true, id: a.id, caseNo: a.case_no, pending: a.status === 'pending', key, docs };
+  return { ok: true, id: a.id, caseNo: a.case_no, pending: a.status === 'pending', key, docs, deposit: Number(a.deposit_amount) || 0, holdHours: s.deposit_hold_hours || 48, pay: payLines(s) };
 }
 
 async function byKey(id: string, key: string) {
@@ -217,6 +219,7 @@ export async function publicFinish(id: string, key: string): Promise<R> {
   after(async () => {
     await notifyNewRequest(id).catch(() => undefined);
     if (c.a.status === 'booked') await sendSummons(id).catch(() => undefined);
+    await sendDepositRequest(id, `${appUrl()}/pay/${id}?k=${key}`).catch(() => undefined);
     if (s?.auto_intake !== false) await runIntake(id).catch(() => undefined);
   });
   return { ok: true };
@@ -233,3 +236,30 @@ export async function publicDraft(id: string, key: string): Promise<R> {
   return { ok: true };
 }
 
+
+/* ---------- the deposit: the patient sends the transfer confirmation ---------- */
+
+/** A signed address to upload the transfer confirmation into the case. */
+export async function depositProofUrl(id: string, key: string, file: { name: string; size: number; type: string }): Promise<R<{ path: string; url: string }>> {
+  const c = await byKey(id, key);
+  if (!c) return { ok: false, error: 'הקישור פג תוקף. אפשר לשלוח את האישור למרפאה במייל או בוואטסאפ.' };
+  if (!ACCEPTED_TYPES.includes(file.type) || !(file.size > 0) || file.size > MAX_FILE_BYTES) return { ok: false, error: 'אפשר לצרף PDF או תמונה עד 25MB.' };
+  const path = `${c.a.firm_id}/${id}/deposit-${crypto.randomUUID()}.${EXT[file.type] || 'bin'}`;
+  const { data, error } = await c.db.storage.from(BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: 'ההעלאה לא זמינה כרגע.' };
+  return { ok: true, path, url: data.signedUrl };
+}
+
+/** Records the confirmation in the case and tells the doctor. */
+export async function depositProofDone(id: string, key: string, up: { path: string; name: string; type: string }): Promise<R> {
+  const c = await byKey(id, key);
+  if (!c) return { ok: false, error: 'הקישור פג תוקף.' };
+  const folder = `${c.a.firm_id}/${id}`;
+  if (!up.path.startsWith(`${folder}/deposit-`) || !ACCEPTED_TYPES.includes(up.type)) return { ok: false, error: 'הקובץ לא תקין.' };
+  const { data: listed } = await c.db.storage.from(BUCKET).list(folder, { limit: 100 });
+  const obj = (listed ?? []).find((o) => `${folder}/${o.name}` === up.path);
+  if (!obj) return { ok: false, error: 'הקובץ לא הגיע. נסו שוב.' };
+  await c.db.from('documents').insert({ appointment_id: id, firm_id: c.a.firm_id, storage_path: up.path, file_name: `אישור העברה למקדמה - ${clean(up.name, 200) || 'קובץ'}`, mime_type: up.type, size_bytes: Number((obj.metadata as { size?: number } | null)?.size ?? 1) || 1 });
+  await c.db.rpc('deposit_proof_sent', { p_id: id });
+  return { ok: true };
+}

@@ -8,7 +8,8 @@ import type { Extracted } from '@/lib/extract';
 import { checkFile } from '@/lib/upload';
 import Icon from '@/components/Icon';
 import ServicePicker from '@/components/ServicePicker';
-import { publicBook, publicDraft, publicFinish, publicScan, publicUploadStart } from './actions';
+import DepositBox, { type PayInfo } from '@/components/DepositBox';
+import { depositProofDone, depositProofUrl, publicBook, publicDraft, publicFinish, publicScan, publicUploadStart } from './actions';
 
 type Kind = 'law' | 'broker' | 'private';
 type Up = { token: string; files: { path: string; name: string; type: string }[] };
@@ -54,7 +55,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   const [website, setWebsite] = useState('');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
-  const [done, setDone] = useState<{ caseNo: number; pending: boolean; docs: number } | null>(null);
+  const [done, setDone] = useState<{ caseNo: number; pending: boolean; docs: number; id: string; key: string; deposit: number; holdHours: number; pay: PayInfo } | null>(null);
   const top = useRef<HTMLDivElement>(null);
 
   const dayTimes = visible.find((d) => d.date === day)?.times ?? [];
@@ -162,7 +163,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     await publicFinish(r.id, r.key).catch(() => undefined);
     publicDraft(r.id, r.key).catch(() => undefined);
     setBusy('');
-    setDone({ caseNo: r.caseNo, pending: r.pending, docs: r.docs });
+    setDone({ caseNo: r.caseNo, pending: r.pending, docs: r.docs, id: r.id, key: r.key, deposit: r.deposit, holdHours: r.holdHours, pay: r.pay });
   }
 
   function reset() {
@@ -188,9 +189,24 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
         <div ref={top} />
         {Head}
         <section className="pb-card pb-done">
-          <span className="pb-check"><Icon name="checkCircle" /></span>
-          <h1>{done.pending ? 'הבקשה נשלחה לרופא' : 'התור נקבע'}</h1>
-          <p className="pb-lead">{done.pending ? 'ברגע שהרופא יאשר, יישלח אישור זימון במייל.' : 'אישור הזימון נשלח במייל.'}{to.length ? ` המכתבים של הרופא יישלחו לאותן כתובות.` : ''}</p>
+          <span className="pb-check"><Icon name={done.deposit > 0 ? 'wallet' : 'checkCircle'} /></span>
+          <h1>{done.deposit > 0 ? 'נשאר רק להעביר מקדמה' : done.pending ? 'הבקשה נשלחה לרופא' : 'התור נקבע'}</h1>
+          <p className="pb-lead">{done.deposit > 0
+            ? 'המועד שמור עבורכם. כדי שהרופא יאשר את התור, העבירו את המקדמה והעלו צילום של אישור ההעברה. פרטי התשלום נשלחו גם למייל.'
+            : done.pending ? 'ברגע שהרופא יאשר, יישלח אישור זימון במייל.' : 'אישור הזימון נשלח במייל.'}{to.length && !done.deposit ? ` המכתבים של הרופא יישלחו לאותן כתובות.` : ''}</p>
+          {done.deposit > 0 && (
+            <DepositBox amount={done.deposit} title="מקדמה לשריון התור" pay={done.pay} holdHours={done.holdHours}
+              upload={async (f) => {
+                const u = await depositProofUrl(done.id, done.key, { name: f.name, size: f.size, type: f.type });
+                if (!u.ok) return { ok: false, error: u.error };
+                const body = new FormData();
+                body.append('cacheControl', '3600');
+                body.append('', f);
+                const res = await fetch(u.url, { method: 'PUT', body, headers: { 'x-upsert': 'false' } }).catch(() => null);
+                if (!res?.ok) return { ok: false, error: 'ההעלאה נכשלה. נסו שוב.' };
+                return depositProofDone(done.id, done.key, { path: u.path, name: f.name, type: f.type });
+              }} />
+          )}
           <dl className="kv">
             <dt>מספר תיק</dt><dd className="num">{done.caseNo}</dd>
             <dt>מטופל</dt><dd>{pt.name}</dd>
