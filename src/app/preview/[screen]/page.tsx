@@ -7,6 +7,8 @@ import DetailsWizard from '@/app/(app)/firm/cases/[id]/details/DetailsWizard';
 import NewCaseForm from '@/app/(app)/doctor/new/NewCaseForm';
 import DiagnosesPanel from '@/app/(app)/doctor/cases/[id]/DiagnosesPanel';
 import PrescriptionPanel from '@/app/(app)/doctor/cases/[id]/PrescriptionPanel';
+import ServicesAdmin from '@/app/(app)/doctor/services/ServicesAdmin';
+import type { Service } from '@/lib/services';
 import BookingForm from '@/app/(app)/firm/book/BookingForm';
 import CaseActions from '@/app/(app)/firm/cases/[id]/CaseActions';
 import LetterEditor from '@/app/(app)/doctor/cases/[id]/LetterEditor';
@@ -36,6 +38,14 @@ import RescheduleRequest from '@/app/(app)/firm/cases/[id]/RescheduleRequest';
 
 export const dynamic = 'force-dynamic';
 
+const SVC: Service[] = [
+  { id: 's1', label: 'הפניה לבדיקות', description: 'הפניה ל־MRI, CT, EMG או בדיקות אחרות', icon: 'activity', base_type: 'referral', price: 600, active: true, sort: 1 },
+  { id: 's2', label: 'סיכום ביקור', description: 'סיכום אחרי בדיקה במרפאה', icon: 'stethoscope', base_type: 'summary', price: 900, active: true, sort: 2 },
+  { id: 's3', label: 'חוות דעת לביטוח לאומי', description: 'חוות דעת רפואית לוועדה של המל״ל', icon: 'building', base_type: 'nii', price: 2500, active: true, sort: 3 },
+  { id: 's4', label: 'חוות דעת משפטית', description: 'חוות דעת מומחה לבית משפט', icon: 'scale', base_type: 'legal', price: 10000, active: true, sort: 4 },
+  { id: 's5', label: 'חוות דעת לחברת ביטוח', description: 'ביטוח פרטי, תאונות אישיות', icon: 'shield', base_type: 'legal', price: 4500, active: true, sort: 5 },
+];
+
 export default async function PreviewPage({ params }: { params: Promise<{ screen: string }> }) {
   if (process.env.PREVIEW !== '1') notFound();
   const { screen } = await params;
@@ -53,9 +63,9 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'firm-book':
       return firmShell('/firm/book', <SlotBooking firmId="f1" slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} horizon={30} clinicName={clinic} needsApproval preview />);
     case 'firm-details':
-      return firmShell('/firm/book', <DetailsWizard firmId="f1" prices={fx.settings.prices} preview
+      return firmShell('/firm/book', <DetailsWizard firmId="f1" services={SVC} preview
         docs={[{ id: 'd1', file_name: 'כתב תביעה - ישראלי.pdf', size_bytes: 1800000, created_at: fx.rows[0].starts_at }, { id: 'd2', file_name: 'MRI עמוד שדרה צווארי.pdf', size_bytes: 2400000, created_at: fx.rows[0].starts_at }]}
-        c={{ id: 'x', caseNo: 1060, startsAt: fx.rows[0].starts_at, status: 'pending', type: 'legal', name: 'ישראל ישראלי', idNumber: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', payer: 'referrer',
+        c={{ id: 'x', caseNo: 1060, startsAt: fx.rows[0].starts_at, status: 'pending', type: 'legal', serviceId: 's4', name: 'ישראל ישראלי', idNumber: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', payer: 'referrer',
           notes: 'מבקשים חוות דעת לבית משפט בעניין נכות בעמוד שדרה צווארי לאחר תאונת עבודה, כולל קשר סיבתי.\nהאירוע: נפילה מסולם (2025-03)', submittedBy: 'עו״ד דנה לוי', detailsAt: null,
           extract: { name: 'ישראל ישראלי', id_number: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', suggested_type: 'legal', request: '', event: '', event_date: '', sure: [], warning: '' } }} />);
     case 'firm-cases':
@@ -94,7 +104,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       return staffShell('/admin/reports', <ReportsView report={buildReport(fx.rows.map((r) => ({ id: r.id, case_no: r.case_no, starts_at: r.starts_at, status: r.status, referral_type: r.referral_type, price: r.price, payer: r.payer, firm_id: r.firm_name ?? '', firm_name: r.firm_name ?? '', patient_name: r.patient_name })),
         fx.rows.filter((r) => r.paid > 0).map((r) => ({ appointment_id: r.id, amount: r.paid, paid_on: todayIL(), method: 'transfer' })), [], todayIL())} />);
     case 'doctor-new':
-      return staffShell('/doctor/new', <NewCaseForm firms={[{ id: 'p', name: 'פניות ישירות', kind: 'private' }, { id: 'f1', name: 'כהן, לוי ושות׳', kind: 'law' }]} prices={fx.settings.prices} preview
+      return staffShell('/doctor/new', <NewCaseForm firms={[{ id: 'p', name: 'פניות ישירות', kind: 'private' }, { id: 'f1', name: 'כהן, לוי ושות׳', kind: 'law' }]} services={SVC} preview
         initial={{ firm: 'p', name: '', id: '', dob: '', phone: '', email: '', what: 'letter', date: todayIL(), time: '10:30' }} />);
     case 'doctor-rx':
       return staffShell('/doctor', <div className="cols case-cols">
@@ -105,6 +115,8 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
           rows={[{ id: 'r1', appointment_id: 'x', items: [{ name: 'ARCOXIA 90 MG', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה' }, { name: 'MUSCOL', dose: '1 קפליה', frequency: '3 פעמים ביום', duration: '5 ימים', quantity: '1 אריזה' }], notes: '', rx_date: todayIL(), created_at: new Date().toISOString(), sent_at: null }]}
           past={[]} /></div>
       </div>);
+    case 'doctor-services':
+      return staffShell('/doctor/services', <><PageHead title="סוגי שירות ומחירים" /><ServicesAdmin initial={SVC} preview /></>);
     case 'doctor-templates':
       return staffShell('/doctor/templates', <><PageHead title="תבניות למכתבים" /><TemplatesAdmin list={fx.templates} preview /></>);
     case 'firm-resched':
