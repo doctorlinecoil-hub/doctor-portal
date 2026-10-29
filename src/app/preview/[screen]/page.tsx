@@ -37,6 +37,12 @@ import { buildReport } from '@/lib/reports';
 import TemplatesAdmin from '@/app/(app)/doctor/templates/TemplatesAdmin';
 import { FreeSlot, RemoveBlock, BlockForm } from '@/app/(app)/doctor/calendar/CalendarTools';
 import RescheduleRequest from '@/app/(app)/firm/cases/[id]/RescheduleRequest';
+import Landing from '@/views/Landing';
+import Icon from '@/components/Icon';
+import RegisterForm from '@/app/register/RegisterForm';
+import DepositBox from '@/components/DepositBox';
+import PendingSignups from '@/app/(app)/admin/users/PendingSignups';
+import { payLines } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,6 +125,17 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       return staffShell('/doctor/services', <><PageHead title="סוגי שירות ומחירים" /><ServicesAdmin initial={SVC} preview /></>);
     case 'tpl-modal':
       return staffShell('/doctor', <TemplatePicker letterType="legal" onInsert={() => undefined} selection={() => ''} demo={fx.templates.map((t) => ({ id: t.id, title: t.title, body: t.body, letter_type: t.letter_type ?? null }))} />);
+    case 'landing':
+      return <Landing s={fx.settings} services={SVC} />;
+    case 'register':
+      return <AuthFrame><div className="panel"><div><h1>הרשמה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>משרדי עורכי דין, מתווכים, חברות ומטופלים. החשבון נפתח אחרי אישור המרפאה.</p></div><RegisterForm /></div></AuthFrame>;
+    case 'deposit':
+      return <main className="pb"><section className="pb-card pb-done"><span className="pb-check"><Icon name="wallet" /></span><h1>נשאר רק להעביר מקדמה</h1><p className="pb-lead">המועד שמור עבורכם. כדי שהרופא יאשר את התור, העבירו את המקדמה והעלו צילום של אישור ההעברה.</p><DepositBox amount={300} title="מקדמה לשריון התור" pay={payLines(fx.settings)} holdHours={48} upload={async () => ({ ok: true })} /></section></main>;
+    case 'signups':
+      return staffShell('/admin/users', <><PageHead title="מפנים ומשתמשים" /><PendingSignups preview list={[
+        { id: 'p1', name: 'כהן ושות׳ עורכי דין', kind: 'law', contact_name: 'עו״ד דנה כהן', phone: '03-5551234', email: 'dana@cohen-law.co.il', active: false, license_no: '45123', signup_note: 'כ־10 תיקי תאונות עבודה בחודש', created_at: new Date().toISOString() },
+        { id: 'p2', name: 'ישראל ישראלי', kind: 'patient', contact_name: 'ישראל ישראלי', phone: '050-1234567', email: 'israel@gmail.com', active: false, signup_note: 'ת.ז. 012345678', created_at: new Date().toISOString() },
+      ]} /></>);
     case 'public-book':
     case 'public-book-3':
     case 'public-book-scan':
