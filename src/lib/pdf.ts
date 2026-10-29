@@ -3,6 +3,7 @@ import { TYPES, type ReferralType, type Settings } from './constants';
 import { age, fmtDate } from './dates';
 import { LEGAL_DECLARATION, bodyBlocks } from './letter';
 import { esc } from './emails';
+import { isRich, sanitizeHtml, stripMarker } from './richtext';
 
 /*
  * The final letter as a PDF file, for email attachments.
@@ -17,7 +18,9 @@ export function letterHtml(s: Settings, l: LetterDoc, pt: PatientDoc) {
   const ag = age(pt.dob);
   const titles = (s.lh_titles || '').split('\n').filter(Boolean);
   const recipients = l.recipient.split('|').map((x) => x.trim()).filter(Boolean);
-  const blocks = bodyBlocks(l.body).map((b) => `<div class="lt-${b.kind}">${esc(b.text)}</div>`).join('\n');
+  const blocks = isRich(l.body)
+    ? `<div class="lt-rich">${sanitizeHtml(stripMarker(l.body))}</div>`
+    : bodyBlocks(l.body).map((b) => `<div class="lt-${b.kind}">${esc(b.text)}</div>`).join('\n');
   return `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;700&display=block">
 <style>
@@ -37,6 +40,11 @@ export function letterHtml(s: Settings, l: LetterDoc, pt: PatientDoc) {
   .lt-li::before { content: "•"; position: absolute; right: 2px; }
   .lt-decl { margin-top: 14px; padding: 7px 9px; border: 1px solid #999; font-size: 10pt; break-inside: avoid; }
   .lt-sign { margin-top: 20px; break-inside: avoid; }
+  .lt-rich h2 { font-size: 14pt; margin: 12px 0 4px; } .lt-rich h3 { font-size: 11.5pt; margin: 10px 0 2px; } .lt-rich h4 { font-size: 11pt; margin: 8px 0 2px; font-weight: 600; }
+  .lt-rich p { margin: 0 0 6px; } .lt-rich ul, .lt-rich ol { margin: 0 0 6px; padding-right: 22px; } .lt-rich li { margin: 0 0 2px; }
+  .lt-rich table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; } .lt-rich td, .lt-rich th { border: 1px solid #999; padding: 4px 6px; vertical-align: top; }
+  .lt-rich blockquote { margin: 6px 0; padding: 4px 12px; border-right: 3px solid #0B7A75; color: #333; } .lt-rich hr { border: 0; border-top: 1px solid #999; margin: 10px 0; }
+  .lt-rich font[size="2"] { font-size: 9pt; } .lt-rich font[size="4"] { font-size: 13pt; } .lt-rich font[size="5"] { font-size: 16pt; }
 </style></head><body>
 <header class="lt-head">
   <div>
