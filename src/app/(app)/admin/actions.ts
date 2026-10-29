@@ -5,6 +5,7 @@ import { deliverLetter } from '@/lib/notify';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { tempPassword } from '@/lib/password';
+import { approveSignup, rejectSignup } from '@/lib/accounts';
 import { issueReceipt, morningEnabled, type ChequeInfo } from '@/lib/morning';
 import { EMAIL_RE, PAY_METHODS, TYPES, type Payer, type PayMethod, type ReferralType, type ReferrerKind, type WeekDay } from '@/lib/constants';
 
@@ -29,6 +30,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
+  deposit_amount: number; deposit_hold_hours: number; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -67,6 +69,10 @@ export async function saveSettings(input: {
     email_letters: !!input.email_letters,
     auto_intake: !!input.auto_intake,
     auto_draft: !!input.auto_draft,
+    deposit_amount: Math.max(0, Math.min(99999, money(input.deposit_amount || 0))),
+    deposit_hold_hours: Math.min(336, Math.max(1, Math.round(+input.deposit_hold_hours || 48))),
+    bank_details: clean(input.bank_details, 1000), bit_phone: clean(input.bit_phone, 30), pay_note: clean(input.pay_note, 1000),
+    open_registration: !!input.open_registration,
   }).eq('id', 1);
   if (error) return { ok: false, error: 'השמירה נכשלה.' };
   revalidatePath('/', 'layout');
@@ -94,7 +100,7 @@ type FirmInput = { name: string; kind: ReferrerKind; taxId: string; contactName:
 
 function firmRow(i: FirmInput) {
   return {
-    name: clean(i.name, 160), kind: i.kind === 'broker' || i.kind === 'private' ? i.kind : 'law', tax_id: clean(i.taxId, 20).replace(/[^\d]/g, ''),
+    name: clean(i.name, 160), kind: (['broker', 'company', 'private', 'patient'] as string[]).includes(i.kind) ? i.kind : 'law', tax_id: clean(i.taxId, 20).replace(/[^\d]/g, ''),
     contact_name: clean(i.contactName, 120), phone: clean(i.phone, 40), email: clean(i.firmEmail, 120),
   };
 }
@@ -177,6 +183,24 @@ export async function setFirmActive(firmId: string, active: boolean): Promise<Re
   }
   revalidatePath('/admin/users');
   return { ok: true };
+}
+
+/* ---------- self sign-ups ---------- */
+
+export async function approveRegistration(firmId: string): Promise<Result> {
+  if (!(await assertAdmin().catch(() => null))) return { ok: false, error: 'אין הרשאה.' };
+  if (!UUID.test(firmId)) return { ok: false, error: 'לא נמצא.' };
+  const r = await approveSignup(firmId);
+  revalidatePath('/admin/users');
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.error };
+}
+
+export async function rejectRegistration(firmId: string, reason: string): Promise<Result> {
+  if (!(await assertAdmin().catch(() => null))) return { ok: false, error: 'אין הרשאה.' };
+  if (!UUID.test(firmId)) return { ok: false, error: 'לא נמצא.' };
+  const r = await rejectSignup(firmId, reason);
+  revalidatePath('/admin/users');
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.error };
 }
 
 /* ---------- billing and payments ---------- */

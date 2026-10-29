@@ -5,7 +5,7 @@ import { SETTINGS_DEFAULTS, type Settings, type WeekDay } from '@/lib/constants'
 import { DAYS, fmtDate } from '@/lib/dates';
 import { saveSettings } from './actions';
 
-export default function SettingsForm({ initial, morning, mail, cron, preview }: { initial: Settings; morning: boolean; mail: boolean; cron: boolean; preview?: boolean }) {
+export default function SettingsForm({ initial, morning, mail, preview }: { initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean }) {
   const [s, setS] = useState<Settings>({ ...SETTINGS_DEFAULTS, ...initial, prices: Object.assign({ referral: 0, summary: 0, nii: 0, legal: 0 }, initial.prices) });
   const [newBlock, setNewBlock] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -75,9 +75,31 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
               <div><Icon name="receipt" />{morning ? 'מחובר למורנינג. אפשר להפיק חשבונית מס / קבלה מתוך כל תיק.' : 'החיבור למורנינג לא הוגדר. אפשר לרשום מספר קבלה ידנית, או להוסיף מפתחות API של מורנינג בהגדרות השרת.'}</div>
             </div>
           </section>
+
+          <section className="panel" id="pay-details">
+            <div className="panel-head"><h2><Icon name="card" />מקדמה ופרטי תשלום</h2></div>
+            <p className="hint">מופיעים בזימון, בבקשת המקדמה, בתזכורות ובתיק של המפנה, עם כפתורי העתקה.</p>
+            <div className="grid-2">
+              <label className="field" htmlFor="depAmt"><span>מקדמה ממטופל שקובע בעצמו (₪) <small>0 = בלי מקדמה</small></span>
+                <input id="depAmt" type="number" min={0} step={10} dir="ltr" value={s.deposit_amount} onChange={(e) => setS({ ...s, deposit_amount: Number(e.target.value) })} /></label>
+              <label className="field" htmlFor="depHold"><span>שעות להעברת המקדמה <small>אחר כך הבקשה מתבטלת</small></span>
+                <input id="depHold" type="number" min={1} max={336} dir="ltr" value={s.deposit_hold_hours} onChange={(e) => setS({ ...s, deposit_hold_hours: Number(e.target.value) })} /></label>
+            </div>
+            <label className="field" htmlFor="bank"><span>פרטי חשבון להעברה <small>שורה לכל פרט: בנק, סניף, חשבון, על שם</small></span>
+              <textarea id="bank" rows={4} value={s.bank_details} onChange={text('bank_details')} placeholder={'בנק: הפועלים (12)\nסניף: 532\nחשבון: 123456\nעל שם: ד״ר אלרן חנוך'} /></label>
+            <label className="field" htmlFor="bit"><span>מספר לביט / פייבוקס <small>לא חובה</small></span>
+              <input id="bit" dir="ltr" value={s.bit_phone} onChange={text('bit_phone')} placeholder="050-0000000" /></label>
+            <label className="field" htmlFor="payNote"><span>הערה לתשלום <small>לא חובה</small></span>
+              <input id="payNote" value={s.pay_note} onChange={text('pay_note')} placeholder="נא לציין בהעברה את מספר התיק" /></label>
+          </section>
         </div>
 
         <div className="stack">
+          <section className="panel">
+            <div className="panel-head"><h2><Icon name="users" />הרשמה למערכת</h2></div>
+            <label className="check"><input type="checkbox" checked={s.open_registration} onChange={(e) => setS({ ...s, open_registration: e.target.checked })} />
+              <span>הרשמה עצמית פתוחה (/register)<small>משרדי עורכי דין, מתווכים, חברות ומטופלים נרשמים לבד. כל חשבון חדש ממתין לאישור במסך ״מפנים ומשתמשים״.</small></span></label>
+          </section>
           <section className="panel">
             <div className="panel-head"><h2><Icon name="mail" />אישור תורים, זימונים ומיילים</h2></div>
             <label className="check"><input type="checkbox" checked={s.public_booking} onChange={(e) => setS({ ...s, public_booking: e.target.checked })} />
@@ -91,7 +113,7 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
             <label className="field" htmlFor="snote"><span>הערה בזימון <small>למשל: חניה, קומה, איך מגיעים</small></span>
               <textarea id="snote" rows={2} value={s.summons_note} onChange={text('summons_note')} placeholder="חניון ציבורי בבניין. עולים במעליות המזרחיות לקומה 23." /></label>
             <label className="check"><input type="checkbox" checked={s.reminders_on} onChange={(e) => setS({ ...s, reminders_on: e.target.checked })} />
-              <span>תזכורת אוטומטית במייל יום לפני התור<small>{cron ? 'נשלחת כל יום בסביבות 17:00–18:00.' : 'כדי שזה יעבוד צריך להגדיר CRON_SECRET בהגדרות Vercel.'}</small></span></label>
+              <span>תזכורות אוטומטיות במייל: 3 ימים ושעתיים לפני כל תור<small>למטופל, למפנה ולרופא. המערכת בודקת כל 10 דקות.</small></span></label>
             <label className="check"><input type="checkbox" checked={s.email_letters} onChange={(e) => setS({ ...s, email_letters: e.target.checked })} />
               <span>שליחת המכתב הסופי במייל כ־PDF<small>למפנה, ולמטופל אם הוזן מייל. אם המכתב נפתח רק אחרי תשלום, הוא יישלח אחרי שהתשלום יירשם.</small></span></label>
             <div className={`callout ${mail ? '' : 'info'}`}>
