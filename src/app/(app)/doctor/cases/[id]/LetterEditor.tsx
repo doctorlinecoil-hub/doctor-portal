@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { TYPES, type ReferralType } from '@/lib/constants';
+import { typeOf, TYPES, type ReferralType } from '@/lib/constants';
 import { age, fmtDate, fmtStamp, todayIL } from '@/lib/dates';
 import { LEGAL_DECLARATION, PLACEHOLDER_RE, outlineFor, parseDraft } from '@/lib/letter';
 import { bodyText, bodyToHtml, richBody, textToHtml } from '@/lib/richtext';
@@ -23,6 +23,7 @@ export type LetterRow = {
   exam_notes: string;
   is_final: boolean;
   finalized_at: string | null;
+  ai_draft_at?: string | null;
 };
 
 type Draft = { letter_type: ReferralType; recipient: string; subject: string; body: string; exam_notes: string };
@@ -49,12 +50,12 @@ function AutoText(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { m
  */
 export default function LetterEditor({
   appointmentId, defaultType, initial, docCount, cancelled, preview, paper,
-}: { appointmentId: string; defaultType: ReferralType; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
+}: { appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
   const supabase = useSupabase();
   const router = useRouter();
   const [startHtml] = useState(() => bodyToHtml(cleanBody(initial?.body)));
   const [d, setD] = useState<Draft>({
-    letter_type: initial?.letter_type ?? defaultType,
+    letter_type: initial?.letter_type ?? defaultType ?? 'summary',
     recipient: initial?.recipient ?? '',
     subject: initial?.subject ?? '',
     body: startHtml ? richBody(startHtml) : '',
@@ -235,7 +236,7 @@ export default function LetterEditor({
       <div className="studio-head">
         <div className="studio-title">
           <span className="studio-ic"><Icon name="file" /></span>
-          <div><h2>{TYPES[d.letter_type].label}</h2><span className="hint">{initial?.is_final ? `נשלח למפנה${initial.finalized_at ? ` · ${fmtStamp(initial.finalized_at)}` : ''}` : 'טיוטה · נשמר אוטומטית'}</span></div>
+          <div><h2>{typeOf(d.letter_type).label}</h2><span className="hint">{initial?.is_final ? `נשלח למפנה${initial.finalized_at ? ` · ${fmtStamp(initial.finalized_at)}` : ''}` : 'טיוטה · נשמר אוטומטית'}</span></div>
         </div>
         <ol className="steps" aria-label="התקדמות">
           {steps.map((x, i) => <li key={x.label} className={x.done ? 'done' : ''}><span className="num">{x.done ? <Icon name="check" size={12} /> : i + 1}</span>{x.label}</li>)}
@@ -243,6 +244,9 @@ export default function LetterEditor({
         <span className="save-state" aria-live="polite">{saveState === 'נשמר' && <Icon name="check" />}{saveState}</span>
       </div>
       {initial?.is_final && <div className="callout"><div><Icon name="checkCircle" />נשלחה גרסה סופית. שינויים יגיעו למפנה רק אחרי ״עדכון המכתב הסופי״.</div></div>}
+      {!initial?.is_final && initial?.ai_draft_at && (
+        <div className="callout ai-callout"><div><Icon name="sparkles" />הטיוטה הוכנה אוטומטית מהמסמכים ומהבקשה של המפנה · {fmtStamp(initial.ai_draft_at)}. עברו עליה, השלימו את ממצאי הבדיקה (המקומות המסומנים בצהוב) ושלחו.</div></div>
+      )}
       {cancelled && <div className="callout bad"><div><Icon name="x" />התור בוטל.</div></div>}
 
       <div className="studio-grid2">
@@ -268,7 +272,7 @@ export default function LetterEditor({
             <div className="card-h"><Icon name="settings" />פרטי המכתב</div>
             <label className="field" htmlFor="ltType"><span>סוג המכתב</span>
               <select id="ltType" value={d.letter_type} onChange={(e) => update({ letter_type: e.target.value as ReferralType })}>
-                {(Object.keys(TYPES) as ReferralType[]).map((k) => <option key={k} value={k}>{TYPES[k].label}</option>)}
+                {(Object.keys(TYPES) as ReferralType[]).map((k) => <option key={k} value={k}>{typeOf(k).label}</option>)}
               </select>
             </label>
             <label className="field" htmlFor="ltTo"><span>לכבוד <small>כמה שורות? הפרידו ב־ |</small></span>

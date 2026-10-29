@@ -2,7 +2,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/Icon';
-import { TYPES, type ReferralType } from '@/lib/constants';
+import { typeOf, type ReferralType } from '@/lib/constants';
 import { fmtStamp } from '@/lib/dates';
 import { fuzzyDate, type IntakeRow } from '@/lib/intakeTypes';
 import { requestDocuments, rescanCase } from '../../actions';
@@ -94,7 +94,7 @@ export default function IntakePanel({ appointmentId, intake, docCount, requested
           </div>
 
           {d.type_note && d.suggested_type && d.suggested_type !== requestedType && (
-            <div className="callout warn"><div><Icon name="alert" />המפנה ביקש {TYPES[requestedType].label}, אבל לפי הבקשה מתאים יותר {TYPES[d.suggested_type].label}. {d.type_note}</div></div>
+            <div className="callout warn"><div><Icon name="alert" />המפנה ביקש {typeOf(requestedType).label}, אבל לפי הבקשה מתאים יותר {typeOf(d.suggested_type).label}. {d.type_note}</div></div>
           )}
 
           <div className="ai-grid">

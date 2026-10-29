@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSupabase } from '@/lib/supabase/browser';
-import { TYPES, type ReferralType } from '@/lib/constants';
+import { typeOf, type ReferralType } from '@/lib/constants';
 import Icon from '@/components/Icon';
 
 type Tpl = { id: string; title: string; body: string; letter_type: ReferralType | null };
@@ -48,7 +48,7 @@ export default function TemplatePicker({ letterType, onInsert, selection }: { le
           <div className="tpl-list">
             {list === null ? <p className="hint">טוען…</p> : shown.length === 0 ? <p className="hint">אין תבניות.</p> : shown.map((t) => (
               <button key={t.id} type="button" className="tpl-item" onClick={() => { onInsert(t.body); setOpen(false); }}>
-                <b>{t.title}</b>{t.letter_type && <small>{TYPES[t.letter_type].label}</small>}
+                <b>{t.title}</b>{t.letter_type && <small>{typeOf(t.letter_type).label}</small>}
                 <span>{t.body.slice(0, 110)}{t.body.length > 110 ? '…' : ''}</span>
               </button>
             ))}

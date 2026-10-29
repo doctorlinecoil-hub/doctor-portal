@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation';
 import Icon from '@/components/Icon';
 import { fmtStamp } from '@/lib/dates';
 import { letterReadyText, reminderText, summonsText, waLink, type ApptInfo, type ClinicInfo } from '@/lib/messages';
-import { resendSummons, sendLetter } from '../../actions';
+import { resendSummons, sendLetter, sendLetterExtra } from '../../actions';
 
 export type EmailLogRow = { id: number; kind: string; to_addr: string; status: 'sent' | 'failed' | 'skipped'; error: string; created_at: string };
 
 const KIND: Record<string, string> = {
   new_request: 'התראה לרופא', summons_patient: 'זימון למטופל', summons_firm: 'זימון למפנה', declined: 'דחיית בקשה',
   reminder_patient: 'תזכורת למטופל', reminder_firm: 'תזכורת למפנה', doc_request: 'בקשת מסמכים', firm_update: 'עדכון מהמפנה',
-  letter_firm: 'מכתב למפנה', letter_patient: 'מכתב למטופל', letter_awaiting_payment: 'מכתב ממתין לתשלום',
+  letter_firm: 'מכתב למפנה', letter_patient: 'מכתב למטופל', letter_awaiting_payment: 'מכתב ממתין לתשלום', letter_extra: 'מכתב למייל נוסף',
 };
 const STATUS = { sent: 'נשלח', failed: 'נכשל', skipped: 'לא נשלח' };
 
@@ -23,6 +23,7 @@ export default function CommsPanel({ appointmentId, status, info, clinic, patien
   const router = useRouter();
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [extra, setExtra] = useState('');
   const confirmed = status === 'booked' || status === 'draft';
   const run = (fn: () => Promise<{ ok: boolean; error?: string; info?: string }>) => start(async () => {
     if (preview) return setMsg({ ok: true, text: 'תצוגה מקדימה' });
@@ -50,6 +51,13 @@ export default function CommsPanel({ appointmentId, status, info, clinic, patien
           {confirmed && <button type="button" className="btn btn-sm" disabled={busy} onClick={() => run(() => resendSummons(appointmentId))}><Icon name="mail" />שליחת הזימון שוב</button>}
           {letterFinal && <button type="button" className="btn btn-sm" disabled={busy} onClick={() => run(() => sendLetter(appointmentId, true))}><Icon name="mail" />{letterSentAt ? 'שליחת המכתב שוב' : 'שליחת המכתב במייל'}</button>}
         </div>
+        {letterFinal && (
+          <form className="forward" onSubmit={(e) => { e.preventDefault(); if (extra.trim()) run(async () => { const r = await sendLetterExtra(appointmentId, extra); if (r.ok) setExtra(''); return r; }); }}>
+            <label className="sr-only" htmlFor="extraMail">שליחת המכתב למייל נוסף</label>
+            <input id="extraMail" type="text" dir="ltr" placeholder="מייל נוסף, למשל insurer@example.com" value={extra} onChange={(e) => setExtra(e.target.value)} />
+            <button className="btn btn-sm" disabled={busy || !extra.trim()}><Icon name="send" />שליחת המכתב לכתובת הזו</button>
+          </form>
+        )}
         {msg && <p className={msg.ok ? 'ok-msg' : 'err'} role="status">{msg.text}</p>}
         {emails.length === 0 ? <p className="hint">עוד לא נשלחו מיילים בתיק הזה.</p> : (
           <ul className="mail-log">
