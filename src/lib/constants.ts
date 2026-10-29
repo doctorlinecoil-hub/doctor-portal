@@ -84,6 +84,7 @@ export type Settings = {
   pay_note: string;
   open_registration: boolean;
   phone_appointments: boolean;
+  sms_reminders: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -148,6 +149,7 @@ export const SETTINGS_DEFAULTS = {
   pay_note: '',
   open_registration: true,
   phone_appointments: true,
+  sms_reminders: true,
 } as const;
 
 /** The clinic's payment details, as lines (bank transfer, Bit, a note). Empty when nothing was filled in. */

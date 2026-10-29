@@ -1,4 +1,5 @@
 import 'server-only';
+import { sendSms, smsEnabled, smsReminderText } from './sms';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from './supabase/admin';
 import { SETTINGS_DEFAULTS, ils, isPatientKind, type ReferralType, type Settings } from './constants';
@@ -199,6 +200,10 @@ export async function runTick(): Promise<NotifyResult> {
       }
       if (who.referrer.length) {
         const r = await sendMail(db, a.id, `reminder_${at}_firm`, { to: who.referrer, ...reminderEmail(s, ai, true, at, { link: caseLink(a.id, false) }) });
+        if (r.ok) sent++;
+      }
+      if (s.sms_reminders !== false && smsEnabled() && a.patient_phone) {
+        const r = await sendSms(db, a.id, `reminder_${at}`, a.patient_phone, smsReminderText(s, ai, at));
         if (r.ok) sent++;
       }
       if (staff.length) {

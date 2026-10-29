@@ -1,7 +1,7 @@
 import { typeOf, TYPES, type ReferralType } from './constants';
 import { dayNum, ilParts } from './dates';
 
-export type RepAppt = { id: string; case_no: number; starts_at: string; status: string; referral_type: ReferralType; price: number; payer: string; firm_id: string; firm_name: string; patient_name: string };
+export type RepAppt = { id: string; case_no: number; starts_at: string; status: string; referral_type: ReferralType; price: number; payer: string; firm_id: string; firm_name: string; patient_name: string; service_label?: string; mode?: string };
 export type RepPay = { appointment_id: string; amount: number; paid_on: string; method: string };
 export type RepLetter = { appointment_id: string; finalized_at: string | null };
 
@@ -9,7 +9,14 @@ export type Report = {
   months: { key: string; label: string; cases: number; billed: number; collected: number }[];
   firms: { id: string; name: string; cases: number; billed: number; paid: number; balance: number }[];
   types: { type: ReferralType; label: string; cases: number; billed: number }[];
-  kpi: { casesMonth: number; collectedMonth: number; outstanding: number; avgDaysToLetter: number | null; openLetters: number };
+  kpi: {
+    casesMonth: number; collectedMonth: number; outstanding: number; avgDaysToLetter: number | null; openLetters: number;
+    casesPrev: number; collectedPrev: number; billedMonth: number; billedPrev: number; avgTicket: number;
+  };
+  services: { label: string; cases: number; billed: number }[];
+  statuses: { key: string; label: string; value: number }[];
+  modes: { clinic: number; phone: number };
+  cancelRate: number;
 };
 
 const MONTHS = ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
@@ -46,9 +53,27 @@ export function buildReport(appts: RepAppt[], pays: RepPay[], letters: RepLetter
   const fin = new Map(letters.filter((l) => l.finalized_at).map((l) => [l.appointment_id, l.finalized_at!]));
   const gaps = live.filter((a) => fin.has(a.id)).map((a) => Math.max(0, dayNum(ilParts(fin.get(a.id)!).date) - dayNum(ilParts(a.starts_at).date)));
   const cur = today.slice(0, 7);
+  const prevM = months[months.length - 2];
+  const sm = new Map<string, { label: string; cases: number; billed: number }>();
+  for (const a of live) {
+    const label = a.service_label || typeOf(a.referral_type).label;
+    const x = sm.get(label) ?? { label, cases: 0, billed: 0 };
+    x.cases++; x.billed += Number(a.price);
+    sm.set(label, x);
+  }
+  const ST: [string, string][] = [['pending', 'ממתינים לאישור'], ['booked', 'מאושרים'], ['draft', 'מכתב בטיוטה'], ['done', 'הסתיימו'], ['cancelled', 'בוטלו']];
   return {
     months, firms, types,
+    services: [...sm.values()].sort((a, b) => b.cases - a.cases),
+    statuses: ST.map(([key, label]) => ({ key, label, value: appts.filter((a) => a.status === key).length })),
+    modes: { clinic: live.filter((a) => a.mode !== 'phone').length, phone: live.filter((a) => a.mode === 'phone').length },
+    cancelRate: appts.length ? Math.round((appts.filter((a) => a.status === 'cancelled').length / appts.length) * 100) : 0,
     kpi: {
+      casesPrev: prevM?.cases ?? 0,
+      collectedPrev: prevM?.collected ?? 0,
+      billedMonth: months[months.length - 1].billed,
+      billedPrev: prevM?.billed ?? 0,
+      avgTicket: live.length ? Math.round(live.reduce((s, a) => s + Number(a.price), 0) / live.length) : 0,
       casesMonth: months[months.length - 1].cases,
       collectedMonth: pays.filter((p) => p.paid_on.slice(0, 7) === cur).reduce((s, p) => s + Number(p.amount), 0),
       outstanding: firms.reduce((s, f) => s + f.balance, 0),
