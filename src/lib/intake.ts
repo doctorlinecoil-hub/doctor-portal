@@ -1,5 +1,6 @@
 import 'server-only';
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import { askTool } from './aiTool';
 import { createAdminClient } from './supabase/admin';
 import { loadDocBlocks } from './caseDocs';
 import { aiErrorText } from './aiErrors';
@@ -121,6 +122,8 @@ export async function runIntake(appointmentId: string, opts: { force?: boolean }
         `מה בדרך כלל נדרש: ${NEEDS[type]}`,
         `כללים:
 1. רק עובדות מהמסמכים ומהבקשה. אל תמציא ממצאים, תאריכים או אבחנות. אם משהו לא ברור, כתוב שהוא לא ברור.
+1א. קרא כל מסמך עד הסוף, כל עמוד. אל תדלג על מסמכים ארוכים, טפסים או כתב יד.
+1ב. ודא שכל מסמך שייך למטופל הזה (שם, ת.ז., תאריך לידה). מסמך של אדם אחר או עם פרטים סותרים: אל תשתמש בתוכנו, ורשום אותו ב־red_flags עם שם המסמך ומה בדיוק לא מתאים.
 2. בכל ממצא ציין מקור: שם המסמך כפי שמופיע למעלה.
 3. תאריכים בפורמט YYYY-MM-DD (או YYYY-MM / YYYY כשהיום לא ידוע).
 4. עברית רפואית ברורה וקצרה. מונחים מקצועיים באנגלית מותרים (MRI, EMG, L4-L5).
@@ -130,13 +133,7 @@ export async function runIntake(appointmentId: string, opts: { force?: boolean }
     });
 
     const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
-    const client = new Anthropic();
-    const msg = await client.messages
-      .stream({ model, max_tokens: 16000, tools: [TOOL], tool_choice: { type: 'tool', name: TOOL.name }, messages: [{ role: 'user', content }] })
-      .finalMessage();
-    const block = msg.content.find((b) => b.type === 'tool_use');
-    if (!block || block.type !== 'tool_use') throw new Error('לא התקבלה תשובה מובנית');
-    const data = normalize(block.input as Partial<IntakeData>);
+    const data = normalize(await askTool<Partial<IntakeData>>({ model, maxTokens: 16000, tool: TOOL, content }));
     await mark({ status: 'done', data, error: '', model, doc_count: attached.length, finished_at: new Date().toISOString() });
     await db.from('audit_log').insert({ action: 'ai_intake', entity: 'appointment', entity_id: appointmentId, details: { model, docs: attached.length } });
   } catch (e) {

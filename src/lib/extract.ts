@@ -1,5 +1,6 @@
 import 'server-only';
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import { askTool } from './aiTool';
 import { createAdminClient } from './supabase/admin';
 import { loadDocBlocks } from './caseDocs';
 import { aiErrorText } from './aiErrors';
@@ -83,9 +84,11 @@ export function cleanExtract(x: Partial<Extracted>): Extracted {
 
 const PROMPT = [
   'אלה מסמכים רפואיים ומשפטיים שמפנה (משרד עורכי דין, מתווך או המטופל עצמו) העלה לתיק חדש אצל רופא מומחה בישראל.',
-  'מצא בהם את פרטי המטופל (שם, ת.ז., תאריך לידה, טלפון, מייל), מה המפנה צריך מהרופא, ומי המפנה (שם המשרד, איש הקשר, מייל וטלפון של המשרד).',
-  'העתק פרטים בדיוק כפי שהם כתובים. אל תמציא ואל תנחש: מה שלא כתוב בבירור נשאר ריק.',
-  'אם מופיעים כמה אנשים, המטופל הוא מי שהמסמכים הרפואיים עוסקים בו (לא עורך הדין ולא הרופא).',
+  'קרא כל מסמך עד הסוף, כל עמוד, כולל סריקות, טפסים, חותמות וכתב יד.',
+  'מצא את פרטי המטופל (שם, ת.ז., תאריך לידה, טלפון, מייל), מה המפנה צריך מהרופא, ומי המפנה (שם המשרד, איש הקשר, מייל וטלפון של המשרד).',
+  'העתק פרטים בדיוק כפי שהם כתובים, ספרה אחר ספרה. אל תמציא ואל תנחש: מה שלא כתוב בבירור נשאר ריק, ולא מסומן ב-sure.',
+  'המטופל הוא מי שהמסמכים הרפואיים עוסקים בו (לא עורך הדין, לא הרופא ולא קרוב משפחה).',
+  'הצלב בין המסמכים: אם יש מסמכים של יותר מאדם אחד, או שם / ת.ז. / תאריך לידה שונים בין המסמכים, אל תבחר לבד. השאר את השדה הסותר ריק וכתוב ב-warning בדיוק מה סותר ובאיזה מסמך.',
 ].join('\n');
 
 /** Reads the given stored files and returns the details found in them. Runs with the service key: callers check access. */
@@ -97,17 +100,8 @@ export async function extractFromFiles(docs: { file_name: string; storage_path: 
     const { content, attached } = await loadDocBlocks(db, docs);
     if (!attached.length) return { ok: false, error: 'לא הצלחנו לקרוא את המסמכים. אפשר להעלות PDF או תמונה ברורה.' };
     content.push({ type: 'text', text: PROMPT });
-    const client = new Anthropic();
-    const msg = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-      max_tokens: 2000,
-      tools: [TOOL],
-      tool_choice: { type: 'tool', name: TOOL.name },
-      messages: [{ role: 'user', content }],
-    });
-    const block = msg.content.find((b) => b.type === 'tool_use');
-    if (!block || block.type !== 'tool_use') return { ok: false, error: 'לא התקבלה תשובה מהסריקה.' };
-    return { ok: true, data: cleanExtract(block.input as Partial<Extracted>) };
+    const input = await askTool<Partial<Extracted>>({ model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL, maxTokens: 4000, tool: TOOL, content });
+    return { ok: true, data: cleanExtract(input) };
   } catch (e) {
     console.error('extract failed', (e as { status?: number })?.status ?? '', String((e as Error)?.message ?? e).slice(0, 600));
     return { ok: false, error: e instanceof Error && !('status' in e) ? e.message : aiErrorText(e) };
