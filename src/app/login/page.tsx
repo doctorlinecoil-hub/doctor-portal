@@ -10,11 +10,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <AuthFrame>
       <div className="panel">
-        <div><h1>כניסה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>הזינו את פרטי הכניסה שקיבלתם מהמרפאה</p></div>
+        <div><h1>כניסה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>כניסה עם המייל והסיסמה שלכם</p></div>
         {e === 'noaccess' && <div className="callout bad"><div>לחשבון הזה אין גישה למערכת. פנו למרפאה.</div></div>}
         <LoginForm />
       </div>
-      <p className="hint" style={{ textAlign: 'center' }}>שכחתם סיסמה? פנו למרפאה ותקבלו סיסמה חדשה.</p>
+      <div className="auth-links">
+        <a href="/forgot">שכחתי סיסמה</a>
+        <span>אין לכם חשבון? <a href="/register"><b>הרשמה</b></a></span>
+      </div>
+      <a className="btn btn-ghost auth-book" href="/book"><span>רק רוצים לקבוע תור? אפשר גם בלי חשבון</span></a>
     </AuthFrame>
   );
 }

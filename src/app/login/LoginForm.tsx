@@ -18,7 +18,10 @@ export default function LoginForm() {
     await supabase.auth.signOut().catch(() => {});
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) {
-      setErr(error.status === 429 ? 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.' : 'המייל או הסיסמה לא נכונים.');
+      const m = (error.message || '').toLowerCase();
+      setErr(error.status === 429 ? 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.'
+        : m.includes('banned') ? 'החשבון עוד ממתין לאישור המרפאה (או שהגישה הושהתה). נעדכן אתכם במייל כשהוא יאושר.'
+        : 'המייל או הסיסמה לא נכונים.');
       setBusy(false);
       return;
     }
