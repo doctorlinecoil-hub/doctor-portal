@@ -120,8 +120,17 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'tpl-modal':
       return staffShell('/doctor', <TemplatePicker letterType="legal" onInsert={() => undefined} selection={() => ''} demo={fx.templates.map((t) => ({ id: t.id, title: t.title, body: t.body, letter_type: t.letter_type ?? null }))} />);
     case 'public-book':
-      return <PublicBooking open clinic={{ name: clinic, address: 'מגדל ספיר, רחוב תובל 40, רמת גן', phone: '052-4266440', needsApproval: true }} services={SVC} code="" firm={null}
+    case 'public-book-3':
+    case 'public-book-scan':
+    case 'public-book-4': {
+      const demo = screen === 'public-book-3' ? { step: 3 } : screen === 'public-book-scan' ? { step: 3, scanning: true } : screen === 'public-book-4' ? { step: 4, ext: {
+        name: 'ישראל ישראלי', id_number: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', suggested_type: 'legal' as const,
+        request: 'חוות דעת לבית משפט לגבי נכות בעמוד שדרה צווארי לאחר תאונת עבודה.', event: 'תאונת עבודה', event_date: '2025-03', sure: ['name', 'id_number', 'dob', 'phone'], warning: '',
+        referrer_kind: 'law' as const, referrer_office: 'כהן ושות׳ משרד עורכי דין', referrer_contact: 'עו״ד דנה כהן', referrer_email: 'dana@cohen-law.co.il', referrer_phone: '03-5551234',
+      } } : undefined;
+      return <PublicBooking open clinic={{ name: clinic, address: 'מגדל ספיר, רחוב תובל 40, רמת גן', phone: '052-4266440', needsApproval: true }} services={SVC} code="" firm={null} demo={demo}
         slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} />;
+    }
     case 'doctor-templates':
       return staffShell('/doctor/templates', <><PageHead title="תבניות למכתבים" /><TemplatesAdmin list={fx.templates} preview /></>);
     case 'firm-resched':
