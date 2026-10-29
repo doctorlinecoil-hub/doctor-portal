@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { SETTINGS_DEFAULTS, type Settings } from '@/lib/constants';
 import { rescanIfNeeded, runIntake } from '@/lib/intake';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { notifyFirmUpdate, notifyNewRequest, sendLetterTo, sendSummons } from '@/lib/notify';
+import { notifyFirmUpdate, notifyNewRequest, sendDepositRequest, sendLetterTo, sendSummons } from '@/lib/notify';
+import { appUrl } from '@/lib/mail';
 import { extractDetails, type Extracted } from '@/lib/extract';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,6 +29,8 @@ export async function afterBooking(id: string): Promise<{ ok: boolean }> {
   if (!c || Date.now() - new Date(c.createdAt).getTime() > 15 * 60_000) return { ok: false };
   const { data: existing } = await createAdminClient().from('case_intake').select('appointment_id').eq('appointment_id', id).maybeSingle();
   const { data: staff } = await (await createClient()).rpc('is_staff');
+  // a patient's own account: how to pay the deposit that holds the slot
+  if (!staff) after(() => sendDepositRequest(id, `${appUrl()}/firm/cases/${id}`).then(() => undefined, () => undefined));
   // a referrer books the time first; the doctor is told once the details are in (afterDetails)
   if (!c.detailsAt) return { ok: true };
   after(async () => {
