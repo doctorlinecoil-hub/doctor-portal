@@ -1,53 +1,93 @@
 import Icon from '@/components/Icon';
-import { PageHead, Stat } from '@/components/ui';
+import { PageHead } from '@/components/ui';
+import { AreaTrend, Delta, Donut, HBars } from '@/components/charts';
 import { ils } from '@/lib/constants';
 import type { Report } from '@/lib/reports';
 
+const short = (n: number) => (n >= 10000 ? `₪${Math.round(n / 1000)}K` : ils(n));
+
+function Kpi({ icon, tone, label, value, delta, sub, href }: { icon: string; tone: string; label: string; value: string | number; delta?: React.ReactNode; sub?: string; href?: string }) {
+  const body = (
+    <>
+      <span className={`stat-ic ${tone}`}><Icon name={icon} /></span>
+      <div>
+        <span>{label}</span>
+        <b>{value}</b>
+        {delta}
+        {sub && <span className="stat-sub">{sub}</span>}
+      </div>
+    </>
+  );
+  return href ? <a className="stat stat-link kpi" href={href}>{body}</a> : <div className="stat kpi">{body}</div>;
+}
+
 export function ReportsView({ report: r }: { report: Report }) {
-  const max = Math.max(1, ...r.months.map((m) => Math.max(m.billed, m.collected)));
+  const k = r.kpi;
   return (
     <>
-      <PageHead title="דוחות והכנסות" sub="12 החודשים האחרונים. הסכומים כוללים מע״מ.">
+      <PageHead title="דוחות והכנסות" sub="12 החודשים האחרונים · הסכומים כוללים מע״מ">
         <a className="btn" href="/api/export?what=cases"><Icon name="download" />תיקים לאקסל</a>
         <a className="btn" href="/api/export?what=payments"><Icon name="download" />תשלומים לאקסל</a>
       </PageHead>
+
       <div className="stats">
-        <Stat icon="calendar" label="תיקים החודש" value={r.kpi.casesMonth} tone="info" />
-        <Stat icon="wallet" label="נגבה החודש" value={ils(r.kpi.collectedMonth)} tone="ok" />
-        <Stat icon="receipt" label="יתרות פתוחות" value={ils(r.kpi.outstanding)} tone="bad" href="/admin/payments" />
-        <Stat icon="clock" label="ממוצע מביקור למכתב" value={r.kpi.avgDaysToLetter == null ? '—' : `${r.kpi.avgDaysToLetter} ימים`} tone="violet" sub={r.kpi.openLetters ? `${r.kpi.openLetters} מכתבים פתוחים` : undefined} />
+        <Kpi icon="calendar" tone="info" label="תיקים החודש" value={k.casesMonth} delta={<Delta now={k.casesMonth} before={k.casesPrev} />} />
+        <Kpi icon="receipt" tone="violet" label="חויב החודש" value={ils(k.billedMonth)} delta={<Delta now={k.billedMonth} before={k.billedPrev} />} />
+        <Kpi icon="wallet" tone="ok" label="נגבה החודש" value={ils(k.collectedMonth)} delta={<Delta now={k.collectedMonth} before={k.collectedPrev} />} />
+        <Kpi icon="alert" tone="bad" label="יתרות פתוחות" value={ils(k.outstanding)} href="/admin/payments" sub="לחצו לפירוט ולרישום תשלום" />
       </div>
+
       <section className="panel">
-        <div className="panel-head"><h2><Icon name="chart" />לפי חודש</h2><span className="hint"><i className="lg billed" /> חויב · <i className="lg collected" /> נגבה</span></div>
-        <div className="bars" role="img" aria-label="חיוב וגבייה לפי חודש">
-          {r.months.map((m) => (
-            <div className="bar-col" key={m.key} title={`${m.label}: ${m.cases} תיקים · חויב ${ils(m.billed)} · נגבה ${ils(m.collected)}`}>
-              <div className="bar-pair">
-                <i className="bar billed" style={{ height: `${(m.billed / max) * 100}%` }} />
-                <i className="bar collected" style={{ height: `${(m.collected / max) * 100}%` }} />
-              </div>
-              <span className="bar-lbl">{m.label}</span>
-              <span className="bar-n num">{m.cases}</span>
-            </div>
-          ))}
+        <div className="panel-head">
+          <h2><Icon name="chart" />הכנסות לפי חודש</h2>
+          <span className="ch-keys"><i className="k1" />חויב <i className="k2" />נגבה</span>
         </div>
+        <AreaTrend
+          points={r.months.map((m) => ({ label: m.label, value: m.billed, value2: m.collected, title: `${m.label}: ${m.cases} תיקים · חויב ${ils(m.billed)} · נגבה ${ils(m.collected)}` }))}
+          fmt={short}
+          names={['חויב', 'נגבה']}
+        />
       </section>
-      <div className="cols" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
-        <section className="panel flush">
-          <div className="panel-head"><h2><Icon name="briefcase" />לפי מפנה</h2></div>
-          <div className="table-wrap"><table className="t">
-            <thead><tr><th>מפנה</th><th>תיקים</th><th>חויב</th><th>שולם</th><th>יתרה</th></tr></thead>
-            <tbody>{r.firms.map((f) => <tr key={f.id}><td>{f.name}</td><td className="num">{f.cases}</td><td className="num">{ils(f.billed)}</td><td className="num">{ils(f.paid)}</td><td className={`num${f.balance ? ' bad-t' : ''}`}>{ils(f.balance)}</td></tr>)}</tbody>
-          </table></div>
+
+      <div className="ch-grid3">
+        <section className="panel">
+          <div className="panel-head"><h2><Icon name="file" />תיקים לפי שירות</h2></div>
+          <Donut data={r.services.map((s) => ({ label: s.label, value: s.cases }))} />
         </section>
-        <section className="panel flush">
-          <div className="panel-head"><h2><Icon name="file" />לפי סוג</h2></div>
-          <div className="table-wrap"><table className="t">
-            <thead><tr><th>סוג</th><th>תיקים</th><th>חויב</th></tr></thead>
-            <tbody>{r.types.map((t) => <tr key={t.type}><td>{t.label}</td><td className="num">{t.cases}</td><td className="num">{ils(t.billed)}</td></tr>)}</tbody>
-          </table></div>
+        <section className="panel">
+          <div className="panel-head"><h2><Icon name="activity" />מצב התיקים</h2></div>
+          <Donut data={r.statuses.map((s) => ({ label: s.label, value: s.value }))} />
+        </section>
+        <section className="panel">
+          <div className="panel-head"><h2><Icon name="stethoscope" />מדדים</h2></div>
+          <ul className="mini-kpis">
+            <li><span>ממוצע לתיק</span><b className="num">{ils(k.avgTicket)}</b></li>
+            <li><span>ממוצע מביקור למכתב</span><b className="num">{k.avgDaysToLetter == null ? '—' : `${k.avgDaysToLetter} ימים`}</b></li>
+            <li><span>מכתבים פתוחים</span><b className="num">{k.openLetters}</b></li>
+            <li><span>פגישות במרפאה / טלפוניות</span><b className="num">{r.modes.clinic} / {r.modes.phone}</b></li>
+            <li><span>שיעור ביטולים</span><b className="num">{r.cancelRate}%</b></li>
+          </ul>
         </section>
       </div>
+
+      <div className="cols" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
+        <section className="panel">
+          <div className="panel-head"><h2><Icon name="briefcase" />המפנים המובילים</h2><span className="hint">לפי סכום חיוב</span></div>
+          <HBars data={r.firms.slice(0, 8).map((f) => ({ label: f.name || 'ללא שם', value: f.billed, sub: `${f.cases} תיקים · שולם ${ils(f.paid)}${f.balance ? ` · יתרה ${ils(f.balance)}` : ''}` }))} fmt={ils} />
+        </section>
+        <section className="panel">
+          <div className="panel-head"><h2><Icon name="receipt" />הכנסות לפי שירות</h2></div>
+          <HBars data={r.services.map((s) => ({ label: s.label, value: s.billed, sub: `${s.cases} תיקים` }))} fmt={ils} />
+        </section>
+      </div>
+
+      <section className="panel flush">
+        <div className="panel-head"><h2><Icon name="list" />פירוט לפי מפנה</h2></div>
+        <div className="table-wrap"><table className="t">
+          <thead><tr><th>מפנה</th><th>תיקים</th><th>חויב</th><th>שולם</th><th>יתרה</th></tr></thead>
+          <tbody>{r.firms.map((f) => <tr key={f.id}><td>{f.name}</td><td className="num">{f.cases}</td><td className="num">{ils(f.billed)}</td><td className="num">{ils(f.paid)}</td><td className={`num${f.balance ? ' bad-t' : ''}`}>{ils(f.balance)}</td></tr>)}</tbody>
+        </table></div>
+      </section>
     </>
   );
 }

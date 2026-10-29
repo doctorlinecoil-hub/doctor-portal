@@ -5,7 +5,8 @@ import { Empty, PageHead, Stat } from '@/components/ui';
 import { KindBadge, StatusBadge } from '@/components/Badges';
 import { ils } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
-import { DAYS, dayNum, fmtDate, fmtDay, ilParts, todayIL, weekday } from '@/lib/dates';
+import { DAYS, dayNum, fmtDate, fmtDay, fromDayNum, ilParts, todayIL, weekday } from '@/lib/dates';
+import { Spark } from '@/components/charts';
 import type { ApptRow, CaseDetail, DocRow, NoteRow } from '@/lib/types';
 import { ApptItem, CaseHero, DocsPanel, NotesPanel, groupByDay } from './FirmViews';
 
@@ -81,6 +82,21 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
         {isAdmin ? <Stat icon="wallet" label="יתרה לגבייה" value={ils(outstanding)} tone="bad" href="/admin/payments" />
           : <Stat icon="fileCheck" label="מכתבים שנשלחו" value={active.filter((r) => r.status === 'done').length} tone="ok" />}
       </div>
+
+      <section className="panel load-panel">
+        <div className="panel-head">
+          <h2><Icon name="chart" />העומס בשבועיים הקרובים</h2>
+          <div className="row" style={{ gap: 6 }}>
+            <Link className="btn btn-sm btn-ghost" href="/doctor/calendar"><Icon name="calendar" size={15} />ליומן</Link>
+            <Link className="btn btn-sm btn-ghost" href="/admin/reports"><Icon name="chart" size={15} />לדוחות</Link>
+          </div>
+        </div>
+        <Spark
+          values={Array.from({ length: 14 }, (_, i) => active.filter((r) => day(r) === i).length)}
+          labels={Array.from({ length: 14 }, (_, i) => { const d = fromDayNum(dayNum(today) + i); return i === 0 ? 'היום' : `${'אבגדהוש'[weekday(d)]}׳ ${+d.slice(8, 10)}`; })}
+          today={0}
+        />
+      </section>
 
       {pending.length > 0 && (
         <section className="panel flush approvals" id="approvals">
