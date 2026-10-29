@@ -4,31 +4,44 @@ import type { Service } from '@/lib/services';
 import Icon from '@/components/Icon';
 
 /*
- * The clinic's public page: who the doctor is, what he does, who it is for, how it works,
- * and the ways in (book an appointment, sign up, sign in). Content comes from the settings and the services.
+ * The clinic's public page, for marketing: who the doctor is, his expertise, what he provides, for whom,
+ * and the ways in (book, sign up, sign in). All facts come from the clinic's own settings (letterhead, CV, services).
  */
 
 const waze = (a: string) => `https://waze.com/ul?q=${encodeURIComponent(a)}&navigate=yes`;
 const maps = (a: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}`;
 const intlPhone = (p: string) => { const d = p.replace(/\D/g, ''); return d.startsWith('0') ? `972${d.slice(1)}` : d; };
+const lines = (t: string) => String(t || '').split('\n').map((l) => l.trim()).filter(Boolean);
 
-export default function Landing({ s, services }: { s: Settings; services: Service[] }) {
-  const titles = (s.lh_titles || '').split('\n').map((t) => t.trim()).filter(Boolean);
-  const cv = (s.lh_cv || '').split('\n').map((l) => l.trim()).filter(Boolean);
-  const facts = cv.filter((l) => !/[:：]$/.test(l)).slice(0, 3);
-  const bring = (s.bring_items || '').split('\n').map((l) => l.trim()).filter(Boolean);
+export default function Landing({ s, services, home }: { s: Settings; services: Service[]; home?: string | null }) {
+  const titles = lines(s.lh_titles);
+  const cv = lines(s.lh_cv);
+  const facts = cv.filter((l) => !/[:：]$/.test(l)).slice(0, 4);
+  const bring = lines(s.bring_items);
   const year = new Date().getFullYear();
+  // years as a specialist, from the CV ("מומחה ... משנת 1992")
+  const since = Number((cv.join(' ').match(/מומח[^.\n]{0,60}?(19\d\d|20\d\d)/) || [])[1]) || 0;
+  const years = since ? year - since : 0;
+  // expertise: the doctor's own titles and the letterhead lines that describe his fields
+  const norm = (t: string) => t.replace(/[^\p{L}]/gu, '');
+  const expertise: string[] = [];
+  for (const l of [...titles, ...lines(s.lh_footer).filter((x) => /מומח|מנהל|נוירו|ניתוח/.test(x) && !/רישיון|כתובת/.test(x))]) {
+    const n = norm(l);
+    if (n && !expertise.some((e) => { const m = norm(e); return m.includes(n.slice(0, 14)) || n.includes(m.slice(0, 14)); })) expertise.push(l);
+  }
+  expertise.splice(4);
+  const first = s.lh_name.replace(/^ד[״"]ר\s*/, '');
 
   return (
     <div className="lp">
       <header className="lp-nav">
         <div className="lp-wrap lp-nav-in">
-          <a href="/" className="lp-brand"><img src="/brand/emblem.png" alt="" width={40} height={40} /><span><b>{s.lh_name}</b><small>{titles[0] || 'נוירוכירורג'}</small></span></a>
+          <a href="/" className="lp-brand"><img src="/brand/emblem.png" alt="" width={42} height={42} /><span><b>{s.lh_name}</b><small>{titles[0] || 'נוירוכירורג'}</small></span></a>
           <nav className="lp-links" aria-label="ניווט">
-            <a href="#services">שירותים</a><a href="#how">איך זה עובד</a><a href="#about">על הרופא</a><a href="#faq">שאלות</a><a href="#contact">יצירת קשר</a>
+            <a href="#expertise">תחומי מומחיות</a><a href="#services">שירותים</a><a href="#lawyers">לעורכי דין</a><a href="#about">אודות</a><a href="#contact">יצירת קשר</a>
           </nav>
           <div className="lp-nav-cta">
-            <a className="btn btn-ghost" href="/login">כניסה</a>
+            {home ? <a className="btn btn-ghost" href={home}>חזרה למערכת</a> : <a className="btn btn-ghost" href="/login">כניסה</a>}
             <a className="btn btn-primary" href="/book"><Icon name="calendarPlus" />קביעת תור</a>
           </div>
         </div>
@@ -37,30 +50,58 @@ export default function Landing({ s, services }: { s: Settings; services: Servic
       <section className="lp-hero">
         <div className="lp-wrap lp-hero-in">
           <div className="lp-hero-text">
-            <span className="lp-eyebrow"><Icon name="stethoscope" size={16} />{titles[0] || 'נוירוכירורגיה'}</span>
-            <h1>חוות דעת רפואיות מקצועיות,<br />מדויקות ומנומקות</h1>
-            <p className="lp-lead">{s.lh_name} מעניק חוות דעת לבית משפט ולביטוח הלאומי, סיכומי ביקור והפניות לבדיקות, למשרדי עורכי דין, למתווכים, לחברות ולמטופלים פרטיים.</p>
+            <span className="lp-eyebrow"><Icon name="stethoscope" size={16} />{titles[0] || 'נוירוכירורגיה'} · חוות דעת רפואיות</span>
+            <h1>{s.lh_name}</h1>
+            <p className="lp-hero-sub">{years >= 10 ? `${years} שנות מומחיות בנוירוכירורגיה` : 'מומחה בנוירוכירורגיה'}, בשירות מטופלים, משרדי עורכי דין וחברות.</p>
+            <p className="lp-lead">חוות דעת רפואיות מנומקות לבית משפט ולביטוח הלאומי, סיכומי ביקור והפניות. כל מסמך נכתב בקפידה, נחתם על נייר המכתבים הרשמי, ונשלח אליכם מסודר ומוכן להגשה.</p>
             <div className="lp-cta">
               <a className="btn btn-primary btn-lg" href="/book"><Icon name="calendarPlus" />קביעת תור עכשיו</a>
               <a className="btn btn-lg lp-btn-light" href="/register"><Icon name="briefcase" />הרשמה למשרדים ולמטופלים</a>
             </div>
-            {facts.length > 0 && <ul className="lp-facts">{facts.map((f) => <li key={f}><Icon name="check" size={16} />{f}</li>)}</ul>}
+            <p className="lp-hero-login">{home ? <a href={home}>חזרה למערכת</a> : <>כבר רשומים? <a href="/login">כניסה למערכת</a></>}</p>
           </div>
-          <div className="lp-hero-card" aria-hidden="true">
-            <img src="/brand/letterhead.jpg" alt="" className="lp-hero-banner" />
-            <div className="lp-hero-steps">
-              <div><span>1</span>בוחרים שירות ומועד</div>
-              <div><span>2</span>מעלים מסמכים, והמערכת קוראת אותם</div>
-              <div><span>3</span>מקבלים זימון ותזכורות במייל</div>
-              <div><span>4</span>המסמך החתום מגיע כ־PDF</div>
+          <aside className="lp-profile" aria-label={`על ${s.lh_name}`}>
+            <div className="lp-profile-top">
+              <img src="/brand/emblem.png" alt="" width={84} height={84} />
+              <div><b>{s.lh_name}</b>{titles.slice(0, 2).map((t) => <span key={t}>{t}</span>)}</div>
             </div>
-          </div>
+            {facts.length > 0 && <ul className="lp-profile-facts">{facts.map((f) => <li key={f}><Icon name="check" size={15} />{f}</li>)}</ul>}
+            {s.lh_licenses && <div className="lp-profile-lic"><Icon name="shield" size={15} />{s.lh_licenses}</div>}
+          </aside>
         </div>
       </section>
 
-      <section className="lp-sec" id="services">
+      <section className="lp-stats" aria-label="במספרים">
+        <div className="lp-wrap lp-stats-in">
+          {years >= 10 && <div><b>{years}+</b><span>שנות מומחיות</span></div>}
+          <div><b>{services.length || 4}</b><span>סוגי שירות</span></div>
+          <div><b>24/7</b><span>קביעת תור אונליין</span></div>
+          <div><b>PDF</b><span>מסמך חתום במייל</span></div>
+        </div>
+      </section>
+
+      {expertise.length > 0 && (
+        <section className="lp-sec" id="expertise">
+          <div className="lp-wrap">
+            <span className="lp-kicker">תחומי מומחיות</span>
+            <h2 className="lp-h">ניסיון קליני רחב, עין משפטית מדויקת</h2>
+            <p className="lp-sub">הידע הקליני של {first} עומד מאחורי כל חוות דעת: בדיקה יסודית, עיון בכל המסמכים, ונימוק מקצועי ברור.</p>
+            <div className="lp-grid lp-grid-4">
+              {expertise.map((e, i) => (
+                <div key={e} className="lp-card lp-exp">
+                  <span className="lp-ic"><Icon name={['activity', 'stethoscope', 'shield', 'sparkles'][i % 4]} /></span>
+                  <b>{e}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="lp-sec lp-alt" id="services">
         <div className="lp-wrap">
-          <h2 className="lp-h">השירותים</h2>
+          <span className="lp-kicker">שירותים</span>
+          <h2 className="lp-h">מה אפשר לקבל</h2>
           <p className="lp-sub">כל מסמך נכתב על נייר המכתבים הרשמי, חתום ומוכן להגשה.</p>
           <div className="lp-grid lp-grid-4">
             {services.map((v) => (
@@ -75,50 +116,60 @@ export default function Landing({ s, services }: { s: Settings; services: Servic
         </div>
       </section>
 
-      <section className="lp-sec lp-alt" id="who">
-        <div className="lp-wrap">
-          <h2 className="lp-h">למי זה מתאים</h2>
-          <div className="lp-grid lp-grid-3">
-            <div className="lp-card">
-              <span className="lp-ic"><Icon name="scale" /></span>
-              <b>משרדי עורכי דין</b>
-              <ul className="lp-list"><li>תור לכל לקוח שאתם מפנים, בלחיצה</li><li>חוות דעת לבית משפט ולביטוח לאומי</li><li>מעקב אחרי כל התיקים במקום אחד</li><li>המסמך החתום נשלח אליכם במייל</li></ul>
-              <a className="btn" href="/register?k=law">הרשמה למשרד</a>
+      <section className="lp-band" id="lawyers">
+        <div className="lp-wrap lp-band-in">
+          <div>
+            <span className="lp-kicker light">למשרדי עורכי דין, מתווכים וחברות</span>
+            <h2>שותף רפואי מקצועי לתיקים שלכם</h2>
+            <p>מערכת אחת לכל התיקים: קובעים תור לכל לקוח בלחיצה, מעלים מסמכים, ומקבלים את חוות הדעת החתומה ישירות למייל.</p>
+            <ul className="lp-band-list">
+              <li><Icon name="calendarPlus" size={18} />תורים פנויים בזמן אמת, בלי טלפונים</li>
+              <li><Icon name="sparkles" size={18} />המערכת קוראת את המסמכים וממלאת את הפרטים לבד</li>
+              <li><Icon name="folder" size={18} />מעקב אחרי כל התיקים, הזימונים והתשלומים</li>
+              <li><Icon name="bell" size={18} />זימון, תזכורת 3 ימים ושעתיים לפני, ועדכון כשהמסמך מוכן</li>
+            </ul>
+            <div className="lp-cta">
+              <a className="btn btn-primary btn-lg" href="/register?k=law"><Icon name="briefcase" />פתיחת חשבון למשרד</a>
+              <a className="btn btn-lg lp-btn-light" href="/book">קביעת תור בלי חשבון</a>
             </div>
-            <div className="lp-card">
-              <span className="lp-ic"><Icon name="handshake" /></span>
-              <b>מתווכים, מיצוי זכויות וחברות</b>
-              <ul className="lp-list"><li>קישור אישי לקביעת תורים</li><li>העלאת מסמכים מאובטחת</li><li>זימונים ותזכורות אוטומטיים</li><li>פרטי תשלום ברורים לכל תיק</li></ul>
-              <a className="btn" href="/register?k=broker">הרשמה לעסק</a>
-            </div>
-            <div className="lp-card">
-              <span className="lp-ic"><Icon name="user" /></span>
-              <b>מטופלים</b>
-              <ul className="lp-list"><li>קביעת תור אונליין, בלי טלפונים</li><li>{s.deposit_amount > 0 ? `שריון התור במקדמה של ${ils(s.deposit_amount)}` : 'אישור תור מהיר'}</li><li>תזכורת 3 ימים ושעתיים לפני</li><li>המסמכים נשלחים אליכם במייל</li></ul>
-              <a className="btn" href="/book">קביעת תור</a>
-            </div>
+          </div>
+          <div className="lp-band-card" aria-hidden="true">
+            <div className="lp-mini-head"><span /><span /><span /></div>
+            <div className="lp-mini-row"><b>חוות דעת לבית משפט</b><em className="ok">המסמך מוכן</em></div>
+            <div className="lp-mini-row"><b>חוות דעת לביטוח לאומי</b><em>נקבע תור</em></div>
+            <div className="lp-mini-row"><b>סיכום ביקור</b><em>בבדיקת הרופא</em></div>
+            <div className="lp-mini-row"><b>הפניה לבדיקות</b><em className="ok">נשלח במייל</em></div>
           </div>
         </div>
       </section>
 
       <section className="lp-sec" id="how">
         <div className="lp-wrap">
-          <h2 className="lp-h">איך זה עובד</h2>
+          <span className="lp-kicker">איך זה עובד</span>
+          <h2 className="lp-h">ארבעה צעדים פשוטים</h2>
           <ol className="lp-steps">
             <li><span className="lp-step-n">1</span><b>בוחרים שירות ומועד</b><p>היומן של המרפאה פתוח אונליין. בוחרים יום ושעה פנויים.</p></li>
-            <li><span className="lp-step-n">2</span><b>מעלים מסמכים</b><p>המערכת קוראת את המסמכים וממלאת את הפרטים לבד. רק בודקים ומאשרים.</p></li>
-            <li><span className="lp-step-n">3</span><b>אישור וזימון</b><p>הרופא מאשר את התור, ונשלח זימון עם כתובת, ניווט ופרטי תשלום.</p></li>
+            <li><span className="lp-step-n">2</span><b>מעלים מסמכים</b><p>המערכת קוראת את המסמכים וממלאת את הפרטים. רק בודקים ומאשרים.</p></li>
+            <li><span className="lp-step-n">3</span><b>אישור וזימון</b><p>הרופא מאשר, ונשלח זימון עם כתובת, ניווט ופרטי תשלום.</p></li>
             <li><span className="lp-step-n">4</span><b>מקבלים את המסמך</b><p>אחרי הביקור המסמך החתום נשלח במייל כ־PDF, וזמין גם במערכת.</p></li>
           </ol>
         </div>
       </section>
 
-      <section className="lp-sec lp-alt">
-        <div className="lp-wrap lp-grid lp-grid-4 lp-why">
-          <div><Icon name="sparkles" /><b>קריאה חכמה של מסמכים</b><p>הפרטים נקראים מהמסמכים ונבדקים מול המטופל, כדי שלא יהיו טעויות.</p></div>
-          <div><Icon name="fileCheck" /><b>מסמכים רשמיים</b><p>על נייר המכתבים של הרופא, חתומים ומסודרים, להורדה כ־PDF.</p></div>
-          <div><Icon name="bell" /><b>זימונים ותזכורות</b><p>במייל, למטופל ולמפנה: עם האישור, 3 ימים לפני ושעתיים לפני.</p></div>
-          <div><Icon name="shield" /><b>פרטיות ואבטחה</b><p>כל משרד רואה רק את התיקים שלו. המידע הרפואי מוצפן ונשמר בצורה מאובטחת.</p></div>
+      <section className="lp-sec lp-alt" id="patients">
+        <div className="lp-wrap lp-grid lp-grid-2 lp-split">
+          <div>
+            <span className="lp-kicker">למטופלים</span>
+            <h2 className="lp-h">קובעים תור בעצמכם, תוך שתי דקות</h2>
+            <p className="lp-sub">בוחרים מועד, מעלים את המסמכים הרפואיים, ומקבלים זימון ותזכורות במייל.{s.deposit_amount > 0 ? ` התור נשמר עם מקדמה של ${ils(s.deposit_amount)} בהעברה או בביט.` : ''}</p>
+            <div className="lp-cta"><a className="btn btn-primary btn-lg" href="/book"><Icon name="calendarPlus" />קביעת תור</a><a className="btn btn-lg" href="/register?k=patient">פתיחת חשבון מטופל</a></div>
+          </div>
+          <ul className="lp-checks">
+            <li><Icon name="checkCircle" size={20} />בדיקה יסודית ושיחה מסודרת</li>
+            <li><Icon name="checkCircle" size={20} />כל המסמכים במקום אחד, מאובטח</li>
+            <li><Icon name="checkCircle" size={20} />תזכורת 3 ימים ושעתיים לפני הביקור</li>
+            <li><Icon name="checkCircle" size={20} />המסמך החתום נשלח אליכם במייל</li>
+          </ul>
         </div>
       </section>
 
@@ -126,10 +177,11 @@ export default function Landing({ s, services }: { s: Settings; services: Servic
         <section className="lp-sec" id="about">
           <div className="lp-wrap lp-about">
             <div className="lp-about-side">
-              <img src="/brand/emblem.png" alt="" width={96} height={96} />
+              <span className="lp-kicker">אודות</span>
               <h2 className="lp-h">{s.lh_name}</h2>
               {titles.map((t) => <p key={t} className="lp-sub">{t}</p>)}
               {s.lh_licenses && <p className="hint">{s.lh_licenses}</p>}
+              <a className="btn" href="/book" style={{ marginTop: 12, alignSelf: 'flex-start' }}><Icon name="calendarPlus" />קביעת תור</a>
             </div>
             <div className="lp-cv">
               {cv.slice(0, 40).map((l, i) => (/[:：]$/.test(l) && l.length < 60 ? <h3 key={i}>{l.replace(/[:：]$/, '')}</h3> : <p key={i}>{l}</p>))}
@@ -140,7 +192,8 @@ export default function Landing({ s, services }: { s: Settings; services: Servic
 
       <section className="lp-sec lp-alt" id="faq">
         <div className="lp-wrap lp-faq">
-          <h2 className="lp-h">שאלות נפוצות</h2>
+          <span className="lp-kicker">שאלות נפוצות</span>
+          <h2 className="lp-h">כל מה שחשוב לדעת</h2>
           <details><summary>איך קובעים תור?</summary><p>דרך דף קביעת התור: בוחרים שירות ומועד, מעלים מסמכים ומאשרים פרטים. משרדים ומתווכים יכולים גם להירשם ולנהל את כל התיקים מחשבון אחד.</p></details>
           {s.deposit_amount > 0 && <details><summary>למה צריך מקדמה?</summary><p>מטופל שקובע תור בעצמו מעביר מקדמה של {ils(s.deposit_amount)} בהעברה בנקאית או בביט, ומעלה צילום של האישור. המקדמה משריינת את המועד, והיא חלק מהמחיר.</p></details>}
           <details><summary>מי משלם על חוות הדעת?</summary><p>בדרך כלל המטופל משלם ישירות לרופא. כשמשרד מפנה, אפשר לסמן שהמשרד הוא המשלם. פרטי התשלום מופיעים בזימון ובתיק.</p></details>
@@ -154,7 +207,8 @@ export default function Landing({ s, services }: { s: Settings; services: Servic
       <section className="lp-sec" id="contact">
         <div className="lp-wrap lp-contact">
           <div>
-            <h2 className="lp-h">יצירת קשר</h2>
+            <span className="lp-kicker">יצירת קשר</span>
+            <h2 className="lp-h">נשמח לעמוד לרשותכם</h2>
             <ul className="lp-contact-list">
               {s.lh_address && <li><Icon name="navigation" />{s.lh_address}</li>}
               {s.lh_phone && <li><Icon name="phone" /><a href={`tel:${s.lh_phone.replace(/[^\d+]/g, '')}`} dir="ltr">{s.lh_phone}</a></li>}
@@ -170,17 +224,18 @@ export default function Landing({ s, services }: { s: Settings; services: Servic
             <b>מוכנים להתחיל?</b>
             <p>קביעת תור לוקחת פחות משתי דקות.</p>
             <a className="btn btn-primary btn-lg" href="/book"><Icon name="calendarPlus" />קביעת תור</a>
-            <a className="lp-link" href="/login">כבר רשומים? כניסה למערכת</a>
+            {home ? <a className="lp-link" href={home}>חזרה למערכת</a> : <a className="lp-link" href="/login">כבר רשומים? כניסה למערכת</a>}
           </div>
         </div>
       </section>
 
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot-in">
-          <span>© {year} {s.lh_name}</span>
+          <span>© {year} {s.lh_name}{s.lh_licenses ? ` · ${s.lh_licenses}` : ''}</span>
           <nav aria-label="מידע משפטי"><a href="/terms">תנאי שימוש</a><a href="/privacy">מדיניות פרטיות</a><a href="/accessibility">הצהרת נגישות</a></nav>
         </div>
       </footer>
+      <a className="lp-fab btn btn-primary" href="/book"><Icon name="calendarPlus" />קביעת תור</a>
     </div>
   );
 }
