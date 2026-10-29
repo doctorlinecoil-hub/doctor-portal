@@ -1211,3 +1211,12 @@ svg.flip { transform: scaleX(-1); }
 @media (max-width: 720px) { .tplm-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 180px minmax(0, 1fr); } .tplm-list { border-inline-end: 0; border-bottom: 1px solid var(--line); } }
 .lookup-input input { border: 0 !important; box-shadow: none !important; padding: 0 !important; height: 100%; background: transparent !important; }
 .pb .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pb .options { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); } @media (max-width: 640px) { .pb .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* v12: free-text drugs and the official prescription */
+.rx-add-free { align-self: flex-start; }
+.rx-add-more { align-self: flex-start; border: 1px dashed var(--line); }
+.rx-name-input { width: 100%; font-size: 15px; font-weight: 600; border: 1px solid transparent; border-radius: 8px; padding: 4px 8px; background: transparent; color: inherit; }
+.rx-name-input:hover { border-color: var(--line); }
+.rx-name-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.rx-fields-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.rx-sheet .rxo-sigspace { height: 12mm; }
