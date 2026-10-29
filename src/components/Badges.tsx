@@ -1,7 +1,7 @@
 import { typeOf, KIND, PAY_STATE, STATUS_FIRM, STATUS_STAFF, type ApptStatus, type PayState, type ReferralType, type ReferrerKind } from '@/lib/constants';
 
-export function TypeBadge({ type }: { type: ReferralType }) {
-  return <span className="badge b-type">{typeOf(type)?.label}</span>;
+export function TypeBadge({ type, label }: { type: ReferralType | null; label?: string | null }) {
+  return <span className="badge b-type">{label || typeOf(type)?.label}</span>;
 }
 
 export function StatusBadge({ status, staff }: { status: ApptStatus; staff?: boolean }) {

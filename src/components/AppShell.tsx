@@ -22,6 +22,7 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'file' },
     { href: '/doctor/search', label: 'חיפוש מטופל', icon: 'search' },
     { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
+    { href: '/doctor/services', label: 'סוגי שירות ומחירים', icon: 'receipt' },
   ] };
   if (role === 'doctor') return [doctor];
   return [doctor, { title: 'ניהול', items: [
