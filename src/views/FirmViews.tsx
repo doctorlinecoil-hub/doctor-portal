@@ -18,7 +18,7 @@ export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; 
     <Link href={waiting && !staff ? `${href}/details` : href} className="item">
       <span className="item-time">{p.time}<small>{fmtDay(p.date).split(',')[0]}</small></span>
       <span className="item-main">
-        <b>{r.patient_name || 'ממתין לפרטי המטופל'}</b>
+        <b>{r.patient_name || 'ממתין לפרטי המטופל'}{r.mode === 'phone' && <span className="mode-chip" style={{ marginInlineStart: 8 }}><Icon name="phone" size={12} />טלפוני</span>}</b>
         {waiting && <span className="wait-chip"><Icon name="upload" size={13} />{staff ? 'המפנה עוד לא העלה מסמכים ופרטים' : 'להשלמה: מסמכים ופרטים'}</span>}
         <span className="item-meta">
           <span>{labelOf(r)}</span>
@@ -170,6 +170,7 @@ export function CaseHero({ c, staff, referrer, actions }: { c: CaseDetail; staff
             <TypeBadge type={c.referral_type} label={c.service_label} />
             <StatusBadge status={c.status} staff={staff} />
             {c.walk_in && <span className="badge b-walkin">ללא תור ביומן</span>}
+            {c.mode === 'phone' && <span className="mode-chip"><Icon name="phone" size={12} />שיחה טלפונית{staff && c.patient_phone ? ` · להתקשר ל־${c.patient_phone}` : ''}</span>}
           </div>
           <h1>{c.patient_name || 'ממתין לפרטי המטופל'}</h1>
           <div className="facts">
