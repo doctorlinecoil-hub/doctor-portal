@@ -847,3 +847,14 @@ svg.flip { transform: scaleX(-1); }
 @media print { .studio-side, .ribbon, .studio-head, .studio-actions { display: none !important; } }
 
 @media (max-width: 960px) { .ribbon { top: 60px; } }
+
+/* v4: calm, classic dashboard header (light card instead of the dark banner) */
+.hero { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-inline-start: 4px solid var(--accent); box-shadow: var(--shadow); }
+.hero::after { display: none; }
+.hero h1 { color: var(--fg); }
+.hero p { color: var(--muted); }
+.hero-date { color: var(--accent); }
+.hero-next { background: var(--accent-soft); border: 1px solid var(--accent-line, var(--line)); color: var(--fg); backdrop-filter: none; }
+.hero-next:hover { background: var(--accent-soft); border-color: var(--accent); }
+.hero-next .hint { color: var(--accent); }
+.hero-next > span:not(.hint):not(.ai-chip) { color: var(--fg-2); }
