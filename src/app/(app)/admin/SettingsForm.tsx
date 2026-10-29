@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Icon from '@/components/Icon';
-import { typeOf, SETTINGS_DEFAULTS, TYPES, type ReferralType, type Settings, type WeekDay } from '@/lib/constants';
+import { SETTINGS_DEFAULTS, type Settings, type WeekDay } from '@/lib/constants';
 import { DAYS, fmtDate } from '@/lib/dates';
 import { saveSettings } from './actions';
 
@@ -67,14 +67,7 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
 
           <section className="panel">
             <div className="panel-head"><h2><Icon name="wallet" />מחירים ותשלום</h2></div>
-            <p className="muted">מחיר ברירת מחדל לכל סוג תיק, כולל מע״מ. אפשר לשנות מחיר בכל תיק בנפרד.</p>
-            <div className="grid-2">
-              {(Object.keys(TYPES) as ReferralType[]).map((k) => (
-                <label className="field" htmlFor={`price-${k}`} key={k}><span>{typeOf(k).label} ₪</span>
-                  <input id={`price-${k}`} inputMode="decimal" dir="ltr" value={String(s.prices[k] ?? 0)} onChange={(e) => setS({ ...s, prices: { ...s.prices, [k]: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 } })} />
-                </label>
-              ))}
-            </div>
+            <div className="callout"><div><Icon name="receipt" />סוגי השירות והמחירים מוגדרים במסך נפרד: שמות, תיאורים, מחירים ושירותים חדשים.</div><a className="btn" href="/doctor/services">סוגי שירות ומחירים</a></div>
             <label className="check"><input type="checkbox" checked={s.letter_requires_payment} onChange={(e) => setS({ ...s, letter_requires_payment: e.target.checked })} />
               <span>המכתב הסופי נפתח למפנה רק אחרי תשלום מלא<small>עד אז המפנה רואה שהמכתב מוכן וממתין לתשלום</small></span></label>
             <label className="field" htmlFor="invItem"><span>תיאור השירות בחשבונית</span><input id="invItem" value={s.invoice_item} onChange={text('invoice_item')} /></label>
