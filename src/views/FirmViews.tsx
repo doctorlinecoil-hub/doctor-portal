@@ -271,9 +271,9 @@ export function PaymentSummary({ price, paid, payer, payments, title = 'תשלו
   );
 }
 
-export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, forward }: {
+export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, forward, payBox }: {
   c: CaseDetail; notes: NoteRow[]; docs: DocRow[]; payments: PaymentRow[]; paid: number;
-  letter: { ready: boolean; awaitingPayment: boolean; finalizedAt: string | null }; actions: React.ReactNode; forward?: React.ReactNode;
+  letter: { ready: boolean; awaitingPayment: boolean; finalizedAt: string | null }; actions: React.ReactNode; forward?: React.ReactNode; payBox?: React.ReactNode;
 }) {
   const incomplete = !c.details_at && c.status !== 'cancelled';
   return (
@@ -293,6 +293,7 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, 
       {c.status === 'cancelled' && c.decline_reason && (
         <div className="callout bad"><div><Icon name="x" />הבקשה לא אושרה: {c.decline_reason}</div><a className="btn" href="/firm/book"><Icon name="calendarPlus" />בחירת מועד אחר</a></div>
       )}
+      {payBox}
       <RequestsCallout notes={notes} />
       {letter.ready && (
         <div className="callout">
