@@ -39,6 +39,7 @@ export type CaseDetail = {
   letter_sent_at?: string | null;
   details_at?: string | null;
   submitted_by?: string;
+  walk_in?: boolean;
   firm: FirmInfo;
 };
 

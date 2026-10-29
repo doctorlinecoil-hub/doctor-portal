@@ -180,3 +180,9 @@ export function awaitingPaymentEmail(s: Settings, a: ApptInfo, balance: string, 
     `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק')}</div>`;
   return { subject, html: layout(s, { preheader: `יתרה: ${balance}`, title: 'המסמך מוכן', body }), text: textOf([subject, `יתרה: ${balance}`, link]) };
 }
+
+export function rxEmail(s: Settings, patientName: string): Rendered {
+  const subject = `מרשם · ${patientName} · ${s.lh_name}`;
+  const body = p(`שלום ${esc(patientName)},<br>מצורף המרשם מ${esc(s.lh_name)} כקובץ PDF.`) + p('את המרשם יש להציג בבית המרקחת כשהוא חתום. בכל שאלה אפשר לפנות למרפאה.');
+  return { subject, html: layout(s, { preheader: 'המרשם מצורף', title: 'מרשם', body }), text: textOf([subject, 'המרשם מצורף כ־PDF.']) };
+}

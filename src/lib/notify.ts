@@ -6,9 +6,11 @@ import { ilParts, todayIL, dayNum } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, clinicOf, declinedEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, clinicOf, rxEmail, declinedEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
+import { rxHtml } from './rx';
+import type { RxItem } from './rxTypes';
 
 /*
  * Who gets which email. Runs with the service key, so every caller must check permissions first.
@@ -230,4 +232,28 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
     attachments: [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }],
   });
   return r.ok ? { ok: true, sent: to.length, info: `המכתב נשלח ל־${to.join(', ')}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
+}
+
+/** A prescription as a PDF to the patient (or another address the doctor types). Callers check permission. */
+export async function sendRx(rxId: string, emails: string[]): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const to = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))].slice(0, 3);
+  if (!to.length) return { ok: false, sent: 0, info: 'כתובת המייל לא תקינה' };
+  const { data: rx } = await db.from('prescriptions').select('*').eq('id', rxId).maybeSingle();
+  if (!rx) return { ok: false, sent: 0, info: 'המרשם לא נמצא' };
+  const { a, s } = await load(db, rx.appointment_id);
+  if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const { count } = await db.from('email_log').select('id', { count: 'exact', head: true }).eq('appointment_id', a.id).eq('kind', 'rx').gte('created_at', since);
+  if ((count ?? 0) + to.length > 10) return { ok: false, sent: 0, info: 'נשלחו כבר הרבה מיילים מהתיק היום.' };
+  const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
+  const pdf = await renderPdf(rxHtml(s, { items: rx.items as RxItem[], notes: rx.notes, rx_date: rx.rx_date }, pt), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
+  if (!pdf) return { ok: false, sent: 0, info: 'יצירת קובץ ה־PDF נכשלה. אפשר להדפיס ולשלוח ידנית.' };
+  const r = await sendMail(db, a.id, 'rx', {
+    to,
+    ...rxEmail(s, a.patient_name),
+    attachments: [{ filename: `מרשם - ${a.patient_name}.pdf`.replace(/[\\/:*?"<>|]+/g, ' '), content: pdf, contentType: 'application/pdf' }],
+  });
+  if (r.ok) await db.from('prescriptions').update({ sent_at: new Date().toISOString() }).eq('id', rxId);
+  return r.ok ? { ok: true, sent: to.length, info: `המרשם נשלח ל־${to.join(', ')}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
 }
