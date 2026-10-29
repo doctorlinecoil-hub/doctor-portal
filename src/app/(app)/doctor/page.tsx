@@ -14,7 +14,7 @@ export const maxDuration = 300;
 
 export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const { view } = await searchParams;
-  const { supabase, profile } = await requireUser(['doctor', 'admin']);
+  const { supabase, profile, settings } = await requireUser(['doctor', 'admin']);
   const start = ilToUtc(todayIL(), '00:00').getTime();
   const rows = await loadAppointments(supabase, { from: new Date(start - 365 * 86400000).toISOString(), order: 'asc', limit: 2000 });
 
@@ -43,6 +43,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
         how: ['ב־console.anthropic.com: API Keys ← Create Key, ולהעתיק את כל המפתח (מתחיל ב־sk-ant-)', `${vercel}: לערוך את ANTHROPIC_API_KEY ולהדביק בלי רווחים`, 'Deployments ← ⋯ ← Redeploy', 'בתיק: ״סריקה מחדש״'] },
       { key: 'mail', ok: mailEnabled(), title: 'שליחת מיילים לא מוגדרת', why: 'זימונים, תזכורות והמכתב הסופי לא נשלחים במייל. בינתיים אפשר לשלוח בוואטסאפ מתוך התיק.',
         how: ['להירשם בחינם ב־resend.com ולאמת את הדומיין של המרפאה (Domains)', 'API Keys ← Create, ולהעתיק', `${vercel}: RESEND_API_KEY = המפתח, MAIL_FROM = מרפאת ד״ר אלרן חנוך <clinic@הדומיין-שלכם>`, 'Redeploy'] },
+      { key: 'prices', ok: Object.values(settings.prices || {}).some((v) => Number(v) > 0), title: 'לא הוגדרו מחירים', why: 'כל התיקים מסומנים ״ללא חיוב״, והדוחות והגבייה ריקים.',
+        how: ['הגדרות ← מחירים ותשלום: מחיר לכל סוג מכתב (כולל מע״מ)', 'שמירת ההגדרות'] },
       { key: 'cron', ok: !!process.env.CRON_SECRET, title: 'תזכורות אוטומטיות לא פעילות', why: 'תזכורת יום לפני התור לא נשלחת.',
         how: [`${vercel}: CRON_SECRET = טקסט אקראי ארוך כלשהו`, 'Redeploy'] },
     ];
