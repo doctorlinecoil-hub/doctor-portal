@@ -5,7 +5,7 @@ import { SETTINGS_DEFAULTS, type Settings, type WeekDay } from '@/lib/constants'
 import { DAYS, fmtDate } from '@/lib/dates';
 import { saveSettings } from './actions';
 
-export default function SettingsForm({ initial, morning, mail, preview }: { initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean }) {
+export default function SettingsForm({ initial, morning, mail, preview, sms = '' }: { initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean; sms?: '' | 'sms' | 'whatsapp' }) {
   const [s, setS] = useState<Settings>({ ...SETTINGS_DEFAULTS, ...initial, prices: Object.assign({ referral: 0, summary: 0, nii: 0, legal: 0 }, initial.prices) });
   const [newBlock, setNewBlock] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -116,6 +116,8 @@ export default function SettingsForm({ initial, morning, mail, preview }: { init
               <textarea id="snote" rows={2} value={s.summons_note} onChange={text('summons_note')} placeholder="חניון ציבורי בבניין. עולים במעליות המזרחיות לקומה 23." /></label>
             <label className="check"><input type="checkbox" checked={s.reminders_on} onChange={(e) => setS({ ...s, reminders_on: e.target.checked })} />
               <span>תזכורות אוטומטיות במייל: 3 ימים ושעתיים לפני כל תור<small>למטופל, למפנה ולרופא. המערכת בודקת כל 10 דקות.</small></span></label>
+            <label className="check"><input type="checkbox" checked={s.sms_reminders} onChange={(e) => setS({ ...s, sms_reminders: e.target.checked })} />
+              <span>תזכורת גם בהודעה לנייד של המטופל ({sms === 'whatsapp' ? 'וואטסאפ' : 'SMS'})<small>{sms ? 'מחובר. נשלחת באותם מועדים: 3 ימים ושעתיים לפני.' : 'דורש חיבור לשירות ההודעות Twilio (מפתחות בהגדרות Vercel: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM). עד אז נשלח רק מייל.'}</small></span></label>
             <label className="check"><input type="checkbox" checked={s.email_letters} onChange={(e) => setS({ ...s, email_letters: e.target.checked })} />
               <span>שליחת המכתב הסופי במייל כ־PDF<small>למפנה, ולמטופל אם הוזן מייל. אם המכתב נפתח רק אחרי תשלום, הוא יישלח אחרי שהתשלום יירשם.</small></span></label>
             <div className={`callout ${mail ? '' : 'info'}`}>
