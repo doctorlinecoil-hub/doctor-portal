@@ -13,7 +13,7 @@ const maps = (a: string) => `https://www.google.com/maps/search/?api=1&query=${e
 const intlPhone = (p: string) => { const d = p.replace(/\D/g, ''); return d.startsWith('0') ? `972${d.slice(1)}` : d; };
 const lines = (t: string) => String(t || '').split('\n').map((l) => l.trim()).filter(Boolean);
 
-export default function Landing({ s, services, home }: { s: Settings; services: Service[]; home?: string | null }) {
+export default function Landing({ s, services }: { s: Settings; services: Service[]; home?: string | null }) {
   const titles = lines(s.lh_titles);
   const cv = lines(s.lh_cv);
   const facts = cv.filter((l) => !/[:：]$/.test(l)).slice(0, 4);
@@ -41,7 +41,7 @@ export default function Landing({ s, services, home }: { s: Settings; services: 
             <a href="#expertise">תחומי מומחיות</a><a href="#services">שירותים</a><a href="#lawyers">לעורכי דין</a><a href="#about">אודות</a><a href="#contact">יצירת קשר</a>
           </nav>
           <div className="lp-nav-cta">
-            {home ? <a className="btn btn-ghost" href={home}>חזרה למערכת</a> : <a className="btn btn-ghost" href="/login">כניסה</a>}
+            <a className="btn btn-ghost" href="/login">כניסה</a>
             <a className="btn btn-primary" href="/book"><Icon name="calendarPlus" />קביעת תור</a>
           </div>
         </div>
@@ -58,7 +58,7 @@ export default function Landing({ s, services, home }: { s: Settings; services: 
               <a className="btn btn-primary btn-lg" href="/book"><Icon name="calendarPlus" />קביעת תור עכשיו</a>
               <a className="btn btn-lg lp-btn-light" href="/register"><Icon name="briefcase" />הרשמה למשרדים ולמטופלים</a>
             </div>
-            <p className="lp-hero-login">{home ? <a href={home}>חזרה למערכת</a> : <>כבר רשומים? <a href="/login">כניסה למערכת</a></>}</p>
+            <p className="lp-hero-login">כבר רשומים? <a href="/login">כניסה למערכת</a></p>
           </div>
           <aside className="lp-profile" aria-label={`על ${s.lh_name}`}>
             <div className="lp-profile-top">
@@ -224,7 +224,7 @@ export default function Landing({ s, services, home }: { s: Settings; services: 
             <b>מוכנים להתחיל?</b>
             <p>קביעת תור לוקחת פחות משתי דקות.</p>
             <a className="btn btn-primary btn-lg" href="/book"><Icon name="calendarPlus" />קביעת תור</a>
-            {home ? <a className="lp-link" href={home}>חזרה למערכת</a> : <a className="lp-link" href="/login">כבר רשומים? כניסה למערכת</a>}
+            <a className="lp-link" href="/login">כבר רשומים? כניסה למערכת</a>
           </div>
         </div>
       </section>

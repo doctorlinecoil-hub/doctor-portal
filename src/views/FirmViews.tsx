@@ -114,22 +114,41 @@ export function filterFirmRows(rows: ApptRow[], f: string) {
   }
 }
 
-export function FirmCasesView({ rows, filter }: { rows: ApptRow[]; filter: string }) {
+/** Search by full name, ID number or case number (only the firm's own cases are ever loaded). */
+export function searchFirmRows(rows: ApptRow[], q: string) {
+  const t = q.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (t.length < 2) return rows;
+  const digits = t.replace(/\D/g, '');
+  return rows.filter((r) =>
+    (r.patient_name || '').toLowerCase().replace(/\s+/g, ' ').includes(t) ||
+    (digits.length >= 3 && (r.patient_id_number || '').replace(/\D/g, '').includes(digits)) ||
+    (/^\d+$/.test(t) && String(r.case_no) === t));
+}
+
+export function FirmCasesView({ rows: all, filter, q = '' }: { rows: ApptRow[]; filter: string; q?: string }) {
+  const rows = searchFirmRows(all, q);
   const list = filterFirmRows(rows, filter);
+  const qs = (f: string) => { const p = new URLSearchParams(); if (f !== 'all') p.set('f', f); if (q.trim()) p.set('q', q.trim()); const x = p.toString(); return x ? `/firm/cases?${x}` : '/firm/cases'; };
   return (
     <>
       <PageHead title="התיקים שלי" sub="כל התורים שקבעתם, הסטטוס של כל תיק והמכתבים המוכנים">
         <Link href="/firm/book" className="btn btn-primary"><Icon name="plus" />תור חדש</Link>
       </PageHead>
+      <form className="search-big" action="/firm/cases" role="search" style={{ marginBottom: 14 }}>
+        <Icon name="search" />
+        <input name="q" defaultValue={q} placeholder="חיפוש לפי שם מלא, תעודת זהות או מספר תיק" aria-label="חיפוש מטופל" />
+        {filter !== 'all' && <input type="hidden" name="f" value={filter} />}
+        <button className="btn btn-primary" type="submit">חיפוש</button>
+      </form>
       <nav className="tabs" aria-label="סינון">
         {FIRM_FILTERS.map((t) => (
-          <Link key={t.key} href={t.key === 'all' ? '/firm/cases' : `/firm/cases?f=${t.key}`} aria-current={filter === t.key}>
+          <Link key={t.key} href={qs(t.key)} aria-current={filter === t.key}>
             {t.label}<span className="count num">{filterFirmRows(rows, t.key).length}</span>
           </Link>
         ))}
       </nav>
       <section className="panel flush">
-        {list.length === 0 ? <Empty>אין תיקים להצגה</Empty> : (
+        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : (
           <div className="table-wrap">
             <table className="t">
               <thead><tr><th>תיק</th><th>מטופל</th><th>סוג</th><th>מועד</th><th>סטטוס</th><th>תשלום</th><th /></tr></thead>
@@ -139,7 +158,7 @@ export function FirmCasesView({ rows, filter }: { rows: ApptRow[]; filter: strin
                   return (
                     <tr key={r.id}>
                       <td className="num muted">{r.case_no}</td>
-                      <td><Link href={`/firm/cases/${r.id}`} className="row-link"><b style={{ fontWeight: 500 }}>{r.patient_name || 'ממתין לפרטים'}</b></Link></td>
+                      <td><Link href={`/firm/cases/${r.id}`} className="row-link"><b style={{ fontWeight: 500 }}>{r.patient_name || 'ממתין לפרטים'}</b></Link>{r.patient_id_number ? <div className="hint num">ת״ז {r.patient_id_number}</div> : null}</td>
                       <td>{labelOf(r)}</td>
                       <td className="num">{fmtDate(p.date)} <span className="muted">{p.time}</span></td>
                       <td><StatusBadge status={r.status} /></td>
