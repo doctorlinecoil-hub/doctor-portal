@@ -35,6 +35,7 @@ export default async function PublicBookPage({ searchParams }: { searchParams: P
       slots={slots}
       code={f?.active ? code : ''}
       firm={f?.active ? { name: f.name, kind: f.kind } : null}
+      phoneOk={s.phone_appointments !== false}
     />
   );
 }

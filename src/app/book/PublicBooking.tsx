@@ -9,6 +9,7 @@ import { checkFile } from '@/lib/upload';
 import Icon from '@/components/Icon';
 import ServicePicker from '@/components/ServicePicker';
 import DepositBox, { type PayInfo } from '@/components/DepositBox';
+import ModePicker, { type Mode } from '@/components/ModePicker';
 import { depositProofDone, depositProofUrl, publicBook, publicDraft, publicFinish, publicScan, publicUploadStart } from './actions';
 
 type Kind = 'law' | 'broker' | 'private';
@@ -25,12 +26,14 @@ const EMPTY_PT = { name: '', idNumber: '', dob: '', phone: '', email: '' };
  * The public booking page, one step at a time:
  * 1. what is needed  2. date and time  3. documents (read automatically)  4. check the details found, emails, send.
  */
-export default function PublicBooking({ open, clinic, services, slots, code, firm, demo }: {
+export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true }: {
   open: boolean; clinic: { name: string; address: string; phone: string; needsApproval: boolean };
   services: Service[]; slots: DaySlots[]; code: string; firm: { name: string; kind: string } | null;
   /** the design previews only: open on a given step */
   demo?: { step: number; ext?: Extracted; scanning?: boolean };
+  phoneOk?: boolean;
 }) {
+  const [mode, setMode] = useState<Mode>('clinic');
   const [step, setStep] = useState(demo?.step ?? (services.length === 1 ? 2 : 1));
   const [svc, setSvc] = useState<Service | null>(demo ? services[0] : services.length === 1 ? services[0] : null);
   const [taken, setTaken] = useState<Set<string>>(new Set());
@@ -151,7 +154,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     setBusy('שולח את הבקשה…');
     const r = await publicBook({
       code, serviceId: svc!.id, slot: slot!, referrer: { kind: firm ? (kind === 'private' ? 'law' : kind) : kind, ...ref },
-      patient: pt, payer, notes, website, extraEmails: extras, upload: u ?? undefined, extract: ext,
+      patient: pt, payer, notes, website, extraEmails: extras, upload: u ?? undefined, extract: ext, mode,
     }).catch(() => ({ ok: false as const, error: 'אין חיבור. נסו שוב.' }));
     setScan((s) => (s.phase === 'upload' ? { phase: 'idle', text: '' } : s));
     if (!r.ok) {
@@ -210,7 +213,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
           <dl className="kv">
             <dt>מספר תיק</dt><dd className="num">{done.caseNo}</dd>
             <dt>מטופל</dt><dd>{pt.name}</dd>
-            <dt>מועד</dt><dd>{fmtDay(p.date)} · {p.time}</dd>
+            <dt>מועד</dt><dd>{fmtDay(p.date)} · {p.time}{mode === 'phone' ? ' · שיחה טלפונית' : ''}</dd>
             <dt>שירות</dt><dd>{svc?.label}</dd>
             <dt>מסמכים</dt><dd>{done.docs ? `${done.docs} מסמכים צורפו לתיק` : 'לא צורפו'}</dd>
             {to.length > 0 && <><dt>עדכונים יישלחו אל</dt><dd dir="ltr" className="pb-mails">{to.join(', ')}</dd></>}
@@ -249,7 +252,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
         <div className="pbw-sum">
           {firm && <span><Icon name="briefcase" size={15} />{firm.name}</span>}
           {svc && <span><Icon name="stethoscope" size={15} />{svc.label}{Number(svc.price) > 0 ? ` · ${ils(Number(svc.price))}` : ''}</span>}
-          {chosen && step > 2 && <span><Icon name="calendar" size={15} />{fmtDay(chosen.date)} · {chosen.time}</span>}
+          {chosen && step > 2 && <span><Icon name={mode === 'phone' ? 'phone' : 'calendar'} size={15} />{mode === 'phone' ? 'שיחה טלפונית · ' : ''}{fmtDay(chosen.date)} · {chosen.time}</span>}
         </div>
       )}
 
@@ -265,7 +268,8 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
         {step === 2 && (
           <div className="pbw-pane">
             <h1 className="pbw-h">מתי נוח לכם?</h1>
-            <p className="pbw-lead">בחרו יום ושעה. השעות המוצגות פנויות כרגע.</p>
+            <p className="pbw-lead">{phoneOk ? 'בחרו פגישה במרפאה או שיחה טלפונית, ואז יום ושעה.' : 'בחרו יום ושעה. השעות המוצגות פנויות כרגע.'}</p>
+            {phoneOk && <ModePicker value={mode} onChange={setMode} />}
             {err && <p className="err" role="alert">{err}</p>}
             {visible.length === 0 ? <p className="muted">אין כרגע תורים פנויים. צרו קשר עם המרפאה{clinic.phone ? ` בטלפון ${clinic.phone}` : ''}.</p> : (
               <>

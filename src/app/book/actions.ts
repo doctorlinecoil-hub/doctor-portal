@@ -53,6 +53,8 @@ export type PublicBookingInput = {
   upload?: { token: string; files: { path: string; name: string; type: string }[] };
   /** what the scan found (kept on the case for the doctor) */
   extract?: Extracted | null;
+  /** a visit at the clinic, or a phone call */
+  mode?: 'clinic' | 'phone';
   /** must stay empty (a field people don't see) */
   website?: string;
 };
@@ -131,6 +133,7 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
     // a patient who books by himself may need the key until the deposit arrives
     upload_key_hash: sha(key), upload_key_expires: new Date(Date.now() + (r.kind === 'private' && !input.code ? Math.max(3, (s.deposit_hold_hours || 48) + 24) : 3) * 3600_000).toISOString(),
     notify_emails: extra,
+    mode: input.mode === 'phone' && s.phone_appointments !== false ? 'phone' : 'clinic',
     ...(input.extract && typeof input.extract === 'object' ? { extract: cleanExtract(input.extract), extract_status: 'done' } : {}),
   }).select('id, case_no, status, deposit_amount').single();
   if (error || !a) {
