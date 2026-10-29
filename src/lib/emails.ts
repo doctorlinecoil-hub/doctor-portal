@@ -90,29 +90,32 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
   const c = clinicOf(s);
   const w = when(a.startsAt);
   const bring = bringList(c);
-  const subject = `זימון לתור · ${w.label} · ${s.lh_name}`;
+  const subject = `${a.phone ? 'זימון לשיחה טלפונית' : 'זימון לתור'} · ${w.label} · ${s.lh_name}`;
+  const what = a.phone ? 'השיחה הטלפונית' : 'התור';
   const intro = o.forReferrer
     ? o.patientHasEmail
-      ? `התור של <b>${esc(a.patientName)}</b> אושר. הזימון נשלח גם למטופל.`
-      : `התור של <b>${esc(a.patientName)}</b> אושר. <b>לא הוזן מייל של המטופל, לכן הזימון נשלח אליכם. נא להעביר אותו למטופל.</b>`
-    : `שלום ${esc(a.patientName)},<br>נקבע לך תור אצל ${esc(s.lh_name)}.`;
+      ? `${what} של <b>${esc(a.patientName)}</b> אושר${a.phone ? 'ה' : ''}. הזימון נשלח גם למטופל.`
+      : `${what} של <b>${esc(a.patientName)}</b> אושר${a.phone ? 'ה' : ''}. <b>לא הוזן מייל של המטופל, לכן הזימון נשלח אליכם. נא להעביר אותו למטופל.</b>`
+    : a.phone ? `שלום ${esc(a.patientName)},<br>נקבעה לך שיחה טלפונית עם ${esc(s.lh_name)}.` : `שלום ${esc(a.patientName)},<br>נקבע לך תור אצל ${esc(s.lh_name)}.`;
   const body =
     p(intro) +
     card([
       ['מועד', `<span style="font-size:17px">${esc(w.label)}</span>`],
-      ['כתובת', esc(c.address || '—')],
+      a.phone ? ['סוג הפגישה', `<b>שיחה טלפונית</b>`] : ['כתובת', esc(c.address || '—')],
+      ...(a.phone ? ([['הרופא יתקשר אל', `<span dir="ltr">${esc(a.patientPhone || '—')}</span>`]] as [string, string][]) : []),
       ['סוג הביקור', esc((a.label || typeOf(a.type).label))],
       ...(o.forReferrer ? ([['מטופל', esc(a.patientName)], ['תיק', String(a.caseNo)]] as [string, string][]) : []),
     ]) +
-    (c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
-    (bring.length ? `<h2 style="margin:6px 0 6px;font-size:16px;color:${INK}">מה להביא</h2>` + list(bring) : '') +
-    (c.note ? p(esc(c.note).replace(/\n/g, '<br>')) : '') +
+    (a.phone ? p('בשעה שנקבעה הרופא יתקשר. נא להיות זמינים במקום שקט, עם המסמכים הרפואיים לידכם. אם המספר השתנה, עדכנו את המרפאה.')
+      : (c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
+        (bring.length ? `<h2 style="margin:6px 0 6px;font-size:16px;color:${INK}">מה להביא</h2>` + list(bring) : '')) +
+    (c.note && !a.phone ? p(esc(c.note).replace(/\n/g, '<br>')) : '') +
     (o.due && o.due > 0 ? payBlock(s, o.due, 'לתשלום לפני הביקור') + p('נא להעביר את התשלום לפני מועד הביקור. אחרי ההעברה אפשר להעלות את האישור לתיק או להשיב למייל הזה.') : '') +
     p(`מצורף קובץ <b>הוספה ליומן</b>. ${c.phone ? `לשאלות או לשינוי מועד: <span dir="ltr">${esc(c.phone)}</span>.` : ''}`) +
     (o.forReferrer && o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'צפייה בתיק')}</div>` : '');
   return {
     subject,
-    html: layout(s, { preheader: `${w.label} · ${c.address}`, title: 'זימון לתור', body }),
+    html: layout(s, { preheader: `${w.label} · ${a.phone ? 'שיחה טלפונית' : c.address}`, title: a.phone ? 'זימון לשיחה טלפונית' : 'זימון לתור', body }),
     text: textOf([
       o.forReferrer ? `התור של ${a.patientName} אושר.${o.patientHasEmail ? '' : ' לא הוזן מייל של המטופל – נא להעביר לו את הזימון.'}` : `שלום ${a.patientName},`,
       `מועד: ${w.label}`, c.address && `כתובת: ${c.address}`, c.address && `ניווט: ${wazeLink(c.address)}`,
@@ -131,8 +134,8 @@ export function reminderEmail(s: Settings, a: ApptInfo, forReferrer: boolean | '
   const soon = WHEN_TEXT[at];
   const doctor = forReferrer === 'doctor';
   const subject = doctor
-    ? `תזכורת: ${a.patientName} ${soon} (${w.time}) · ${a.label || typeOf(a.type).label}`
-    : `תזכורת: תור ${soon} · ${w.label} · ${s.lh_name}`;
+    ? `תזכורת: ${a.phone ? 'שיחה טלפונית עם ' : ''}${a.patientName} ${soon} (${w.time}) · ${a.label || typeOf(a.type).label}`
+    : `תזכורת: ${a.phone ? 'שיחה טלפונית' : 'תור'} ${soon} · ${w.label} · ${s.lh_name}`;
   const intro = doctor
     ? `תזכורת: התור של <b>${esc(a.patientName)}</b> ${soon}.`
     : forReferrer ? `תזכורת: התור של <b>${esc(a.patientName)}</b> ${soon}.` : `שלום ${esc(a.patientName)}, תזכורת לתור שלך ${soon}.`;
@@ -140,10 +143,11 @@ export function reminderEmail(s: Settings, a: ApptInfo, forReferrer: boolean | '
     p(intro) +
     card([
       ['מועד', esc(w.label)],
-      ...(doctor ? ([['סוג', esc(a.label || typeOf(a.type).label)], ['מפנה', esc(a.firmName || '—')], ['תיק', String(a.caseNo)]] as [string, string][]) : ([['כתובת', esc(c.address || '—')]] as [string, string][])),
+      ...(a.phone ? ([['סוג הפגישה', '<b>שיחה טלפונית</b>'], [doctor ? 'להתקשר אל' : 'הרופא יתקשר אל', `<span dir="ltr">${esc(a.patientPhone || '—')}</span>`]] as [string, string][]) : []),
+      ...(doctor ? ([['סוג', esc(a.label || typeOf(a.type).label)], ['מפנה', esc(a.firmName || '—')], ['תיק', String(a.caseNo)]] as [string, string][]) : a.phone ? [] : ([['כתובת', esc(c.address || '—')]] as [string, string][])),
     ]) +
-    (!doctor && c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
-    (!doctor && bringList(c).length ? p(`נא להביא: ${esc(bringList(c).join(', '))}.`) : '') +
+    (!doctor && !a.phone && c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
+    (!doctor && !a.phone && bringList(c).length ? p(`נא להביא: ${esc(bringList(c).join(', '))}.`) : '') +
     (!doctor && o.due && o.due > 0 ? payBlock(s, o.due, 'יתרה לתשלום') : '') +
     (!doctor && c.phone ? p(`לשינוי מועד או לשאלות: <span dir="ltr">${esc(c.phone)}</span>.`) : '') +
     (o.link ? `<div style="margin:6px 0 10px">${button(o.link, doctor ? 'פתיחת התיק' : 'צפייה בתיק')}</div>` : '');

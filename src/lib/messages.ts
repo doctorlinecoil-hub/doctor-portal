@@ -11,6 +11,9 @@ export type ApptInfo = {
   label?: string;
   patientName: string;
   firmName: string;
+  /** a phone call instead of a visit: the doctor calls this number */
+  phone?: boolean;
+  patientPhone?: string;
 };
 
 export type ClinicInfo = {
@@ -43,6 +46,17 @@ export const bringList = (c: ClinicInfo) => c.bring.split('\n').map((s) => s.tri
 export function summonsText(a: ApptInfo, c: ClinicInfo) {
   const w = when(a.startsAt);
   const bring = bringList(c);
+  if (a.phone) {
+    return [
+      `שלום ${a.patientName},`,
+      `נקבעה לך שיחה טלפונית עם ${c.name}.`,
+      '',
+      `📅 ${w.label}`,
+      `📞 הרופא יתקשר אליך${a.patientPhone ? ` למספר ${a.patientPhone}` : ''}. נא להיות זמינים ולהכין את המסמכים הרפואיים.`,
+      `סוג הפגישה: ${(a.label || typeOf(a.type).label)}`,
+      c.phone ? `\nלשאלות או לשינוי מועד: ${c.phone}` : '',
+    ].filter((l) => l !== '').join('\n');
+  }
   return [
     `שלום ${a.patientName},`,
     `נקבע לך תור אצל ${c.name}.`,
@@ -59,6 +73,7 @@ export function summonsText(a: ApptInfo, c: ClinicInfo) {
 
 export function reminderText(a: ApptInfo, c: ClinicInfo) {
   const w = when(a.startsAt);
+  if (a.phone) return [`תזכורת: ${w.label}, שיחה טלפונית עם ${c.name}.`, `הרופא יתקשר אליך${a.patientPhone ? ` למספר ${a.patientPhone}` : ''}.`, c.phone ? `לשאלות: ${c.phone}` : ''].filter(Boolean).join('\n');
   return [
     `תזכורת: מחר, ${w.label}, תור אצל ${c.name}.`,
     c.address ? `📍 ${c.address}\nניווט: ${wazeLink(c.address)}` : '',
@@ -95,8 +110,8 @@ export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string) {
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
-    `SUMMARY:${esc(`תור אצל ${c.name} – ${a.patientName}`)}`,
-    c.address ? `LOCATION:${esc(c.address)}` : '',
+    `SUMMARY:${esc(`${a.phone ? 'שיחה טלפונית עם' : 'תור אצל'} ${c.name} – ${a.patientName}`)}`,
+    a.phone ? `LOCATION:${esc(`שיחה טלפונית${a.patientPhone ? ` (${a.patientPhone})` : ''}`)}` : c.address ? `LOCATION:${esc(c.address)}` : '',
     `DESCRIPTION:${esc(desc)}`,
     'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', `DESCRIPTION:${esc('תזכורת לתור')}`, 'END:VALARM',
     'END:VEVENT', 'END:VCALENDAR',

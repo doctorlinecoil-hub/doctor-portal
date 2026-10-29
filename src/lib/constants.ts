@@ -83,6 +83,7 @@ export type Settings = {
   bit_phone: string;
   pay_note: string;
   open_registration: boolean;
+  phone_appointments: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -145,6 +146,7 @@ export const SETTINGS_DEFAULTS = {
   bit_phone: '',
   pay_note: '',
   open_registration: true,
+  phone_appointments: true,
 } as const;
 
 /** The clinic's payment details, as lines (bank transfer, Bit, a note). Empty when nothing was filled in. */

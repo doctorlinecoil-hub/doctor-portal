@@ -21,7 +21,7 @@ import type { RxItem } from './rxTypes';
 type Appt = {
   id: string; case_no: number; starts_at: string; ends_at: string; referral_type: ReferralType; status: string;
   service_label?: string; patient_name: string; patient_id_number: string; patient_dob: string | null; patient_email: string; patient_phone: string;
-  price: number; firm_id: string; walk_in?: boolean; notify_emails?: string[] | null; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
+  price: number; firm_id: string; walk_in?: boolean; mode?: string; notify_emails?: string[] | null; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
   firm: { name: string; email: string; kind?: string } | null;
   deposit_amount?: number; deposit_paid_at?: string | null; deposit_proof_at?: string | null; created_at?: string; source?: string;
   remind_3d_at?: string | null; remind_2h_at?: string | null; upload_key_hash?: string | null;
@@ -44,7 +44,7 @@ async function load(db: SupabaseClient, id: string) {
 
 function info(a: Appt): ApptInfo {
   const minutes = Math.max(10, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000));
-  return { caseNo: a.case_no, startsAt: a.starts_at, minutes, type: a.referral_type, label: a.service_label || '', patientName: a.patient_name, firmName: a.firm?.name || '' };
+  return { caseNo: a.case_no, startsAt: a.starts_at, minutes, type: a.referral_type, label: a.service_label || '', patientName: a.patient_name, firmName: a.firm?.name || '', phone: a.mode === 'phone', patientPhone: a.patient_phone || '' };
 }
 
 /** The referrer's addresses, plus the extra addresses typed when booking (they get the summons and the letters too). */

@@ -16,6 +16,7 @@ export type ApptRow = {
   firm_kind?: ReferrerKind;
   details_at?: string | null;
   service_label?: string;
+  mode?: 'clinic' | 'phone';
 };
 
 export type FirmInfo = { id: string; name: string; kind: ReferrerKind; contact_name: string; phone: string; email: string; tax_id: string };
@@ -44,6 +45,7 @@ export type CaseDetail = {
   service_label?: string;
   service_id?: string | null;
   firm: FirmInfo;
+  mode?: 'clinic' | 'phone';
 };
 
 export type NoteRow = { id: string; body: string; created_at: string; kind?: 'note' | 'request'; resolved_at?: string | null };
