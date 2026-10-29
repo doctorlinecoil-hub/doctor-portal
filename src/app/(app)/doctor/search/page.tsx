@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 type Row = ApptRow & { patient_id_number: string; patient_phone: string; patient_dob: string | null; patient_email: string | null; firms: { name: string } | null };
 
 const newDoc = (r: Row, what: 'letter' | 'rx') => `/doctor/new?${new URLSearchParams({ what, name: r.patient_name || '', id: r.patient_id_number || '', dob: r.patient_dob || '', phone: r.patient_phone || '', email: r.patient_email || '' })}`;
-const COLS = 'id, case_no, starts_at, referral_type, patient_name, patient_id_number, patient_phone, patient_dob, patient_email, status, payer, price, firms(name)';
+const COLS = 'id, case_no, starts_at, referral_type, patient_name, patient_id_number, patient_phone, patient_dob, patient_email, service_label, status, payer, price, firms(name)';
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q: raw = '' } = await searchParams;
@@ -60,7 +60,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 {list.map((r) => (
                   <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '90px minmax(0,1fr) auto' }}>
                     <span className="item-time num">{fmtDate(ilParts(r.starts_at).date)}<small>תיק {r.case_no}</small></span>
-                    <span className="item-main"><span className="row" style={{ gap: 6 }}><TypeBadge type={r.referral_type} /></span><span className="item-meta">{r.firms?.name}</span></span>
+                    <span className="item-main"><span className="row" style={{ gap: 6 }}><TypeBadge type={r.referral_type} label={r.service_label} /></span><span className="item-meta">{r.firms?.name}</span></span>
                     <StatusBadge status={r.status} staff />
                   </Link>
                 ))}
