@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import ModePicker, { type Mode } from '@/components/ModePicker';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { dbError } from '@/lib/constants';
@@ -10,9 +11,10 @@ import Icon from '@/components/Icon';
 import { PageHead } from '@/components/ui';
 
 /** Stage 1 of a referral: pick a time. Documents and details come right after, on the case itself. */
-export default function SlotBooking({ firmId, slots, horizon, clinicName, needsApproval, preview }: {
-  firmId: string; slots: DaySlots[]; horizon: number; clinicName: string; needsApproval: boolean; preview?: boolean;
+export default function SlotBooking({ firmId, slots, horizon, clinicName, needsApproval, preview, phoneOk = true }: {
+  firmId: string; slots: DaySlots[]; horizon: number; clinicName: string; needsApproval: boolean; preview?: boolean; phoneOk?: boolean;
 }) {
+  const [mode, setMode] = useState<Mode>('clinic');
   const supabase = useSupabase();
   const router = useRouter();
   const [taken, setTaken] = useState<Set<string>>(new Set());
@@ -32,7 +34,7 @@ export default function SlotBooking({ firmId, slots, horizon, clinicName, needsA
     if (preview) return setErr('זו תצוגה מקדימה.');
     setBusy(true);
     setErr('');
-    const { data, error } = await supabase.from('appointments').insert({ firm_id: firmId, starts_at: slot }).select('id').single();
+    const { data, error } = await supabase.from('appointments').insert({ firm_id: firmId, starts_at: slot, mode }).select('id').single();
     if (error || !data) {
       if (error?.code === '23505' || error?.code === '23P01') { setTaken(new Set([...taken, slot])); setSlot(null); }
       setErr(dbError(error));
@@ -49,6 +51,7 @@ export default function SlotBooking({ firmId, slots, horizon, clinicName, needsA
       <Stepper at={1} />
       <section className="panel book-slot">
         <div className="panel-head"><h2><Icon name="calendar" />בחירת מועד</h2>{needsApproval && <span className="hint">התור יאושר על ידי הרופא</span>}</div>
+        {phoneOk && <ModePicker value={mode} onChange={setMode} />}
         {visible.length === 0 ? (
           <p className="muted">אין כרגע תורים פנויים ב־{horizon} הימים הקרובים. נסו שוב מאוחר יותר או צרו קשר עם המרפאה.</p>
         ) : (

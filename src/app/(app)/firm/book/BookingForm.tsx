@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import ModePicker, { type Mode } from '@/components/ModePicker';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
@@ -23,8 +24,9 @@ type Props = {
 };
 const EMPTY = { name: '', id: '', dob: '', phone: '', email: '', notes: '' };
 
-export default function BookingForm({ firmId: defaultFirm, slots, horizon, services, clinicName, needsApproval, preview, firms, initialSlot }: Props) {
+export default function BookingForm({ firmId: defaultFirm, slots, horizon, services, clinicName, needsApproval, preview, firms, initialSlot, phoneOk = true }: Props & { phoneOk?: boolean }) {
   const staff = !!firms;
+  const [mode, setMode] = useState<Mode>('clinic');
   const [firmId, setFirmId] = useState(defaultFirm);
   const supabase = useSupabase();
   const router = useRouter();
@@ -68,7 +70,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, servi
     const { data, error } = await supabase
       .from('appointments')
       .insert({
-        firm_id: firmId, starts_at: slot, service_id: svc!.id, referral_type: type, payer, patient_name: f.name.trim(), patient_id_number: f.id.trim(),
+        firm_id: firmId, starts_at: slot, service_id: svc!.id, referral_type: type, payer, mode, patient_name: f.name.trim(), patient_id_number: f.id.trim(),
         patient_dob: f.dob || null, patient_phone: f.phone.trim(), patient_email: f.email.trim().toLowerCase(), notes: f.notes.trim(),
       })
       .select('id, status')
@@ -140,6 +142,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, servi
 
           <section className="step">
             <div className="step-title"><span className={`step-no${slot ? ' done' : ''}`}>{slot ? <Icon name="check" size={15} /> : 2}</span><h2>בחירת מועד</h2></div>
+            {phoneOk && <ModePicker value={mode} onChange={setMode} />}
             {visible.length === 0 ? (
               <p className="muted">אין כרגע תורים פנויים ב־{horizon} הימים הקרובים. נסו שוב מאוחר יותר או צרו קשר עם המרפאה.</p>
             ) : (

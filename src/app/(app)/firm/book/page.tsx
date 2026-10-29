@@ -10,5 +10,5 @@ export default async function FirmBookingPage() {
   const until = new Date(now.getTime() + (settings.horizon_days + 2) * 86400000);
   const { data: busy } = await supabase.rpc('busy_slots', { p_from: now.toISOString(), p_to: until.toISOString() });
   const slots = availableSlots(settings, (busy as Busy[] | null) ?? [], now);
-  return <SlotBooking firmId={profile.firm_id!} slots={slots} horizon={settings.horizon_days} clinicName={settings.lh_name} needsApproval={settings.require_approval} />;
+  return <SlotBooking firmId={profile.firm_id!} slots={slots} horizon={settings.horizon_days} clinicName={settings.lh_name} needsApproval={settings.require_approval} phoneOk={settings.phone_appointments !== false} />;
 }
