@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { TYPES, type ReferralType } from '@/lib/constants';
+import { typeOf, TYPES, type ReferralType } from '@/lib/constants';
 import Icon from '@/components/Icon';
 import Dictate from '@/components/Dictate';
 
@@ -36,7 +36,7 @@ export default function TemplatesAdmin({ list, preview }: { list: Tpl[]; preview
         <label className="field"><span>לאיזה סוג מכתב <small>ריק = לכל הסוגים</small></span>
           <select value={f.letter_type} onChange={(e) => setF({ ...f, letter_type: e.target.value as ReferralType | '' })}>
             <option value="">כל הסוגים</option>
-            {(Object.keys(TYPES) as ReferralType[]).map((k) => <option key={k} value={k}>{TYPES[k].label}</option>)}
+            {(Object.keys(TYPES) as ReferralType[]).map((k) => <option key={k} value={k}>{typeOf(k).label}</option>)}
           </select>
         </label>
         <div className="field-tools"><Dictate onText={(t) => setF((x) => ({ ...x, body: x.body ? `${x.body} ${t}` : t }))} /></div>
@@ -50,7 +50,7 @@ export default function TemplatesAdmin({ list, preview }: { list: Tpl[]; preview
         <div className="list">
           {list.map((t) => (
             <div key={t.id} className="item" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
-              <span className="item-main"><b>{t.title}</b><span className="item-meta">{t.letter_type ? TYPES[t.letter_type].label : 'כל הסוגים'} · {t.body.slice(0, 90)}{t.body.length > 90 ? '…' : ''}</span></span>
+              <span className="item-main"><b>{t.title}</b><span className="item-meta">{t.letter_type ? typeOf(t.letter_type).label : 'כל הסוגים'} · {t.body.slice(0, 90)}{t.body.length > 90 ? '…' : ''}</span></span>
               <span className="row" style={{ gap: 4 }}>
                 <button type="button" className="btn btn-sm" onClick={() => setF({ id: t.id, title: t.title, body: t.body, letter_type: t.letter_type ?? '' })}>עריכה</button>
                 <button type="button" className="btn btn-sm btn-ghost" onClick={() => remove(t.id)} aria-label={`מחיקת ${t.title}`}><Icon name="trash" /></button>
