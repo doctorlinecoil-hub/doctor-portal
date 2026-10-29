@@ -11,7 +11,7 @@ export type RichHandle = {
   selectedText: () => string;
 };
 
-const COLORS = ['#111111', '#0B4A46', '#1F5FB8', '#B42318', '#9A6200', '#6941C6'];
+const COLORS = ['#111111', '#112243', '#1F5FB8', '#B42318', '#9A6200', '#6941C6'];
 const MARKS = ['#FFF3B0', '#D7F5E9', '#DCE8FB', 'transparent'];
 
 /** A Word-like editor: formatting, lists, alignment, tables. Stores sanitized HTML. */

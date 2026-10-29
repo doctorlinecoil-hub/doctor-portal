@@ -42,7 +42,7 @@ export default function AppShell({ role, userName, orgName, clinicName, active, 
   const groups = navFor(role);
   const brand = (
     <Link href="/" className="side-brand">
-      <span className="logo"><Icon name="stethoscope" /></span>
+      <span className="logo logo-img"><img src="/brand/emblem.png" alt="" width={40} height={40} /></span>
       <span><b>{clinicName}</b><span>{role === 'firm' ? 'פורטל מפנים' : 'מערכת המרפאה'}</span></span>
     </Link>
   );
