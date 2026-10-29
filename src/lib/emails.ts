@@ -1,6 +1,7 @@
 import 'server-only';
 import { typeOf, type Settings } from './constants';
 import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } from './messages';
+import { appUrl } from './mail';
 
 // Email templates. Table layout and inline styles so they look right in Gmail, Outlook and phones. RTL Hebrew.
 
@@ -23,6 +24,9 @@ function button(href: string, label: string, primary = true) {
 
 function layout(s: Settings, o: { preheader: string; title: string; body: string; footerNote?: string }) {
   const titles = (s.lh_titles || '').split('\n').filter(Boolean);
+  // the official letterhead banner, from the site (shown by mail apps that load images; the text header otherwise)
+  const base = appUrl();
+  const banner = /^https:\/\//.test(base) && s.use_banner !== false ? `${base}/brand/letterhead.jpg` : '';
   return `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(o.title)}</title></head>
 <body style="margin:0;padding:0;background:#EEF2F5;">
@@ -30,9 +34,10 @@ function layout(s: Settings, o: { preheader: string; title: string; body: string
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF2F5;padding:24px 12px;">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;direction:rtl;text-align:right;font-family:Arial,'Segoe UI',Helvetica,sans-serif;color:${INK};box-shadow:0 2px 10px rgba(15,27,42,.06);">
-<tr><td style="background:linear-gradient(135deg,#0E1C38,#15284D);background-color:#0E1C38;border-bottom:3px solid #C9A43A;padding:22px 28px;">
-  <div style="font-size:21px;font-weight:700;color:#ffffff;line-height:1.3">${esc(s.lh_name)}</div>
-  ${titles.map((t) => `<div style="font-size:13px;color:#B7D5D2;line-height:1.5">${esc(t)}</div>`).join('')}
+<tr><td style="background-color:#0E1C38;border-bottom:3px solid #C9A43A;padding:0;">
+  ${banner
+    ? `<img src="${esc(banner)}" width="600" alt="${esc(s.lh_name)}" style="display:block;width:100%;max-width:600px;height:auto;border:0;">`
+    : `<div style="padding:22px 28px"><div style="font-size:21px;font-weight:700;color:#ffffff;line-height:1.3">${esc(s.lh_name)}</div>${titles.map((t) => `<div style="font-size:13px;color:#B7D5D2;line-height:1.5">${esc(t)}</div>`).join('')}</div>`}
 </td></tr>
 <tr><td style="padding:26px 28px 8px;">
   <h1 style="margin:0 0 14px;font-size:20px;line-height:1.35;color:${INK}">${esc(o.title)}</h1>
