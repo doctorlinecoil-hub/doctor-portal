@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { dbError } from '@/lib/constants';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendDeclined, sendDocRequest, sendSummons } from '@/lib/notify';
+import { deliverLetter, sendDeclined, sendDocRequest, sendLetterTo, sendSummons } from '@/lib/notify';
 
 type Result = { ok: boolean; error?: string; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -90,6 +90,15 @@ export async function sendLetter(id: string, force = false): Promise<Result> {
   const c = await staffCase(id);
   if (!c) return { ok: false, error: 'אין הרשאה.' };
   const r = await deliverLetter(id, { force });
+  done(id);
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
+}
+
+/** The final letter to addresses the doctor types by hand (instead of, or in addition to, the referrer). */
+export async function sendLetterExtra(id: string, emails: string): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const r = await sendLetterTo(id, String(emails || '').split(/[,;\s]+/), { byReferrer: false });
   done(id);
   return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
