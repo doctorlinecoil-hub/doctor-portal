@@ -28,11 +28,12 @@ function AiChip({ i }: { i?: IntakeChip }) {
   );
 }
 
-export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup }: {
+export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup, share }: {
   rows: ApptRow[]; past: boolean; isAdmin: boolean; name: string; now?: Date; intake?: Record<string, IntakeChip>; openRequests?: number;
   approvals?: (id: string) => React.ReactNode;
   reschedules?: React.ReactNode[];
   setup?: React.ReactNode;
+  share?: React.ReactNode;
 }) {
   const today = todayIL();
   const active = rows.filter((r) => r.status !== 'cancelled');
@@ -72,6 +73,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
         )}
       </section>
       {setup}
+      {share}
       <div className="stats">
         <Stat icon="inbox" label="בקשות לאישור" value={pending.length + reschedules.length} tone={pending.length ? 'warn' : 'violet'} href="#approvals" />
         <Stat icon="calendar" label="תורים השבוע" value={week.length} tone="info" sub={todays.length ? `${todays.length} היום` : undefined} />
