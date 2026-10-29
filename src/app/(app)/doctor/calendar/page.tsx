@@ -9,10 +9,10 @@ export const dynamic = 'force-dynamic';
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; d?: string }> }) {
   const sp = await searchParams;
   const { supabase, settings } = await requireUser(['doctor', 'admin']);
-  const view = sp.view === 'month' ? 'month' : 'week';
+  const view = sp.view === 'month' ? 'month' : sp.view === 'day' ? 'day' : 'week';
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.d || '') ? sp.d! : todayIL();
-  const start = view === 'week' ? weekStart(date) : monthGridStart(date);
-  const end = fromDayNum(dayNum(start) + (view === 'week' ? 7 : 42));
+  const start = view === 'day' ? date : view === 'week' ? weekStart(date) : monthGridStart(date);
+  const end = fromDayNum(dayNum(start) + (view === 'day' ? 1 : view === 'week' ? 7 : 42));
   const from = ilToUtc(start, '00:00').toISOString();
   const to = ilToUtc(end, '00:00').toISOString();
   const [rows, { data: blocks }] = await Promise.all([
