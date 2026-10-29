@@ -41,11 +41,11 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
     supabase.from('email_log').select('id, kind, to_addr, status, error, created_at').eq('appointment_id', id).order('created_at', { ascending: false }).limit(30),
   ]);
   const [{ data: rxRows }, { data: favs }, { data: dx }, { data: pastRx }] = await Promise.all([
-    supabase.from('prescriptions').select('id, appointment_id, items, notes, rx_date, created_at, sent_at').eq('appointment_id', id).order('created_at', { ascending: false }),
+    supabase.from('prescriptions').select('id, appointment_id, items, notes, rx_date, rx_no, created_at, sent_at').eq('appointment_id', id).order('created_at', { ascending: false }),
     supabase.from('drug_favorites').select('*').order('name'),
     supabase.from('case_diagnoses').select('id, code, name, is_primary, note').eq('appointment_id', id).order('created_at'),
     a.patient_id_number
-      ? supabase.from('prescriptions').select('id, appointment_id, items, notes, rx_date, created_at, sent_at, appointments!inner(case_no, patient_id_number)').eq('appointments.patient_id_number', a.patient_id_number).neq('appointment_id', id).order('created_at', { ascending: false }).limit(10)
+      ? supabase.from('prescriptions').select('id, appointment_id, items, notes, rx_date, rx_no, created_at, sent_at, appointments!inner(case_no, patient_id_number)').eq('appointments.patient_id_number', a.patient_id_number).neq('appointment_id', id).order('created_at', { ascending: false }).limit(10)
       : Promise.resolve({ data: [] }),
   ]);
   const intakeDx = intake?.status === 'done' ? ((intake.data as IntakeData)?.diagnoses ?? []).map((d) => d.name).filter(Boolean) : [];

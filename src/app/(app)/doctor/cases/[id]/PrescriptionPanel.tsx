@@ -3,8 +3,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { fmtDate, fmtStamp } from '@/lib/dates';
-import { DURATIONS, FREQUENCIES, cleanItems, rxLine, rxTable, type RxItem, type RxRow } from '@/lib/rxTypes';
-import { docCss, docHtml, type DocInput } from '@/lib/letterDoc';
+import { DURATIONS, FREQUENCIES, cleanItems, rxLine, type RxItem, type RxRow } from '@/lib/rxTypes';
+import { docCss, rxDocHtml, type DocInput } from '@/lib/letterDoc';
 import { todayIL } from '@/lib/dates';
 import Icon from '@/components/Icon';
 import Lookup from '@/components/Lookup';
@@ -31,6 +31,7 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState('');
   const editing = items.length > 0;
+  const addFree = () => setItems((l) => [...l, { ...EMPTY, name: '' }]);
 
   async function fromRegistry(h: Hit) {
     setLoading(h.name);
@@ -62,6 +63,7 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
   async function save(andPrint: boolean) {
     const clean = cleanItems(items);
     if (!clean.length) return setErr('הוסיפו לפחות תרופה אחת.');
+    if (clean.length < items.length && !confirm('יש שורה בלי שם תרופה, והיא לא תישמר. להמשיך?')) return;
     const missing = clean.find((i) => !i.dose && !i.frequency);
     if (missing && !confirm(`ל־${missing.name} לא נכתב מינון. לשמור בכל זאת?`)) return;
     setBusy(true);
@@ -91,8 +93,9 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
             render={(h) => <span>{h.name}</span>}
             onPick={fromRegistry}
             onFree={(t) => setItems((l) => [...l, { ...EMPTY, name: t }])}
-            freeLabel="הוספה ידנית"
+            freeLabel="הוספה כתרופה ידנית"
           />
+          <button type="button" className="btn btn-sm rx-add-free" onClick={addFree}><Icon name="plus" size={15} />תרופה שלא במאגר (כתיבה חופשית)</button>
           {loading && <p className="hint">טוען את פרטי {loading}…</p>}
           {favs.length > 0 && (
             <div className="rx-favs">
@@ -116,8 +119,8 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
                   <div className="rx-item-head">
                     <span className="rx-n num">{i + 1}</span>
                     <div className="rx-item-name">
-                      <b>{it.name}</b>
-                      {(it.form || it.strength) && <small>{[it.form, it.strength].filter(Boolean).join(' · ')}</small>}
+                      <input className="rx-name-input" value={it.name} onChange={(e) => set(i, { name: e.target.value })} placeholder="שם התרופה" aria-label="שם התרופה" autoFocus={!it.name} />
+                      {it.reg ? (it.form || it.strength) && <small>{[it.form, it.strength].filter(Boolean).join(' · ')}</small> : null}
                     </div>
                     <div className="rx-item-act">
                       <button type="button" className="icon-btn" title="שמירה ברשימה הקבועה" aria-label="שמירה ברשימה הקבועה" onClick={() => saveFav(it)}><Icon name="flag" size={15} /></button>
@@ -131,11 +134,18 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
                     <label className="field"><span>משך</span><input list="rx-dur" value={it.duration} onChange={(e) => set(i, { duration: e.target.value })} placeholder="7 ימים" /></label>
                     <label className="field"><span>כמות</span><input value={it.quantity} onChange={(e) => set(i, { quantity: e.target.value })} placeholder="1 אריזה" /></label>
                   </div>
+                  {!it.reg && (
+                    <div className="rx-fields rx-fields-2">
+                      <label className="field"><span>חוזק <small>לא חובה</small></span><input dir="auto" value={it.strength || ''} onChange={(e) => set(i, { strength: e.target.value })} placeholder="500 mg" /></label>
+                      <label className="field"><span>צורת מתן <small>לא חובה</small></span><input value={it.form || ''} onChange={(e) => set(i, { form: e.target.value })} placeholder="טבליות / משחה / טיפות" /></label>
+                    </div>
+                  )}
                   <label className="field"><span>הוראות נוספות <small>לא חובה</small></span><input value={it.notes || ''} onChange={(e) => set(i, { notes: e.target.value })} placeholder="אחרי האוכל, לא לשלב עם…" /></label>
                 </div>
               ))}
               <datalist id="rx-freq">{FREQUENCIES.map((f) => <option key={f} value={f} />)}</datalist>
               <datalist id="rx-dur">{DURATIONS.map((f) => <option key={f} value={f} />)}</datalist>
+              <button type="button" className="btn btn-ghost btn-sm rx-add-more" onClick={addFree}><Icon name="plus" size={15} />הוספת תרופה נוספת</button>
               <label className="field"><span>הערות למרשם <small>לא חובה</small></span><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
               {err && <p className="err">{err}</p>}
               <div className="row" style={{ gap: 8 }}>
@@ -149,7 +159,7 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
                 <span className="eyebrow"><Icon name="eye" size={13} />כך המרשם יודפס</span>
                 <div className="rx-sheet-wrap">
                   <style>{docCss('.rx-sheet')}</style>
-                  <div className="rx-sheet" dangerouslySetInnerHTML={{ __html: docHtml({ settings: paper.settings, title: 'מרשם', date: todayIL(), patient: paper.patient, bodyHtml: rxTable({ items: cleanItems(items), notes }), banner: '/brand/letterhead.jpg', signLine: true }) }} />
+                  <div className="rx-sheet" dangerouslySetInnerHTML={{ __html: rxDocHtml({ settings: paper.settings, rxNo: null, date: todayIL(), patient: paper.patient, items: cleanItems(items), notes, banner: '/brand/letterhead.jpg' }) }} />
                 </div>
               </div>
             )}
@@ -183,7 +193,7 @@ function RxCard({ r, caseId, patientEmail, onRenew, sub }: { r: RxRow; caseId: s
   return (
     <div className="rx-card">
       <div className="rx-card-head">
-        <b>{fmtDate(r.rx_date)}</b>
+        <b>{r.rx_no ? `מרשם ${r.rx_no} · ` : ''}{fmtDate(r.rx_date)}</b>
         {sub && <span className="hint">{sub}</span>}
         {r.sent_at && <span className="badge b-done">נשלח במייל · {fmtStamp(r.sent_at)}</span>}
       </div>
