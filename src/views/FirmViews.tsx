@@ -168,10 +168,11 @@ export function CaseHero({ c, staff, referrer, actions }: { c: CaseDetail; staff
             <span className="case-no">תיק מס׳ {c.case_no}</span>
             <TypeBadge type={c.referral_type} />
             <StatusBadge status={c.status} staff={staff} />
+            {c.walk_in && <span className="badge b-walkin">ללא תור ביומן</span>}
           </div>
           <h1>{c.patient_name || 'ממתין לפרטי המטופל'}</h1>
           <div className="facts">
-            <span className="fact"><Icon name="calendar" />{fmtDay(p.date)} · {p.time}</span>
+            <span className="fact"><Icon name="calendar" />{c.walk_in ? `ביקור: ${fmtDate(p.date)}` : `${fmtDay(p.date)} · ${p.time}`}</span>
             {c.patient_id_number && <span className="fact"><Icon name="idcard" /><span className="num">{c.patient_id_number}</span></span>}
             {a != null && <span className="fact"><Icon name="cake" />גיל {a}</span>}
             {c.patient_phone && <span className="fact"><Icon name="phone" /><span className="num ltr">{c.patient_phone}</span></span>}

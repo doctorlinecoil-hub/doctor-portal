@@ -168,10 +168,10 @@ export function PatientHistory({ rows }: { rows: HistoryRow[] }) {
   );
 }
 
-export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake, comms, approval, resolve, history, reschedule }: {
+export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake, comms, approval, resolve, history, reschedule, rx }: {
   c: CaseDetail; notes: NoteRow[]; docs: DocRow[]; payment?: React.ReactNode; letter: React.ReactNode; cancel?: React.ReactNode;
   intake?: React.ReactNode; comms?: React.ReactNode; approval?: React.ReactNode; resolve?: (n: NoteRow) => React.ReactNode;
-  history?: React.ReactNode; reschedule?: React.ReactNode;
+  history?: React.ReactNode; reschedule?: React.ReactNode; rx?: React.ReactNode;
 }) {
   const openReq = notes.filter((n) => n.kind === 'request' && !n.resolved_at).length;
   return (
@@ -211,13 +211,14 @@ export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake
             </div>
           ) },
           { key: 'letter', label: 'המכתב', icon: 'file', content: <div className="letter-wrap">{letter}</div> },
+          { key: 'rx', label: 'אבחנות ומרשם', icon: 'pill', content: rx },
           { key: 'send', label: comms && payment ? 'שליחה ותשלום' : 'זימונים ושליחה', icon: 'send', content: (
             <div className="cols case-cols">
               <div className="stack">{comms}</div>
               <div className="stack">{payment}</div>
             </div>
           ) },
-        ].filter((t) => t.key !== 'send' || comms || payment)}
+        ].filter((t) => (t.key !== 'send' || comms || payment) && (t.key !== 'rx' || rx))}
       />
     </>
   );
