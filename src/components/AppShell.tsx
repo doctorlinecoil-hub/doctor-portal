@@ -19,7 +19,8 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     { href: '/doctor', label: 'לוח בקרה', icon: 'home' },
     { href: '/doctor/calendar', label: 'יומן', icon: 'calendar' },
     { href: '/doctor/book', label: 'קביעת תור', icon: 'calendarPlus' },
-    { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'file' },
+    { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'plus' },
+    { href: '/doctor/documents', label: 'מסמכים', icon: 'file' },
     { href: '/doctor/search', label: 'חיפוש מטופל', icon: 'search' },
     { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
     { href: '/doctor/services', label: 'סוגי שירות ומחירים', icon: 'receipt' },
@@ -63,6 +64,7 @@ export default function AppShell({ role, userName, orgName, clinicName, active, 
           </div>
         ))}
         <div className="side-foot">
+          <a href="/?view=public" target="_blank" rel="noopener" className="side-public"><Icon name="externalLink" size={15} />{role === 'firm' ? 'דף הבית של המרפאה' : 'צפייה בדף הנחיתה'}</a>
           <div className="me">
             <span className="avatar"><Icon name="user" /></span>
             <span><b>{userName}</b><span>{orgName || ROLE_LABEL[role]}</span></span>
