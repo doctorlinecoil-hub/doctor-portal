@@ -1570,3 +1570,25 @@ svg.flip { transform: scaleX(-1); }
 .app .item { padding: 13px 20px; }
 .app .item-main b { font-weight: 600; }
 .app .list-day { text-transform: none; letter-spacing: .01em; }
+
+/* v18: clinic visit or phone call */
+.mode-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mode-opt { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font: inherit; color: var(--fg); cursor: pointer; text-align: right; }
+.mode-opt b { display: block; font-size: 15px; }
+.mode-opt small { display: block; color: var(--muted); font-size: 13px; }
+.mode-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); color: var(--fg-2); display: grid; place-items: center; flex: none; }
+.mode-opt[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.mode-opt[aria-checked="true"] .mode-ic { background: var(--accent); color: #fff; }
+.mode-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px; background: var(--info-soft, #E8F1FB); color: var(--info, #1d5fa8); font-size: 12px; font-weight: 600; }
+@media (max-width: 560px) { .mode-pick { grid-template-columns: minmax(0, 1fr); } }
+
+/* v18: refined navigation and forms */
+.side-nav a { position: relative; border-radius: 8px; padding: 9px 12px; font-size: 14.5px; }
+.side-nav a[aria-current="page"] { background: rgba(255, 255, 255, .07); font-weight: 600; }
+.side-nav a[aria-current="page"]::before { content: ''; position: absolute; inset-inline-start: -14px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--nav-accent); }
+.side-label { text-transform: none; font-weight: 600; letter-spacing: .04em; }
+.field > span { font-weight: 600; font-size: 13.5px; color: var(--fg-2); }
+.app input, .app select, .app textarea { border-color: var(--line-strong); }
+.app input:hover:not(:focus):not(:disabled), .app select:hover:not(:focus), .app textarea:hover:not(:focus) { border-color: color-mix(in srgb, var(--accent) 35%, var(--line-strong)); }
+.app .case-hero { box-shadow: var(--shadow); border-radius: var(--r); }
+.app .approval-bar, .app .complete-bar { border-radius: var(--r); }
