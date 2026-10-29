@@ -107,13 +107,11 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       return staffShell('/doctor/new', <NewCaseForm firms={[{ id: 'p', name: 'פניות ישירות', kind: 'private' }, { id: 'f1', name: 'כהן, לוי ושות׳', kind: 'law' }]} services={SVC} preview
         initial={{ firm: 'p', name: '', id: '', dob: '', phone: '', email: '', what: 'letter', date: todayIL(), time: '10:30' }} />);
     case 'doctor-rx':
-      return staffShell('/doctor', <div className="cols case-cols">
+      return staffShell('/doctor', <div className="cols-side rx-tab">
+        <div className="stack"><PrescriptionPanel appointmentId="x" patientEmail="" favorites={[]} rows={[]} past={[]} paper={{ settings: fx.settings, patient: { name: 'ישראל ישראלי', idNumber: '012345678', dob: '1980-05-12' } }}
+          initialItems={[{ name: 'ARCOXIA 90 MG', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה' }, { name: 'MUSCOL', form: 'קפליות', strength: '', dose: '1 קפליה', frequency: '3 פעמים ביום', duration: '5 ימים', quantity: '1 אריזה', notes: 'אחרי האוכל' }]} /></div>
         <div className="stack"><DiagnosesPanel appointmentId="x" suggestions={['פריצת דיסק צווארית', 'Cervical radiculopathy']}
           rows={[{ id: 1, code: 'M50.20', name: 'Other cervical disc displacement, unspecified cervical region', is_primary: true, note: '' }, { id: 2, code: 'M54.12', name: 'Radiculopathy, cervical region', is_primary: false, note: '' }]} /></div>
-        <div className="stack"><PrescriptionPanel appointmentId="x" patientEmail="israel@example.com"
-          favorites={[{ id: 1, name: 'ARCOXIA 90 MG', reg_number: '', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה', notes: '' }, { id: 2, name: 'אקמול', reg_number: '', form: '', strength: '', dose: '500 מ״ג', frequency: 'לפי הצורך', duration: '', quantity: '', notes: '' }]}
-          rows={[{ id: 'r1', appointment_id: 'x', items: [{ name: 'ARCOXIA 90 MG', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה' }, { name: 'MUSCOL', dose: '1 קפליה', frequency: '3 פעמים ביום', duration: '5 ימים', quantity: '1 אריזה' }], notes: '', rx_date: todayIL(), created_at: new Date().toISOString(), sent_at: null }]}
-          past={[]} /></div>
       </div>);
     case 'doctor-services':
       return staffShell('/doctor/services', <><PageHead title="סוגי שירות ומחירים" /><ServicesAdmin initial={SVC} preview /></>);
