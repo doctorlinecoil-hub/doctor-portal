@@ -23,7 +23,7 @@ export default function ForgotForm() {
       <div className="su-done" role="status">
         <span className="pb-check"><Icon name="mail" /></span>
         <p>{msg.text}</p>
-        <a className="btn btn-primary" href="/login">לכניסה עם הסיסמה הזמנית</a>
+        <a className="btn" href="/login">חזרה לכניסה</a>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export default function ForgotForm() {
     <form className="stack" onSubmit={submit} noValidate>
       <label className="field"><span>המייל שאיתו נרשמתם</span><input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
       {msg && <p className="err" role="alert">{msg.text}</p>}
-      <button className="btn btn-primary btn-lg" type="submit" disabled={busy || !email}>{busy ? 'שולח…' : 'שליחת סיסמה זמנית'}</button>
+      <button className="btn btn-primary btn-lg" type="submit" disabled={busy || !email}>{busy ? 'שולח…' : 'שליחת קישור לאיפוס'}</button>
     </form>
   );
 }
