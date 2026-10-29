@@ -3,7 +3,8 @@ import Icon from '@/components/Icon';
 import Tabs from '@/components/Tabs';
 import { Empty, PageHead, Stat } from '@/components/ui';
 import { KindBadge, StatusBadge } from '@/components/Badges';
-import { typeOf, ils } from '@/lib/constants';
+import { ils } from '@/lib/constants';
+import { labelOf } from '@/lib/services';
 import { DAYS, dayNum, fmtDate, fmtDay, ilParts, todayIL, weekday } from '@/lib/dates';
 import type { ApptRow, CaseDetail, DocRow, NoteRow } from '@/lib/types';
 import { ApptItem, CaseHero, DocsPanel, NotesPanel, groupByDay } from './FirmViews';
@@ -65,7 +66,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
           <Link href={`/doctor/cases/${next.id}`} className="hero-next">
             <span className="hint">התור הבא</span>
             <b>{next.patient_name || 'ממתין לפרטים'}</b>
-            <span>{fmtDay(np.date)} · <span className="num">{np.time}</span> · {typeOf(next.referral_type).label}</span>
+            <span>{fmtDay(np.date)} · <span className="num">{np.time}</span> · {labelOf(next)}</span>
             <AiChip i={intake[next.id]} />
           </Link>
         )}
@@ -91,7 +92,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
                     <span className="req-when"><b className="num">{p.time}</b><small>{fmtDay(p.date)}</small></span>
                     <span className="item-main">
                       <b>{r.patient_name || 'ממתין לפרטים'}</b>
-                      <span className="item-meta"><span>{typeOf(r.referral_type).label}</span><span>·</span><span>{r.firm_name}</span><span>·</span><span className="num">תיק {r.case_no}</span></span>
+                      <span className="item-meta"><span>{labelOf(r)}</span><span>·</span><span>{r.firm_name}</span><span>·</span><span className="num">תיק {r.case_no}</span></span>
                       {new Date(r.starts_at) < now ? <span className="badge b-cancelled">המועד עבר · כדאי לדחות ולבקש מועד חדש</span> : <AiChip i={intake[r.id]} />}
                     </span>
                   </Link>
@@ -136,7 +137,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
             <div className="list">
               {waiting.slice(0, 12).map((r) => (
                 <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
-                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{typeOf(r.referral_type).label} · {fmtDate(ilParts(r.starts_at).date)}</span></span>
+                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)}</span></span>
                   <StatusBadge status={r.status} staff />
                 </Link>
               ))}
@@ -159,7 +160,7 @@ export function PatientHistory({ rows }: { rows: HistoryRow[] }) {
         {rows.map((r) => (
           <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '84px minmax(0,1fr) auto' }}>
             <span className="item-time num" style={{ fontSize: 14 }}>{fmtDate(ilParts(r.starts_at).date)}<small>תיק {r.case_no}</small></span>
-            <span className="item-main"><b>{typeOf(r.referral_type).label}</b><span className="item-meta">{r.firm_name}</span></span>
+            <span className="item-main"><b>{labelOf(r)}</b><span className="item-meta">{r.firm_name}</span></span>
             <StatusBadge status={r.status} staff />
           </Link>
         ))}

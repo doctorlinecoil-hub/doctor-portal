@@ -2,7 +2,8 @@ import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { PageHead, Stat, Empty } from '@/components/ui';
 import { PayBadge, StatusBadge, TypeBadge } from '@/components/Badges';
-import { typeOf, PAYERS, PAY_METHODS, ils, payState } from '@/lib/constants';
+import { PAYERS, PAY_METHODS, ils, payState } from '@/lib/constants';
+import { labelOf } from '@/lib/services';
 import { age, fmtDate, fmtDay, fmtStamp, ilParts, todayIL } from '@/lib/dates';
 import type { ApptRow, CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
 
@@ -20,7 +21,7 @@ export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; 
         <b>{r.patient_name || 'ממתין לפרטי המטופל'}</b>
         {waiting && <span className="wait-chip"><Icon name="upload" size={13} />{staff ? 'המפנה עוד לא העלה מסמכים ופרטים' : 'להשלמה: מסמכים ופרטים'}</span>}
         <span className="item-meta">
-          <span>{typeOf(r.referral_type).label}</span>
+          <span>{labelOf(r)}</span>
           <span>·</span>
           <span className="num">תיק {r.case_no}</span>
           {r.firm_name && <><span>·</span><span>{r.firm_name}</span></>}
@@ -71,7 +72,7 @@ export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: st
               {ready.slice(0, 6).map((r) => (
                 <Link key={r.id} href={`/firm/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '40px minmax(0,1fr) auto' }}>
                   <span className="file-ic" style={{ width: 36, height: 36 }}>PDF</span>
-                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{typeOf(r.referral_type).label} · תיק {r.case_no}</span></span>
+                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{labelOf(r)} · תיק {r.case_no}</span></span>
                   <span className="item-side">{r.payer === 'referrer' && <PayBadge state={payState(r.price, r.paid)} />}</span>
                 </Link>
               ))}
@@ -139,7 +140,7 @@ export function FirmCasesView({ rows, filter }: { rows: ApptRow[]; filter: strin
                     <tr key={r.id}>
                       <td className="num muted">{r.case_no}</td>
                       <td><Link href={`/firm/cases/${r.id}`} className="row-link"><b style={{ fontWeight: 500 }}>{r.patient_name || 'ממתין לפרטים'}</b></Link></td>
-                      <td>{typeOf(r.referral_type).label}</td>
+                      <td>{labelOf(r)}</td>
                       <td className="num">{fmtDate(p.date)} <span className="muted">{p.time}</span></td>
                       <td><StatusBadge status={r.status} /></td>
                       <td>{r.payer === 'patient' ? <span className="muted">המטופל משלם</span> : <PayBadge state={payState(r.price, r.paid)} />}</td>
@@ -166,7 +167,7 @@ export function CaseHero({ c, staff, referrer, actions }: { c: CaseDetail; staff
         <div className="ch-body">
           <div className="ch-top">
             <span className="case-no">תיק מס׳ {c.case_no}</span>
-            <TypeBadge type={c.referral_type} />
+            <TypeBadge type={c.referral_type} label={c.service_label} />
             <StatusBadge status={c.status} staff={staff} />
             {c.walk_in && <span className="badge b-walkin">ללא תור ביומן</span>}
           </div>
