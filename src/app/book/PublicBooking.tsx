@@ -46,7 +46,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   const [over, setOver] = useState(false);
   const [up, setUp] = useState<Up | null>(null);
   const [upFor, setUpFor] = useState<File[]>([]);
-  const [scan, setScan] = useState<{ phase: 'idle' | 'upload' | 'read' | 'done' | 'manual'; text: string; n?: number }>(demo?.scanning ? { phase: 'read', text: 'קוראים את המסמכים ומחפשים את הפרטים…' } : demo?.ext ? { phase: 'done', text: '' } : { phase: 'idle', text: '' });
+  const [scan, setScan] = useState<{ phase: 'idle' | 'upload' | 'read' | 'done' | 'manual'; text: string; n?: number }>(demo?.scanning ? { phase: 'read', text: 'מצרפים את המסמכים לפנייה…' } : demo?.ext ? { phase: 'done', text: '' } : { phase: 'idle', text: '' });
   const [ext, setExt] = useState<Extracted | null>(demo?.ext ?? null);
 
   const [kind, setKind] = useState<Kind>(firm ? (firm.kind === 'broker' ? 'broker' : 'law') : 'law');
@@ -64,7 +64,6 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   const dayTimes = visible.find((d) => d.date === day)?.times ?? [];
   const chosen = slot ? ilParts(slot) : null;
   const self = !firm && kind === 'private';
-  const sure = new Set(ext?.sure ?? []);
 
   useEffect(() => { top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [step, done]);
 
@@ -116,15 +115,15 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     setErr('');
     const u = await upload();
     if (!u) return;
-    if (!u.files.length) { setScan({ phase: 'manual', text: 'המסמכים לא הועלו. מלאו את הפרטים ידנית.' }); go(4); return; }
-    setScan({ phase: 'read', text: 'קוראים את המסמכים ומחפשים את הפרטים…' });
+    if (!u.files.length) { setScan({ phase: 'manual', text: 'המסמכים לא הועלו. אפשר להמשיך ולשלוח אותם למרפאה בהמשך.' }); go(4); return; }
+    setScan({ phase: 'read', text: 'מצרפים את המסמכים לפנייה…' });
     const r = await publicScan(u.token, u.files).catch(() => null);
     if (r?.ok) {
       setExt(r.data);
       apply(r.data);
       setScan({ phase: 'done', text: '' });
     } else {
-      setScan({ phase: 'manual', text: r?.error || 'לא הצלחנו לקרוא את המסמכים. מלאו את הפרטים ידנית.' });
+      setScan({ phase: 'manual', text: 'המסמכים צורפו לפנייה. נא למלא את פרטי המטופל.' });
     }
     go(4);
   }
@@ -226,7 +225,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
   const field = (label: string, key: keyof typeof EMPTY_PT, extraProps: { type?: string; inputMode?: 'numeric'; dir?: string; autoComplete?: string; placeholder?: string } = {}, extKey?: string) => (
     <label className="field">
-      <span>{label}{ext && extKey && sure.has(extKey) && pt[key] ? <em className="pb-found"><Icon name="sparkles" size={12} />מהמסמכים</em> : null}</span>
+      <span>{label}</span>
       <input value={pt[key]} onChange={(e) => setPt({ ...pt, [key]: e.target.value })} {...extraProps} />
     </label>
   );
@@ -293,13 +292,13 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
         {step === 3 && (
           <div className="pbw-pane">
             <h1 className="pbw-h">העלאת מסמכים</h1>
-            <p className="pbw-lead">צרפו את המסמכים הרפואיים, כתב התביעה או ההפניה. <b>המערכת תקרא אותם ותמלא את הפרטים בשבילכם</b> — נשאר רק לבדוק ולאשר.</p>
+            <p className="pbw-lead">אם יש בידיכם מסמכים שכדאי שהרופא יראה לפני הפגישה — הפניה, תוצאות בדיקות והדמיה, סיכומי ביקור או כתב תביעה — ניתן לצרף אותם כאן. <span className="muted">הצירוף אינו חובה.</span></p>
             {scan.phase === 'upload' || scan.phase === 'read' ? (
               <div className="pbw-scan" role="status" aria-live="polite">
                 <div className={`pbw-scan-doc${scan.phase === 'read' ? ' reading' : ''}`}><span /><span /><span /><span /><i /></div>
                 <b>{scan.text}</b>
                 {scan.phase === 'upload' && <div className="pbw-bar"><div style={{ width: `${scan.n ?? 5}%` }} /></div>}
-                {scan.phase === 'read' && <span className="muted">זה לוקח בדרך כלל חצי דקה עד דקה. אל תסגרו את הדף.</span>}
+                {scan.phase === 'read' && <span className="muted">זה עשוי להימשך עד דקה. נא לא לסגור את הדף.</span>}
               </div>
             ) : (
               <>
@@ -319,8 +318,8 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
                 <div className="pbw-nav">
                   <button type="button" className="btn btn-ghost" onClick={() => go(2)}><Icon name="arrowLeft" size={15} className="flip" />חזרה</button>
                   <span className="spacer" />
-                  <button type="button" className="btn btn-link" onClick={() => { setScan({ phase: 'manual', text: '' }); go(4); }}>{files.length ? 'המשך בלי סריקה' : 'אין לי מסמכים כרגע'}</button>
-                  <button type="button" className="btn btn-primary btn-lg" disabled={!files.length} onClick={scanDocs}><Icon name="sparkles" />סריקה והמשך</button>
+                  <button type="button" className="btn btn-link" onClick={() => { setScan({ phase: 'manual', text: '' }); go(4); }}>{files.length ? 'המשך בלי לצרף' : 'אין מסמכים לצרף'}</button>
+                  <button type="button" className="btn btn-primary btn-lg" disabled={!files.length} onClick={scanDocs}>צירוף והמשך<Icon name="arrowLeft" size={16} /></button>
                 </div>
               </>
             )}
@@ -331,7 +330,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
           <form className="pbw-pane" onSubmit={submit} noValidate>
             <h1 className="pbw-h">בדיקת הפרטים</h1>
             {scan.phase === 'done' ? (
-              <div className="pbw-note ok"><Icon name="sparkles" /><div><b>מילאנו את הפרטים מתוך המסמכים.</b> בדקו שהכל נכון ותקנו אם צריך.{ext?.warning ? <div className="pbw-warn">{ext.warning}</div> : null}</div></div>
+              <div className="pbw-note ok"><Icon name="check" /><div><b>המסמכים צורפו לפנייה.</b> נא לוודא שהפרטים שלהלן נכונים ולהשלים את החסר.{ext?.warning ? <div className="pbw-warn">{ext.warning}</div> : null}</div></div>
             ) : scan.text ? (
               <div className="pbw-note"><Icon name="info" /><div>{scan.text}</div></div>
             ) : <p className="pbw-lead">מלאו את פרטי המטופל ואת הכתובות לעדכונים.</p>}
@@ -354,7 +353,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
                 </div>
                 {!self && (
                   <div className="grid-2">
-                    <label className="field"><span>{kind === 'broker' ? 'שם החברה / המתווך' : 'שם המשרד'}{ext?.referrer_office && ref.office === ext.referrer_office ? <em className="pb-found"><Icon name="sparkles" size={12} />מהמסמכים</em> : null}</span><input value={ref.office} onChange={(e) => setRef({ ...ref, office: e.target.value })} autoComplete="organization" /></label>
+                    <label className="field"><span>{kind === 'broker' ? 'שם החברה / המתווך' : 'שם המשרד'}</span><input value={ref.office} onChange={(e) => setRef({ ...ref, office: e.target.value })} autoComplete="organization" /></label>
                     <label className="field"><span>איש קשר</span><input value={ref.contact} onChange={(e) => setRef({ ...ref, contact: e.target.value })} autoComplete="name" /></label>
                     <label className="field"><span>טלפון</span><input type="tel" dir="ltr" value={ref.phone} onChange={(e) => setRef({ ...ref, phone: e.target.value })} autoComplete="tel" /></label>
                   </div>
@@ -364,7 +363,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
             <fieldset className="pbw-group pbw-mail">
               <legend><Icon name="mail" size={16} />לאן לשלוח את אישור הזימון והמכתבים?</legend>
-              <p className="hint">כל הכתובות כאן יקבלו את אישור התור, תזכורת יום לפני, ואת המכתבים שהרופא יכתוב.</p>
+              <p className="hint">כל הכתובות כאן יקבלו את אישור התור, תזכורות לפני המועד, ואת המכתבים שהרופא יכתוב.</p>
               {!firm && !self && (
                 <label className="field"><span>מייל המפנה <small>חובה</small></span><input type="email" dir="ltr" value={ref.email} onChange={(e) => setRef({ ...ref, email: e.target.value })} autoComplete="email" placeholder="office@example.co.il" /></label>
               )}
