@@ -288,16 +288,16 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions }
       {letter.awaitingPayment && (
         <div className="callout warn"><div><Icon name="clock" />המכתב מוכן, והוא יהיה זמין להורדה מיד אחרי השלמת התשלום.</div></div>
       )}
-      <div className="cols">
+      <div className="cols-side">
+        <div className="stack">
+          <NotesPanel notes={c.notes} extra={notes} />
+          <DocsPanel docs={docs} />
+          {actions}
+        </div>
         <div className="stack">
           {c.payer === 'referrer' || payments.length ? <PaymentSummary price={c.price} paid={paid} payer={c.payer} payments={payments} /> : (
             <section className="panel"><div className="panel-head"><h2><Icon name="wallet" />תשלום</h2></div><p className="muted">המטופל משלם ישירות למרפאה.</p></section>
           )}
-          <NotesPanel notes={c.notes} extra={notes} />
-        </div>
-        <div className="stack">
-          <DocsPanel docs={docs} />
-          {actions}
         </div>
       </div>
     </>
