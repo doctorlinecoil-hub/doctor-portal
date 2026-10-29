@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { fmtStamp } from '@/lib/dates';
@@ -31,6 +32,7 @@ function Bell({ dark }: { dark?: boolean }) {
   const router = useRouter();
   const [list, setList] = useState<N[]>([]);
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const box = useRef<HTMLDivElement | null>(null);
   const unread = list.filter((n) => !n.read_at).length;
 
@@ -49,9 +51,10 @@ function Bell({ dark }: { dark?: boolean }) {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', esc);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
   }, [open]);
 
   async function go(n: N) {
@@ -68,29 +71,81 @@ function Bell({ dark }: { dark?: boolean }) {
     await supabase.from('notifications').update({ read_at: now }).is('read_at', null);
   }
 
+  const shown = filter === 'unread' ? list.filter((n) => !n.read_at) : list;
+  const groups: { label: string; items: N[] }[] = [];
+  for (const n of shown) {
+    const label = dayLabel(n.created_at);
+    const g = groups[groups.length - 1];
+    if (g && g.label === label) g.items.push(n); else groups.push({ label, items: [n] });
+  }
+
   return (
     <div className={`bell${dark ? ' dark' : ''}`} ref={box}>
       <button type="button" className="bell-btn" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={unread ? `${unread} התראות חדשות` : 'התראות'}>
         <Icon name="bell" />
         {unread > 0 && <span className="bell-n num">{unread > 9 ? '9+' : unread}</span>}
       </button>
-      {open && (
-        <div className="bell-pop" role="dialog" aria-label="התראות">
-          <div className="between"><b>התראות</b>{unread > 0 && <button type="button" className="link" onClick={readAll}>סימון הכל כנקרא</button>}</div>
-          {list.length === 0 ? <p className="hint" style={{ padding: '18px 0', textAlign: 'center' }}>אין התראות עדיין</p> : (
-            <ul>
-              {list.map((n) => (
-                <li key={n.id}>
-                  <button type="button" className={n.read_at ? '' : 'unread'} onClick={() => go(n)}>
-                    <span className="bell-ic"><Icon name={ICON[n.kind] ?? 'info'} /></span>
-                    <span><b>{n.title}</b>{n.body && <span>{n.body}</span>}<small>{fmtStamp(n.created_at)}</small></span>
-                  </button>
-                </li>
+      {open && createPortal(
+        <div className="ndrawer-wrap">
+          <div className="ndrawer-scrim" onClick={() => setOpen(false)} />
+          <aside className="ndrawer" role="dialog" aria-modal="true" aria-label="התראות">
+            <header className="ndrawer-head">
+              <div className="ndrawer-title">
+                <span className="ndrawer-badge"><Icon name="bell" /></span>
+                <div><b>התראות</b><small>{unread ? `${unread} חדשות` : 'הכל נקרא'}</small></div>
+              </div>
+              <button type="button" className="ndrawer-x" onClick={() => setOpen(false)} aria-label="סגירה"><Icon name="x" /></button>
+            </header>
+            <div className="ndrawer-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected={filter === 'all'} className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>הכל <span className="num">{list.length}</span></button>
+              <button type="button" role="tab" aria-selected={filter === 'unread'} className={filter === 'unread' ? 'on' : ''} onClick={() => setFilter('unread')}>לא נקראו <span className="num">{unread}</span></button>
+            </div>
+            <div className="ndrawer-body">
+              {shown.length === 0 ? (
+                <div className="ndrawer-empty"><span><Icon name="checkCircle" /></span><b>{filter === 'unread' ? 'אין התראות חדשות' : 'אין התראות עדיין'}</b><small>כאן יופיעו בקשות חדשות, מסמכים שהועלו ומכתבים מוכנים.</small></div>
+              ) : groups.map((g) => (
+                <section key={g.label} className="ngroup">
+                  <h4>{g.label}</h4>
+                  <ul>
+                    {g.items.map((n) => (
+                      <li key={n.id}>
+                        <button type="button" className={`nitem k-${tone(n.kind)}${n.read_at ? '' : ' unread'}`} onClick={() => go(n)}>
+                          <span className="nitem-ic"><Icon name={ICON[n.kind] ?? 'info'} /></span>
+                          <span className="nitem-main">
+                            <b>{n.title}</b>
+                            {n.body && <span>{n.body}</span>}
+                            <small>{fmtStamp(n.created_at)}</small>
+                          </span>
+                          {!n.read_at && <span className="nitem-dot" aria-label="חדש" />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
-          )}
-        </div>
+            </div>
+            {unread > 0 && <footer className="ndrawer-foot"><button type="button" className="btn btn-sm" onClick={readAll}><Icon name="check" />סימון הכל כנקרא</button></footer>}
+          </aside>
+        </div>,
+        document.body,
       )}
     </div>
   );
+}
+
+function tone(kind: string) {
+  if (['declined', 'cancelled', 'reschedule_declined'].includes(kind)) return 'bad';
+  if (['approved', 'letter_ready'].includes(kind)) return 'ok';
+  if (['doc_request', 'new_request'].includes(kind)) return 'warn';
+  return 'info';
+}
+
+function dayLabel(iso: string) {
+  const d = new Date(iso);
+  const key = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  const today = new Date();
+  const y = new Date(today.getTime() - 86_400_000);
+  if (key(d) === key(today)) return 'היום';
+  if (key(d) === key(y)) return 'אתמול';
+  return 'מוקדם יותר';
 }
