@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { EMAIL_RE, TYPES, dbError, ils, type ReferralType } from '@/lib/constants';
+import { EMAIL_RE, dbError } from '@/lib/constants';
+import type { Service } from '@/lib/services';
+import ServicePicker from '@/components/ServicePicker';
 import { ilToUtc } from '@/lib/dates';
 import Icon from '@/components/Icon';
 import { PageHead } from '@/components/ui';
@@ -10,14 +12,14 @@ import { PageHead } from '@/components/ui';
 type Firm = { id: string; name: string; kind: string };
 
 /** A new case without a slot: the doctor writes a letter or a prescription for anyone, any day. */
-export default function NewCaseForm({ firms, prices, initial, preview }: {
-  firms: Firm[]; prices: Record<ReferralType, number>; preview?: boolean;
+export default function NewCaseForm({ firms, services, initial, preview }: {
+  firms: Firm[]; services: Service[]; preview?: boolean;
   initial: { firm: string; name: string; id: string; dob: string; phone: string; email: string; what: 'letter' | 'rx'; date: string; time: string };
 }) {
   const supabase = useSupabase();
   const router = useRouter();
   const [f, setF] = useState({ ...initial, notes: '' });
-  const [type, setType] = useState<ReferralType>('summary');
+  const [svc, setSvc] = useState<Service | null>(services.find((x) => x.base_type === 'summary') ?? services[0] ?? null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
@@ -28,6 +30,7 @@ export default function NewCaseForm({ firms, prices, initial, preview }: {
     e.preventDefault();
     const miss: string[] = [];
     if (!f.firm) miss.push('מפנה');
+    if (!svc) miss.push('סוג המסמך');
     if (f.name.trim().length < 2) miss.push('שם המטופל');
     if (f.id.trim().length < 5) miss.push('תעודת זהות');
     if (f.phone.trim().length < 7) miss.push('טלפון');
@@ -37,7 +40,7 @@ export default function NewCaseForm({ firms, prices, initial, preview }: {
     setBusy(true);
     setErr('');
     const { data, error } = await supabase.from('appointments').insert({
-      firm_id: f.firm, walk_in: true, starts_at: ilToUtc(f.date, f.time || '09:00').toISOString(), referral_type: type,
+      firm_id: f.firm, walk_in: true, starts_at: ilToUtc(f.date, f.time || '09:00').toISOString(), service_id: svc!.id, referral_type: svc!.base_type,
       payer: firm?.kind === 'private' ? 'patient' : 'referrer',
       patient_name: f.name.trim(), patient_id_number: f.id.trim(), patient_dob: f.dob || null, patient_phone: f.phone.trim(),
       patient_email: f.email.trim().toLowerCase(), notes: f.notes.trim(),
@@ -57,14 +60,7 @@ export default function NewCaseForm({ firms, prices, initial, preview }: {
             <button type="button" aria-pressed={f.what === 'letter'} onClick={() => setF({ ...f, what: 'letter' })}><Icon name="file" />מכתב / חוות דעת</button>
             <button type="button" aria-pressed={f.what === 'rx'} onClick={() => setF({ ...f, what: 'rx' })}><Icon name="pill" />מרשם תרופות</button>
           </div>
-          <div className="options compact">
-            {(Object.keys(TYPES) as ReferralType[]).map((k) => (
-              <button key={k} type="button" className="opt" aria-pressed={type === k} onClick={() => setType(k)}>
-                <span className="opt-ic"><Icon name={TYPES[k].icon} /></span>
-                <span><b>{TYPES[k].label}</b>{Number(prices?.[k]) > 0 && <span className="price">{ils(prices[k])}</span>}</span>
-              </button>
-            ))}
-          </div>
+          <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact />
         </div>
 
         <div className="form-sec">
