@@ -16,7 +16,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const from = ilToUtc(start, '00:00').toISOString();
   const to = ilToUtc(end, '00:00').toISOString();
   const [rows, { data: blocks }] = await Promise.all([
-    loadAppointments(supabase, { from, to, order: 'asc' }),
+    loadAppointments(supabase, { from, to, order: 'asc', slotsOnly: true }),
     supabase.from('time_blocks').select('id, starts_at, ends_at, note').lt('starts_at', to).gt('ends_at', from).order('starts_at'),
   ]);
   return (
