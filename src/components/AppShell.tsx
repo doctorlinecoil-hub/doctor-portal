@@ -19,6 +19,7 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     { href: '/doctor', label: 'לוח בקרה', icon: 'home' },
     { href: '/doctor/calendar', label: 'יומן', icon: 'calendar' },
     { href: '/doctor/book', label: 'קביעת תור', icon: 'calendarPlus' },
+    { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'file' },
     { href: '/doctor/search', label: 'חיפוש מטופל', icon: 'search' },
     { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
   ] };
