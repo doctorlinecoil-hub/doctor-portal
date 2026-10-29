@@ -24,10 +24,10 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     { href: '/doctor/search', label: 'חיפוש מטופל', icon: 'search' },
     { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
     { href: '/doctor/services', label: 'סוגי שירות ומחירים', icon: 'receipt' },
+    { href: '/admin/reports', label: 'דוחות והכנסות', icon: 'chart' },
   ] };
   if (role === 'doctor') return [doctor];
   return [doctor, { title: 'ניהול', items: [
-    { href: '/admin/reports', label: 'דוחות והכנסות', icon: 'chart' },
     { href: '/admin/payments', label: 'תשלומים', icon: 'wallet' },
     { href: '/admin/users', label: 'מפנים ומשתמשים', icon: 'users' },
     { href: '/admin', label: 'הגדרות', icon: 'settings' },
