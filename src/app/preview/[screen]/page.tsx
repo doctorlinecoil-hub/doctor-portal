@@ -4,6 +4,9 @@ import AuthFrame from '@/components/AuthFrame';
 import LoginForm from '@/app/login/LoginForm';
 import SlotBooking from '@/app/(app)/firm/book/SlotBooking';
 import DetailsWizard from '@/app/(app)/firm/cases/[id]/details/DetailsWizard';
+import NewCaseForm from '@/app/(app)/doctor/new/NewCaseForm';
+import DiagnosesPanel from '@/app/(app)/doctor/cases/[id]/DiagnosesPanel';
+import PrescriptionPanel from '@/app/(app)/doctor/cases/[id]/PrescriptionPanel';
 import BookingForm from '@/app/(app)/firm/book/BookingForm';
 import CaseActions from '@/app/(app)/firm/cases/[id]/CaseActions';
 import LetterEditor from '@/app/(app)/doctor/cases/[id]/LetterEditor';
@@ -90,6 +93,18 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'admin-reports':
       return staffShell('/admin/reports', <ReportsView report={buildReport(fx.rows.map((r) => ({ id: r.id, case_no: r.case_no, starts_at: r.starts_at, status: r.status, referral_type: r.referral_type, price: r.price, payer: r.payer, firm_id: r.firm_name ?? '', firm_name: r.firm_name ?? '', patient_name: r.patient_name })),
         fx.rows.filter((r) => r.paid > 0).map((r) => ({ appointment_id: r.id, amount: r.paid, paid_on: todayIL(), method: 'transfer' })), [], todayIL())} />);
+    case 'doctor-new':
+      return staffShell('/doctor/new', <NewCaseForm firms={[{ id: 'p', name: 'פניות ישירות', kind: 'private' }, { id: 'f1', name: 'כהן, לוי ושות׳', kind: 'law' }]} prices={fx.settings.prices} preview
+        initial={{ firm: 'p', name: '', id: '', dob: '', phone: '', email: '', what: 'letter', date: todayIL(), time: '10:30' }} />);
+    case 'doctor-rx':
+      return staffShell('/doctor', <div className="cols case-cols">
+        <div className="stack"><DiagnosesPanel appointmentId="x" suggestions={['פריצת דיסק צווארית', 'Cervical radiculopathy']}
+          rows={[{ id: 1, code: 'M50.20', name: 'Other cervical disc displacement, unspecified cervical region', is_primary: true, note: '' }, { id: 2, code: 'M54.12', name: 'Radiculopathy, cervical region', is_primary: false, note: '' }]} /></div>
+        <div className="stack"><PrescriptionPanel appointmentId="x" patientEmail="israel@example.com"
+          favorites={[{ id: 1, name: 'ARCOXIA 90 MG', reg_number: '', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה', notes: '' }, { id: 2, name: 'אקמול', reg_number: '', form: '', strength: '', dose: '500 מ״ג', frequency: 'לפי הצורך', duration: '', quantity: '', notes: '' }]}
+          rows={[{ id: 'r1', appointment_id: 'x', items: [{ name: 'ARCOXIA 90 MG', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה' }, { name: 'MUSCOL', dose: '1 קפליה', frequency: '3 פעמים ביום', duration: '5 ימים', quantity: '1 אריזה' }], notes: '', rx_date: todayIL(), created_at: new Date().toISOString(), sent_at: null }]}
+          past={[]} /></div>
+      </div>);
     case 'doctor-templates':
       return staffShell('/doctor/templates', <><PageHead title="תבניות למכתבים" /><TemplatesAdmin list={fx.templates} preview /></>);
     case 'firm-resched':
