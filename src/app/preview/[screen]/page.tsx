@@ -101,8 +101,9 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={null} docCount={fx.docs.length} cancelled={false} preview paper={{ ...fx.settings, patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />} />);
     }
     case 'doctor-calendar':
+    case 'doctor-day':
     case 'doctor-month': {
-      const view = screen === 'doctor-month' ? 'month' : 'week';
+      const view = screen === 'doctor-month' ? 'month' : screen === 'doctor-day' ? 'day' : 'week';
       return staffShell('/doctor/calendar', <CalendarView view={view} date={todayIL()} settings={fx.settings} blocks={fx.blocks}
         rows={fx.rows.map((r) => ({ ...r, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() }))}
         tools={<div className="row"><BlockForm today={todayIL()} /></div>}
