@@ -8,10 +8,10 @@ import { fetchAll } from '@/lib/fetchAll';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Excel export (CSV) for the admin: all cases, or all payments. */
+/** Excel export (CSV) for the clinic (doctor and admin): all cases, or all payments. */
 export async function GET(req: Request) {
   const supabase = await createClient();
-  const { data: admin } = await supabase.rpc('is_admin');
+  const { data: admin } = await supabase.rpc('is_staff');
   if (!admin) return new Response('אין הרשאה', { status: 403 });
   const what = new URL(req.url).searchParams.get('what') === 'payments' ? 'payments' : 'cases';
   let csv: string;
