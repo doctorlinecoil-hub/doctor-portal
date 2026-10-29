@@ -63,9 +63,10 @@ async function scheduleTick(db) {
     await db.query('create extension if not exists pg_cron with schema pg_catalog');
     await db.query(`select cron.schedule('portal-tick', '*/10 * * * *', $job$
       select net.http_get(
-        url := (select url || '/api/cron/tick?key=' || key from app_private.cron_target where id = 1),
+        url := t.url || '/api/cron/tick',
+        headers := jsonb_build_object('x-cron-key', t.key),
         timeout_milliseconds := 120000
-      ) where exists (select 1 from app_private.cron_target where id = 1 and url like 'https://%')
+      ) from app_private.cron_target t where t.id = 1 and t.url like 'https://%'
     $job$)`);
     console.log('[migrate] scheduler: every 10 minutes ->', base);
   } catch (e) {
