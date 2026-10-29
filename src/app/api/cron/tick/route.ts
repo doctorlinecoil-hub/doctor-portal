@@ -12,7 +12,7 @@ export const maxDuration = 300;
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const key = url.searchParams.get('key') || '';
+  const key = req.headers.get('x-cron-key') || url.searchParams.get('key') || '';
   const secret = process.env.CRON_SECRET;
   let ok = !!secret && req.headers.get('authorization') === `Bearer ${secret}`;
   if (!ok && key) {
