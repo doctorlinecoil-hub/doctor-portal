@@ -25,6 +25,9 @@ export type LetterRow = {
 
 type Draft = { letter_type: ReferralType; recipient: string; subject: string; body: string; exam_notes: string };
 
+/** Removes an error line that older versions wrote into the letter when the AI failed. */
+const cleanBody = (b?: string | null) => String(b ?? '').replace(/\n*\[הניסוח נעצר בגלל תקלה\. נסו שוב\.\]\s*/g, '').trim();
+
 /** A textarea that grows with its text. */
 function AutoText(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { minRows?: number }) {
   const { minRows = 2, ...rest } = props;
@@ -47,7 +50,7 @@ export default function LetterEditor({
     letter_type: initial?.letter_type ?? defaultType,
     recipient: initial?.recipient ?? '',
     subject: initial?.subject ?? '',
-    body: initial?.body ?? '',
+    body: cleanBody(initial?.body),
     exam_notes: initial?.exam_notes ?? '',
   });
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
@@ -79,8 +82,8 @@ export default function LetterEditor({
 
   // ---- the body as sections (the default editing mode) ----
   const [mode, setMode] = useState<'sections' | 'text'>('sections');
-  const [secs, setSecs] = useState<Section[]>(() => toSections(initial?.body ?? ''));
-  const lastBody = useRef(initial?.body ?? '');
+  const [secs, setSecs] = useState<Section[]>(() => toSections(cleanBody(initial?.body)));
+  const lastBody = useRef(cleanBody(initial?.body));
   const focusId = useRef<string | null>(null);
   const setSections = (next: Section[]) => {
     setSecs(next);
