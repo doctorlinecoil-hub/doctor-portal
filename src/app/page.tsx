@@ -13,14 +13,17 @@ export const metadata: Metadata = {
 };
 
 /** Signed-in users go to their home; everyone else sees the clinic's page. */
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
   const { claims, profile } = await getSession();
-  if (claims && profile?.active) redirect(homeFor(profile.role));
+  const signedIn = !!(claims && profile?.active);
+  // signed-in users go to their home, unless they asked to see the public page
+  if (signedIn && view !== 'public') redirect(homeFor(profile!.role));
   const db = createAdminClient();
   const [{ data: s0 }, { data: services }] = await Promise.all([
     db.from('settings').select('*').eq('id', 1).single(),
     db.from('services').select(SERVICE_COLS).eq('active', true).order('sort').order('label'),
   ]);
   const s = { ...SETTINGS_DEFAULTS, ...(s0 as Settings) } as Settings;
-  return <Landing s={s} services={(services as Service[] | null) ?? []} />;
+  return <Landing s={s} services={(services as Service[] | null) ?? []} home={signedIn ? homeFor(profile!.role) : null} />;
 }
