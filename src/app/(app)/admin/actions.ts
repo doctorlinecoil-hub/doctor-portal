@@ -27,7 +27,7 @@ export async function saveSettings(input: {
   weekly: Record<string, WeekDay>; slot_minutes: number; horizon_days: number; notice_hours: number; blocked_dates: string[];
   require_staff_mfa: boolean; max_open_per_firm: number; prices: Record<ReferralType, number>; letter_requires_payment: boolean; invoice_item: string;
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
-  require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean;
+  require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -62,6 +62,7 @@ export async function saveSettings(input: {
     reminders_on: !!input.reminders_on,
     email_letters: !!input.email_letters,
     auto_intake: !!input.auto_intake,
+    auto_draft: !!input.auto_draft,
   }).eq('id', 1);
   if (error) return { ok: false, error: 'השמירה נכשלה.' };
   revalidatePath('/', 'layout');

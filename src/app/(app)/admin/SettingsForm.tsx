@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Icon from '@/components/Icon';
-import { SETTINGS_DEFAULTS, TYPES, type ReferralType, type Settings, type WeekDay } from '@/lib/constants';
+import { typeOf, SETTINGS_DEFAULTS, TYPES, type ReferralType, type Settings, type WeekDay } from '@/lib/constants';
 import { DAYS, fmtDate } from '@/lib/dates';
 import { saveSettings } from './actions';
 
@@ -70,7 +70,7 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
             <p className="muted">מחיר ברירת מחדל לכל סוג תיק, כולל מע״מ. אפשר לשנות מחיר בכל תיק בנפרד.</p>
             <div className="grid-2">
               {(Object.keys(TYPES) as ReferralType[]).map((k) => (
-                <label className="field" htmlFor={`price-${k}`} key={k}><span>{TYPES[k].label} ₪</span>
+                <label className="field" htmlFor={`price-${k}`} key={k}><span>{typeOf(k).label} ₪</span>
                   <input id={`price-${k}`} inputMode="decimal" dir="ltr" value={String(s.prices[k] ?? 0)} onChange={(e) => setS({ ...s, prices: { ...s.prices, [k]: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 } })} />
                 </label>
               ))}
@@ -108,6 +108,8 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
             <div className="panel-head"><h2><Icon name="sparkles" />סריקת AI</h2></div>
             <label className="check"><input type="checkbox" checked={s.auto_intake} onChange={(e) => setS({ ...s, auto_intake: e.target.checked })} />
               <span>סריקה אוטומטית של כל פנייה חדשה<small>ה־AI קורא את המסמכים ומכין לרופא סיכום, ציר זמן, דגלים אדומים ורשימת מסמכים חסרים. נסרק שוב כשהמפנה מוסיף מסמכים.</small></span></label>
+            <label className="check"><input type="checkbox" checked={s.auto_draft} onChange={(e) => setS({ ...s, auto_draft: e.target.checked })} />
+              <span>טיוטת מכתב אוטומטית<small>כשהמפנה משלים תיק, ה־AI כותב טיוטה ראשונה של המכתב מהמסמכים. הרופא עורך, משלים את ממצאי הבדיקה ושולח.</small></span></label>
           </section>
 
           <section className="panel">
