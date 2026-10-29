@@ -3,6 +3,7 @@ import Icon from '@/components/Icon';
 import { TYPES, type ReferralType, type Settings } from '@/lib/constants';
 import { age, fmtDate } from '@/lib/dates';
 import { LEGAL_DECLARATION, bodyBlocks } from '@/lib/letter';
+import { isRich, sanitizeHtml, stripMarker } from '@/lib/richtext';
 
 type Letter = { letter_type: ReferralType; recipient: string; subject: string; body: string; letter_date: string };
 
@@ -41,6 +42,7 @@ export default function LetterPaper({ settings: s, letter, patient, backHref, dr
         .lt-li::before { content: "•"; position: absolute; right: 2px; }
         .lt-decl { margin-top: 14px; padding: 7px 9px; border: 1px solid #999; font-size: 10pt; break-inside: avoid; }
         .lt-sign { margin-top: 20px; break-inside: avoid; }
+        .paper .lt-rich span[style*="background-color: #FDECC8"], .paper .lt-rich span[style*="rgb(253, 236, 200)"] { background: transparent !important; }
         .toolbar { max-width: 210mm; margin: 0 auto; padding: 16px 16px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
         @media print {
           .letter-view { background: #fff; padding: 0; }
@@ -78,7 +80,9 @@ export default function LetterPaper({ settings: s, letter, patient, backHref, dr
           <span><b>ת.ז.:</b> {patient.idNumber}</span>
           {patient.dob && <span><b>תאריך לידה:</b> {fmtDate(patient.dob)}{ag != null ? ` (גיל ${ag})` : ''}</span>}
         </div>
-        {bodyBlocks(letter.body).map((b, i) => <div key={i} className={`lt-${b.kind}`}>{b.text}</div>)}
+        {isRich(letter.body)
+          ? <div className="lt-rich" dangerouslySetInnerHTML={{ __html: sanitizeHtml(stripMarker(letter.body)) }} />
+          : bodyBlocks(letter.body).map((b, i) => <div key={i} className={`lt-${b.kind}`}>{b.text}</div>)}
         {letter.letter_type === 'legal' && <div className="lt-decl">{LEGAL_DECLARATION}</div>}
         <div className="lt-sign">
           <div>בכבוד רב,</div>
