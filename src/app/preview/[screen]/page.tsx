@@ -111,7 +111,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'doctor-rx':
       return staffShell('/doctor', <div className="cols-side rx-tab">
         <div className="stack"><PrescriptionPanel appointmentId="x" patientEmail="" favorites={[]} rows={[]} past={[]} paper={{ settings: fx.settings, patient: { name: 'ישראל ישראלי', idNumber: '012345678', dob: '1980-05-12' } }}
-          initialItems={[{ name: 'ARCOXIA 90 MG', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה' }, { name: 'MUSCOL', form: 'קפליות', strength: '', dose: '1 קפליה', frequency: '3 פעמים ביום', duration: '5 ימים', quantity: '1 אריזה', notes: 'אחרי האוכל' }]} /></div>
+          initialItems={[{ name: 'ARCOXIA 90 MG', reg: '1234', form: 'טבליות', strength: 'ETORICOXIB 90 MG', dose: '1 טבליה', frequency: 'פעם ביום', duration: '7 ימים', quantity: '1 אריזה' }, { name: 'MUSCOL', form: 'קפליות', strength: '', dose: '1 קפליה', frequency: '3 פעמים ביום', duration: '5 ימים', quantity: '1 אריזה', notes: 'אחרי האוכל' }, { name: 'משחת וולטרן אמולג׳ל', strength: '1%', form: 'ג׳ל', dose: 'מריחה דקה', frequency: '3 פעמים ביום', duration: '10 ימים', quantity: 'שפופרת 100 גר׳' }]} /></div>
         <div className="stack"><DiagnosesPanel appointmentId="x" suggestions={['פריצת דיסק צווארית', 'Cervical radiculopathy']}
           rows={[{ id: 1, code: 'M50.20', name: 'Other cervical disc displacement, unspecified cervical region', is_primary: true, note: '' }, { id: 2, code: 'M54.12', name: 'Radiculopathy, cervical region', is_primary: false, note: '' }]} /></div>
       </div>);
