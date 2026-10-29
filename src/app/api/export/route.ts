@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { typeOf, PAY_METHODS, STATUS_STAFF, type ApptStatus, type PayMethod, type ReferralType } from '@/lib/constants';
+import { PAY_METHODS, STATUS_STAFF, type ApptStatus, type PayMethod, type ReferralType } from '@/lib/constants';
+import { labelOf } from '@/lib/services';
 import { fmtDate, ilParts } from '@/lib/dates';
 import { toCsv } from '@/lib/reports';
 import { fetchAll } from '@/lib/fetchAll';
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
       ...data.map((r) => {
         const p = ilParts(r.starts_at);
         const pd = paid.get(r.id) ?? 0;
-        return [r.case_no, fmtDate(p.date), p.time, STATUS_STAFF[r.status], typeOf(r.referral_type).label, r.firms?.name ?? '', r.patient_name, r.patient_id_number, r.patient_phone, r.patient_email,
+        return [r.case_no, fmtDate(p.date), p.time, STATUS_STAFF[r.status], labelOf(r), r.firms?.name ?? '', r.patient_name, r.patient_id_number, r.patient_phone, r.patient_email,
           r.payer === 'patient' ? 'המטופל' : 'המפנה', Number(r.price), pd, Math.max(0, Number(r.price) - pd)];
       }),
     ]);
