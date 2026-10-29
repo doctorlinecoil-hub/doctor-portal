@@ -141,3 +141,13 @@ export function bodyBlocks(body: string): Block[] {
 }
 
 export const PLACEHOLDER_RE = /\[(להשלמת|לאישור|לבדיקת) הרופא/;
+
+/** The section headings for a letter type, to start writing by hand (without the AI). */
+export function outlineFor(type: ReferralType, education = ''): string {
+  const heads = STRUCT[type].split('\n').map((l) => l.trim()).filter((l) => /^[^\s].{1,60}:/.test(l) && !l.startsWith('נמען') && !l.startsWith('סעיפים') && !l.startsWith('פתיחה'));
+  return heads.map((l) => {
+    const h = l.slice(0, l.indexOf(':') + 1);
+    if (h.startsWith('פרטי המומחה')) return `${h}\n${education || '[להשלמת הרופא: השכלה וניסיון]'}`;
+    return `${h}\n`;
+  }).join('\n');
+}
