@@ -35,7 +35,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
   const pre = initialSlot ? visible.find((d) => d.times.some((t) => t.iso === initialSlot)) : undefined;
   const [day, setDay] = useState<string | null>(pre?.date ?? visible[0]?.date ?? null);
   const [slot, setSlot] = useState<string | null>(pre ? initialSlot! : preview ? visible[0]?.times[1]?.iso ?? null : null);
-  const [payer, setPayer] = useState<Payer>('referrer');
+  const [payer, setPayer] = useState<Payer>(firms?.find((x) => x.id === defaultFirm)?.kind === 'private' ? 'patient' : 'referrer');
   const [f, setF] = useState(preview ? { name: 'ישראל ישראלי', id: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', notes: 'תאונת עבודה מ־03.2025, נפילה מסולם. תביעה לביטוח לאומי.' } : EMPTY);
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -124,7 +124,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
             <section className="step">
               <div className="step-title"><span className="step-no done"><Icon name="check" size={15} /></span><h2>עבור מי התור?</h2></div>
               <label className="field" htmlFor="forFirm"><span>מפנה <small>מטופל שפנה בעצמו = ״פניות ישירות״</small></span>
-                <select id="forFirm" value={firmId} onChange={(e) => setFirmId(e.target.value)}>
+                <select id="forFirm" value={firmId} onChange={(e) => { setFirmId(e.target.value); setPayer(firms!.find((x) => x.id === e.target.value)?.kind === 'private' ? 'patient' : 'referrer'); }}>
                   {firms!.map((x) => <option key={x.id} value={x.id}>{x.name}{x.kind === 'private' ? ' (מטופל / פנייה ישירה)' : ''}</option>)}
                 </select>
               </label>
@@ -201,14 +201,14 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
             <div className="sum-row"><span>מועד</span><b>{chosen ? `${fmtDay(chosen.date)} · ${chosen.time}` : '—'}</b></div>
             <div className="sum-row"><span>מטופל</span><b>{f.name.trim() || '—'}</b></div>
             <div className="sum-row"><span>מסמכים</span><b>{files.length ? `${files.length} קבצים` : 'ללא'}</b></div>
-            <div className="sum-row"><span>זימון במייל</span><b>{f.email.trim() && emailOk ? 'למטופל ולכם' : 'אליכם'}</b></div>
+            <div className="sum-row"><span>זימון במייל</span><b>{staff ? (f.email.trim() && emailOk ? 'למטופל' : 'בוואטסאפ מתוך התיק') : f.email.trim() && emailOk ? 'למטופל ולכם' : 'אליכם'}</b></div>
             {price > 0 && <div className="sum-row"><span>מחיר (כולל מע״מ)</span><b className="money">{ils(price)}</b></div>}
           </div>
           <div className="stack-sm">
             <span className="hint">מי משלם על התיק?</span>
             <div className="payer">
               {(['referrer', 'patient'] as Payer[]).map((p) => (
-                <label key={p}><input type="radio" name="payer" checked={payer === p} onChange={() => setPayer(p)} />{p === 'referrer' ? 'אנחנו (' + PAYERS.referrer + ')' : PAYERS.patient}</label>
+                <label key={p}><input type="radio" name="payer" checked={payer === p} onChange={() => setPayer(p)} />{p === 'referrer' ? (staff ? PAYERS.referrer : 'אנחנו (' + PAYERS.referrer + ')') : PAYERS.patient}</label>
               ))}
             </div>
           </div>
