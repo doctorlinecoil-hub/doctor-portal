@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { dbError } from '@/lib/constants';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendDeclined, sendDocRequest, sendLetterTo, sendSummons } from '@/lib/notify';
+import { deliverLetter, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
 
 type Result = { ok: boolean; error?: string; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -116,4 +116,15 @@ export async function decideReschedule(requestId: string, caseId: string, approv
   }
   done(caseId);
   return { ok: true, info };
+}
+
+/** A prescription by email (to the patient, or to an address the doctor types). */
+export async function sendPrescription(rxId: string, caseId: string, emails: string): Promise<Result> {
+  const c = await staffCase(caseId);
+  if (!c || !UUID.test(rxId)) return { ok: false, error: 'אין הרשאה.' };
+  const { data: rx } = await c.supabase.from('prescriptions').select('id').eq('id', rxId).eq('appointment_id', caseId).maybeSingle();
+  if (!rx) return { ok: false, error: 'המרשם לא נמצא.' };
+  const r = await sendRx(rxId, String(emails || '').split(/[,;\s]+/));
+  done(caseId);
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
