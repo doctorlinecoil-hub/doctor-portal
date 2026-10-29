@@ -74,6 +74,7 @@ export type Settings = {
   use_banner: boolean;
   sign_final: boolean;
   cv_in_opinions: boolean;
+  public_booking: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -127,4 +128,5 @@ export const SETTINGS_DEFAULTS = {
   use_banner: true,
   sign_final: true,
   cv_in_opinions: true,
+  public_booking: true,
 } as const;
