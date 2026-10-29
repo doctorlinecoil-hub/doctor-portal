@@ -235,6 +235,14 @@ export function tempPasswordEmail(s: Settings, name: string, password: string): 
   return { subject, html: layout(s, { preheader: 'סיסמה זמנית', title: 'סיסמה זמנית', body }), text: textOf([subject, `סיסמה זמנית: ${password}`, link]) };
 }
 
+export function resetLinkEmail(s: Settings, name: string, link: string): Rendered {
+  const subject = `איפוס סיסמה · ${s.lh_name}`;
+  const body = p(`שלום ${esc(name)},<br>התקבלה בקשה לאיפוס הסיסמה לחשבון שלך. לבחירת סיסמה חדשה:`) +
+    `<div style="margin:6px 0 14px">${button(link, 'בחירת סיסמה חדשה')}</div>` +
+    p('<span style="color:#5B6878;font-size:13px">הקישור תקף ל־30 דקות ולשימוש אחד. לא ביקשת? אפשר להתעלם מההודעה: הסיסמה הנוכחית נשארת בתוקף.</span>');
+  return { subject, html: layout(s, { preheader: 'קישור לבחירת סיסמה חדשה', title: 'איפוס סיסמה', body }), text: textOf([subject, link, 'הקישור תקף ל־30 דקות.']) };
+}
+
 export function declinedEmail(s: Settings, a: ApptInfo, reason: string, link: string): Rendered {
   const w = when(a.startsAt);
   const subject = `הבקשה לתור לא אושרה · ${a.patientName}`;

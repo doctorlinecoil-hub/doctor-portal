@@ -39,7 +39,9 @@ export async function sendMail(db: SupabaseClient, appointmentId: string | null,
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: process.env.MAIL_FROM,
-        to,
+        // each recipient sees only his own address (patients, offices and extra addresses don't learn each other's)
+        to: [to[0]],
+        bcc: to.length > 1 ? to.slice(1) : undefined,
         subject: m.subject,
         html: m.html,
         text: m.text,

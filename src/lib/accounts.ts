@@ -1,16 +1,15 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { headers } from 'next/headers';
 import { createAdminClient } from './supabase/admin';
 import { EMAIL_RE, KIND, SETTINGS_DEFAULTS, type Settings } from './constants';
 import { appUrl, mailEnabled, sendMail } from './mail';
-import { tempPassword } from './password';
-import { accountApprovedEmail, accountRejectedEmail, signupReceivedEmail, signupStaffEmail, tempPasswordEmail } from './emails';
+import { accountApprovedEmail, accountRejectedEmail, signupReceivedEmail, signupStaffEmail, resetLinkEmail } from './emails';
 
 /*
  * Accounts that people open by themselves: law offices, brokers, companies and patients.
  * A new account waits for the clinic's approval (the user is blocked until then).
- * Forgot password: a temporary password by email, replaced on the next sign-in.
+ * Forgot password: a one-time link by email (30 minutes); the password changes only when its owner opens it.
  * Runs with the service key: every input is checked here.
  */
 
@@ -72,8 +71,8 @@ export async function signup(input: SignupInput): Promise<R> {
   if (!input.terms) miss.push('אישור תנאי השימוש ומדיניות הפרטיות');
   if (miss.length) return { ok: false, error: 'חסר: ' + miss.join(', ') };
 
-  const { data: exists } = await db.from('profiles').select('id').ilike('email', v.email).maybeSingle();
-  if (exists) return { ok: false, error: 'המייל הזה כבר רשום במערכת. אפשר להתחבר, או לבקש סיסמה זמנית ב״שכחתי סיסמה״.' };
+  const { data: exists } = await db.from('profiles').select('id').eq('email', v.email).maybeSingle();
+  if (exists) return { ok: false, error: 'המייל הזה כבר רשום במערכת. אפשר להתחבר, או לאפס את הסיסמה ב״שכחתי סיסמה״.' };
 
   const { data: firm, error: fErr } = await db.from('firms').insert({
     name: kind === 'patient' ? v.name : v.org, kind, contact_name: v.name, phone: v.phone, email: v.email,
@@ -138,22 +137,52 @@ export async function rejectSignup(firmId: string, reason: string): Promise<R> {
   return { ok: true, info: 'ההרשמה נדחתה.' };
 }
 
-/** Forgot password: a temporary password by email. The answer never says whether the address is registered. */
+/** Forgot password: a one-time link by email. The answer never says whether the address is registered. */
 export async function forgotPassword(emailRaw: string): Promise<R> {
   const email = clean(emailRaw, 200).toLowerCase();
   if (!EMAIL_RE.test(email)) return { ok: false, error: 'כתובת המייל לא תקינה.' };
-  if (!mailEnabled()) return { ok: false, error: 'שליחת מיילים עוד לא הופעלה במרפאה. פנו למרפאה ותקבלו סיסמה חדשה.' };
+  if (!mailEnabled()) return { ok: false, error: 'שליחת מיילים עוד לא הופעלה במרפאה. פנו למרפאה לאיפוס הסיסמה.' };
   const db = createAdminClient();
-  const generic: R = { ok: true, info: 'אם המייל רשום במערכת, נשלחה אליו סיסמה זמנית. בדקו גם בתיקיית הספאם.' };
+  const generic: R = { ok: true, info: 'אם המייל רשום במערכת, נשלח אליו קישור לבחירת סיסמה חדשה (תקף ל־30 דקות). בדקו גם בתיקיית הספאם.' };
   if (await limited(db, 'forgot', await who(), 8)) return { ok: false, error: 'יותר מדי בקשות. נסו שוב בעוד שעה.' };
   if (await limited(db, 'forgot_email', sha('mail:' + email).slice(0, 32), 3)) return generic;
-  const { data: p } = await db.from('profiles').select('id, full_name, active').ilike('email', email).maybeSingle();
-  if (!p || !p.active) return generic;
+  // exact match only (no patterns)
+  const { data: p } = await db.from('profiles').select('id, full_name, email, active').eq('email', email).maybeSingle();
+  if (!p || !p.active || String(p.email).toLowerCase() !== email) return generic;
   const s = await settings(db);
-  const password = tempPassword();
-  const { error } = await db.auth.admin.updateUserById(p.id, { password });
+  const token = randomBytes(32).toString('base64url');
+  await db.from('password_resets').delete().eq('user_id', p.id).is('used_at', null);
+  const { error } = await db.from('password_resets').insert({ user_id: p.id, token_hash: sha('reset:' + token), expires_at: new Date(Date.now() + 30 * 60_000).toISOString() });
   if (error) return generic;
-  await db.from('profiles').update({ must_change_password: true }).eq('id', p.id);
-  await sendMail(db, null, 'temp_password', { to: [email], ...tempPasswordEmail(s, p.full_name || '', password) });
+  await sendMail(db, null, 'password_reset', { to: [p.email], ...resetLinkEmail(s, p.full_name || '', `${appUrl()}/forgot/reset?t=${token}`) });
   return generic;
+}
+
+/** Is a reset link still good (for the page, before the form is shown)? */
+export async function resetLinkOk(token: string): Promise<boolean> {
+  if (!/^[A-Za-z0-9_-]{40,60}$/.test(token || '')) return false;
+  const db = createAdminClient();
+  const { data } = await db.from('password_resets').select('expires_at, used_at').eq('token_hash', sha('reset:' + token)).maybeSingle();
+  return !!data && !data.used_at && new Date(data.expires_at).getTime() > Date.now();
+}
+
+/** Sets the new password from a reset link (once). */
+export async function resetPassword(token: string, password: string): Promise<R> {
+  if (typeof password !== 'string' || password.length < 10 || password.length > 200) return { ok: false, error: 'הסיסמה צריכה להיות באורך 10 תווים לפחות.' };
+  if (!/^[A-Za-z0-9_-]{40,60}$/.test(token || '')) return { ok: false, error: 'הקישור לא תקין. בקשו קישור חדש.' };
+  const db = createAdminClient();
+  if (await limited(db, 'reset_try', await who(), 20)) return { ok: false, error: 'יותר מדי ניסיונות. נסו שוב בעוד שעה.' };
+  // claim the link atomically: only one request can use it
+  const { data: row } = await db.from('password_resets').update({ used_at: new Date().toISOString() })
+    .eq('token_hash', sha('reset:' + token)).is('used_at', null).gt('expires_at', new Date().toISOString())
+    .select('user_id').maybeSingle();
+  if (!row) return { ok: false, error: 'הקישור פג תוקף או שכבר נעשה בו שימוש. בקשו קישור חדש.' };
+  const { data: p } = await db.from('profiles').select('active').eq('id', row.user_id).maybeSingle();
+  if (!p?.active) return { ok: false, error: 'החשבון לא פעיל. פנו למרפאה.' };
+  const { error } = await db.auth.admin.updateUserById(row.user_id, { password });
+  if (error) return { ok: false, error: error.message.toLowerCase().includes('weak') ? 'הסיסמה חלשה מדי. בחרו סיסמה ארוכה יותר.' : 'לא הצלחנו לשמור את הסיסמה. בקשו קישור חדש.' };
+  await db.from('profiles').update({ must_change_password: false }).eq('id', row.user_id);
+  await db.from('password_resets').delete().eq('user_id', row.user_id).is('used_at', null);
+  await db.from('audit_log').insert({ user_id: row.user_id, action: 'password_reset', entity: 'profile', entity_id: row.user_id, details: {} });
+  return { ok: true, info: 'הסיסמה עודכנה. אפשר להתחבר.' };
 }
