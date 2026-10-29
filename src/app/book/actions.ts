@@ -28,13 +28,23 @@ async function clientKey() {
   return sha('ip:' + ip).slice(0, 32);
 }
 
-async function overLimit(db: ReturnType<typeof createAdminClient>, action: string, who: string, mine: number, all: number) {
+/** Records the attempt first and then counts it, so parallel requests cannot slip past the limit. */
+async function overLimit(db: ReturnType<typeof createAdminClient>, action: string, who: string, mine: number, all: number, day?: number, extra?: Record<string, unknown>) {
+  await db.from('audit_log').insert({ user_id: null, action, entity: 'upload', entity_id: null, details: { who, ...extra } });
   const hourAgo = new Date(Date.now() - 3600_000).toISOString();
-  const [{ count: a }, { count: b }] = await Promise.all([
+  const dayAgo = new Date(Date.now() - 86400_000).toISOString();
+  const [{ count: a }, { count: b }, { count: d }] = await Promise.all([
     db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', action).gte('at', hourAgo).contains('details', { who }),
     db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', action).gte('at', hourAgo),
+    day ? db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', action).gte('at', dayAgo) : Promise.resolve({ count: 0 }),
   ]);
-  return (a ?? 0) >= mine || (b ?? 0) >= all;
+  return (a ?? 0) > mine || (b ?? 0) > all || (!!day && (d ?? 0) > day);
+}
+
+/** Public bookings in the last day: the AI work (brief, draft) runs only within a daily budget. */
+async function aiBudgetOk(db: ReturnType<typeof createAdminClient>) {
+  const { count } = await db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', 'public_book').gte('at', new Date(Date.now() - 86400_000).toISOString());
+  return (count ?? 0) <= 40;
 }
 
 const tmpFolder = (token: string) => `tmp/${sha('scan:' + token).slice(0, 40)}`;
@@ -68,12 +78,7 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
 
   // limits: 5 bookings an hour from one address, 60 an hour overall
   const who = await clientKey();
-  const hourAgo = new Date(Date.now() - 3600_000).toISOString();
-  const [{ count: mine }, { count: all }] = await Promise.all([
-    db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', 'public_book').gte('at', hourAgo).contains('details', { who }),
-    db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', 'public_book').gte('at', hourAgo),
-  ]);
-  if ((mine ?? 0) >= 5 || (all ?? 0) >= 60) return { ok: false, error: 'נקבעו הרבה תורים בזמן קצר. נסו שוב בעוד שעה או צרו קשר עם המרפאה.' };
+  if (await overLimit(db, 'public_book_try', who, 10, 80, 300)) return { ok: false, error: 'נקבעו הרבה תורים בזמן קצר. נסו שוב בעוד שעה או צרו קשר עם המרפאה.' };
 
   // the details
   const p = input.patient;
@@ -110,8 +115,16 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
     if (!EMAIL_RE.test(email)) miss.push('מייל המפנה');
     if (phone.replace(/\D/g, '').length < 9) miss.push('טלפון המפנה');
     if (!miss.length) {
-      const { data: same } = await db.from('firms').select('id, active').ilike('email', email).limit(1).maybeSingle();
-      if (same?.active) firmId = same.id;
+      // reuse only a card the public page itself opened before (no portal users): a stranger who types a
+      // registered office's email must not add cases to that office's portal or bill
+      const { data: same } = await db.from('firms').select('id, active, self_registered').eq('email', email).neq('kind', 'private').limit(5);
+      let reuse = '';
+      for (const f of same ?? []) {
+        if (!f.active || f.self_registered) continue;
+        const { count: users } = await db.from('profiles').select('id', { count: 'exact', head: true }).eq('firm_id', f.id);
+        if (!users) { reuse = f.id; break; }
+      }
+      if (reuse) firmId = reuse;
       else {
         const { data: f, error } = await db.from('firms').insert({ name: office, kind: r.kind === 'broker' ? 'broker' : 'law', contact_name: contact, phone, email }).select('id').single();
         if (error || !f) return { ok: false, error: 'לא הצלחנו לשמור את פרטי המפנה.' };
@@ -162,7 +175,7 @@ export async function publicUploadStart(files: { name: string; size: number; typ
   if (!files.length || files.length > 20) return { ok: false, error: 'אפשר לצרף עד 20 מסמכים.' };
   const db = createAdminClient();
   const who = await clientKey();
-  if (await overLimit(db, 'public_upload', who, 15, 150)) return { ok: false, error: 'הועלו הרבה מסמכים בזמן קצר. נסו שוב בעוד שעה.' };
+  if (await overLimit(db, 'public_upload', who, 10, 100, 500, { n: files.length })) return { ok: false, error: 'הועלו הרבה מסמכים בזמן קצר. נסו שוב בעוד שעה.' };
   const token = randomBytes(24).toString('hex');
   const folder = tmpFolder(token);
   const urls: { path: string; url: string }[] = [];
@@ -173,7 +186,6 @@ export async function publicUploadStart(files: { name: string; size: number; typ
     if (error || !data) return { ok: false, error: 'ההעלאה לא זמינה כרגע.' };
     urls.push({ path, url: data.signedUrl });
   }
-  await db.from('audit_log').insert({ user_id: null, action: 'public_upload', entity: 'upload', entity_id: null, details: { who, n: files.length } });
   return { ok: true, token, urls };
 }
 
@@ -191,10 +203,9 @@ async function arrived(db: ReturnType<typeof createAdminClient>, token: string, 
 export async function publicScan(token: string, files: { path: string; name: string; type: string }[]): Promise<R<{ data: Extracted }> & { manual?: boolean }> {
   const db = createAdminClient();
   const who = await clientKey();
-  if (await overLimit(db, 'public_scan', who, 8, 80)) return { ok: false, manual: true, error: 'בוצעו הרבה סריקות בזמן קצר. אפשר למלא את הפרטים ידנית.' };
-  const got = await arrived(db, token, files);
-  if (!got.length) return { ok: false, manual: true, error: 'המסמכים לא הגיעו. אפשר למלא את הפרטים ידנית.' };
-  await db.from('audit_log').insert({ user_id: null, action: 'public_scan', entity: 'upload', entity_id: null, details: { who, n: got.length } });
+  if (await overLimit(db, 'public_scan', who, 6, 40, 150)) return { ok: false, manual: true, error: '' };
+  const got = (await arrived(db, token, files)).slice(0, 10);
+  if (!got.length) return { ok: false, manual: true, error: '' };
   const r = await extractFromFiles(got.map((f) => ({ file_name: f.name, storage_path: f.path })));
   return r.ok ? { ok: true, data: r.data } : { ok: false, manual: true, error: r.error };
 }
@@ -223,7 +234,7 @@ export async function publicFinish(id: string, key: string): Promise<R> {
     await notifyNewRequest(id).catch(() => undefined);
     if (c.a.status === 'booked') await sendSummons(id).catch(() => undefined);
     await sendDepositRequest(id, `${appUrl()}/pay/${id}?k=${key}`).catch(() => undefined);
-    if (s?.auto_intake !== false) await runIntake(id).catch(() => undefined);
+    if (s?.auto_intake !== false && (await aiBudgetOk(c.db))) await runIntake(id).catch(() => undefined);
   });
   return { ok: true };
 }
@@ -233,7 +244,7 @@ export async function publicDraft(id: string, key: string): Promise<R> {
   const c = await byKey(id, key);
   if (!c) return { ok: false, error: '' };
   const { count } = await c.db.from('audit_log').select('id', { count: 'exact', head: true }).eq('entity_id', id).eq('action', 'ai_autodraft');
-  if (count) return { ok: true };
+  if (count || !(await aiBudgetOk(c.db))) return { ok: true };
   await c.db.from('audit_log').insert({ user_id: null, action: 'ai_autodraft', entity: 'appointment', entity_id: id });
   after(async () => { await autoDraft(id).catch(() => undefined); });
   return { ok: true };
