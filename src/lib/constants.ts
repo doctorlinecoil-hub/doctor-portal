@@ -30,6 +30,11 @@ export const TYPES: Record<ReferralType, { label: string; desc: string; icon: st
   legal: { label: 'חוות דעת משפטית', desc: 'חוות דעת מומחה לבית משפט', icon: 'scale' },
 };
 
+/** Before the referrer picks the reason, a case has no type yet. */
+const TYPE_PENDING = { label: 'סיבת הפניה טרם נבחרה', desc: '', icon: 'clock' };
+/** Safe lookup: works also for a case that has no type yet. */
+export const typeOf = (t: ReferralType | null | undefined | string) => (t && t in TYPES ? TYPES[t as ReferralType] : TYPE_PENDING);
+
 export const STATUS_FIRM: Record<ApptStatus, string> = {
   pending: 'ממתין לאישור הרופא', booked: 'תור מאושר', draft: 'בטיפול הרופא', done: 'המכתב מוכן', cancelled: 'בוטל',
 };
@@ -56,6 +61,7 @@ export type Settings = {
   reminders_on: boolean;
   email_letters: boolean;
   auto_intake: boolean;
+  auto_draft: boolean;
   lh_name: string;
   lh_titles: string;
   lh_licenses: string;
@@ -85,6 +91,9 @@ const DB_ERRORS: Record<string, string> = {
   IN_PAST: 'אי אפשר לבטל תור שכבר עבר.',
   FORBIDDEN: 'אין לכם הרשאה לפעולה הזו.',
   NOT_FOUND: 'התיק לא נמצא.',
+  DETAILS_MISSING: 'חסרים פרטים: סיבת ההפניה, שם, תעודת זהות וטלפון.',
+  CANNOT_EDIT: 'אי אפשר לשנות את פרטי התיק הזה.',
+  NOT_ALLOWED: 'אין לכם הרשאה לפעולה הזו.',
 };
 
 export function dbError(e: { code?: string; message?: string } | null | undefined): string {
@@ -107,4 +116,5 @@ export const SETTINGS_DEFAULTS = {
   reminders_on: true,
   email_letters: true,
   auto_intake: true,
+  auto_draft: true,
 } as const;

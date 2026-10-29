@@ -1,5 +1,5 @@
 import 'server-only';
-import { TYPES, type Settings } from './constants';
+import { typeOf, type Settings } from './constants';
 import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } from './messages';
 
 // Email templates. Table layout and inline styles so they look right in Gmail, Outlook and phones. RTL Hebrew.
@@ -70,13 +70,13 @@ export function newRequestEmail(s: Settings, a: ApptInfo, link: string, needsApp
   const subject = needsApproval ? `בקשה לתור חדש ממתינה לאישור · ${a.patientName}` : `תור חדש נקבע · ${a.patientName}`;
   const body =
     p(needsApproval ? `<b>${esc(a.firmName)}</b> ביקשו תור חדש. הבקשה ממתינה לאישור שלך.` : `<b>${esc(a.firmName)}</b> קבעו תור חדש.`) +
-    card([['מטופל', esc(a.patientName)], ['מועד', esc(w.label)], ['סוג', esc(TYPES[a.type].label)], ['תיק', String(a.caseNo)]]) +
+    card([['מטופל', esc(a.patientName)], ['מועד', esc(w.label)], ['סוג', esc(typeOf(a.type).label)], ['תיק', String(a.caseNo)]]) +
     p('המערכת סורקת עכשיו את המסמכים שצורפו ומכינה סיכום, לפני שתפתח את התיק.') +
     `<div style="margin:6px 0 10px">${button(link, needsApproval ? 'לאישור הבקשה' : 'פתיחת התיק')}</div>`;
   return {
     subject,
     html: layout(s, { preheader: `${a.patientName} · ${w.label}`, title: needsApproval ? 'בקשה לתור חדש' : 'תור חדש', body }),
-    text: textOf([subject, `${a.firmName}`, `מטופל: ${a.patientName}`, `מועד: ${w.label}`, `סוג: ${TYPES[a.type].label}`, `לתיק: ${link}`]),
+    text: textOf([subject, `${a.firmName}`, `מטופל: ${a.patientName}`, `מועד: ${w.label}`, `סוג: ${typeOf(a.type).label}`, `לתיק: ${link}`]),
   };
 }
 
@@ -96,7 +96,7 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
     card([
       ['מועד', `<span style="font-size:17px">${esc(w.label)}</span>`],
       ['כתובת', esc(c.address || '—')],
-      ['סוג הביקור', esc(TYPES[a.type].label)],
+      ['סוג הביקור', esc(typeOf(a.type).label)],
       ...(o.forReferrer ? ([['מטופל', esc(a.patientName)], ['תיק', String(a.caseNo)]] as [string, string][]) : []),
     ]) +
     (c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
@@ -145,7 +145,7 @@ export function declinedEmail(s: Settings, a: ApptInfo, reason: string, link: st
 export function docRequestEmail(s: Settings, a: ApptInfo, items: string[], note: string, link: string): Rendered {
   const subject = `הרופא מבקש השלמות לתיק ${a.caseNo} · ${a.patientName}`;
   const body =
-    p(`כדי להכין את ${esc(TYPES[a.type].label)} עבור <b>${esc(a.patientName)}</b>, ${esc(s.lh_name)} מבקש:`) +
+    p(`כדי להכין את ${esc(typeOf(a.type).label)} עבור <b>${esc(a.patientName)}</b>, ${esc(s.lh_name)} מבקש:`) +
     (items.length ? list(items) : '') +
     (note ? p(esc(note).replace(/\n/g, '<br>')) : '') +
     p('אפשר להעלות את המסמכים ישירות לתיק במערכת.') +
@@ -161,7 +161,7 @@ export function firmUpdateEmail(s: Settings, a: ApptInfo, what: { notes: number;
 }
 
 export function letterEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean; attached: boolean; link?: string }): Rendered {
-  const label = TYPES[a.type].label;
+  const label = typeOf(a.type).label;
   const subject = `${label} · ${a.patientName} · ${s.lh_name}`;
   const body =
     p(o.forReferrer ? `${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.` : `שלום ${esc(a.patientName)},<br>${esc(label)} שלך מוכנה.`) +
@@ -171,7 +171,7 @@ export function letterEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean;
 }
 
 export function awaitingPaymentEmail(s: Settings, a: ApptInfo, balance: string, link: string): Rendered {
-  const label = TYPES[a.type].label;
+  const label = typeOf(a.type).label;
   const subject = `${label} מוכנה וממתינה לתשלום · ${a.patientName}`;
   const body =
     p(`${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.`) +

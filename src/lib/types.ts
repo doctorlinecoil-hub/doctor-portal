@@ -14,6 +14,7 @@ export type ApptRow = {
   patient_id_number?: string;
   firm_name?: string;
   firm_kind?: ReferrerKind;
+  details_at?: string | null;
 };
 
 export type FirmInfo = { id: string; name: string; kind: ReferrerKind; contact_name: string; phone: string; email: string; tax_id: string };
@@ -36,6 +37,8 @@ export type CaseDetail = {
   confirmed_at?: string | null;
   reminder_sent_at?: string | null;
   letter_sent_at?: string | null;
+  details_at?: string | null;
+  submitted_by?: string;
   firm: FirmInfo;
 };
 

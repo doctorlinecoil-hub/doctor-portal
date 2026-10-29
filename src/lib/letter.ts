@@ -1,5 +1,5 @@
 import type { ReferralType, Settings } from './constants';
-import { TYPES } from './constants';
+import { typeOf } from './constants';
 import { age, fmtDate, todayIL } from './dates';
 
 export const LEGAL_DECLARATION =
@@ -83,7 +83,7 @@ export function buildPrompt(p: PromptInput) {
   return [
     'אתה עוזר לרופא מומחה לנסח מסמך רפואי בעברית. הרופא יקרא, יתקן ויחתום. המטרה: טיוטה מדויקת שחוסכת לו זמן.',
     `הרופא: ${doctor}`,
-    `סוג המסמך: ${TYPES[p.letterType].label}`,
+    `סוג המסמך: ${typeOf(p.letterType).label}`,
     `תאריך הביקור: ${fmtDate(p.visitDate)}. תאריך היום: ${fmtDate(todayIL())}.`,
     `המטופל/ת: ${p.patient.name}, ת.ז. ${p.patient.idNumber || 'לא צוין'}, ${p.patient.dob ? `תאריך לידה ${fmtDate(p.patient.dob)} (גיל ${a})` : 'תאריך לידה לא צוין'}.`,
     `המפנה: ${p.firmName || 'משרד עורכי דין'}`,

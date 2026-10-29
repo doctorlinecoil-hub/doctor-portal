@@ -1,5 +1,5 @@
 // Texts for summons, reminders and letters: shared by the emails and the WhatsApp buttons. Pure (server or client).
-import { TYPES, type ReferralType } from './constants';
+import { typeOf, type ReferralType } from './constants';
 import { DAYS, fmtDate, ilParts, weekday } from './dates';
 
 export type ApptInfo = {
@@ -48,7 +48,7 @@ export function summonsText(a: ApptInfo, c: ClinicInfo) {
     `📅 ${w.label}`,
     c.address ? `📍 ${c.address}` : '',
     c.address ? `ניווט: ${wazeLink(c.address)}` : '',
-    `סוג הביקור: ${TYPES[a.type].label}`,
+    `סוג הביקור: ${typeOf(a.type).label}`,
     bring.length ? `\nמה להביא:\n${bring.map((b) => `• ${b}`).join('\n')}` : '',
     c.note ? `\n${c.note}` : '',
     c.phone ? `\nלשאלות או לשינוי מועד: ${c.phone}` : '',
@@ -66,7 +66,7 @@ export function reminderText(a: ApptInfo, c: ClinicInfo) {
 }
 
 export function letterReadyText(a: ApptInfo, c: ClinicInfo) {
-  return `שלום, ${TYPES[a.type].label} עבור ${a.patientName} (תיק ${a.caseNo}) מוכנה במערכת של ${c.name}. אפשר להוריד אותה מתוך התיק.`;
+  return `שלום, ${typeOf(a.type).label} עבור ${a.patientName} (תיק ${a.caseNo}) מוכנה במערכת של ${c.name}. אפשר להוריד אותה מתוך התיק.`;
 }
 
 /** A calendar invite (.ics) for the appointment. */
@@ -85,7 +85,7 @@ export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string) {
     out.push(cur);
     return out.join('\r\n');
   };
-  const desc = [`${TYPES[a.type].label} · תיק ${a.caseNo}`, bringList(c).length ? `מה להביא: ${bringList(c).join(', ')}` : '', c.phone ? `טלפון המרפאה: ${c.phone}` : ''].filter(Boolean).join('\n');
+  const desc = [`${typeOf(a.type).label} · תיק ${a.caseNo}`, bringList(c).length ? `מה להביא: ${bringList(c).join(', ')}` : '', c.phone ? `טלפון המרפאה: ${c.phone}` : ''].filter(Boolean).join('\n');
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//doctor-portal//HE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT',

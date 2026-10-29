@@ -1,5 +1,5 @@
 import 'server-only';
-import { TYPES, type ReferralType, type Settings } from './constants';
+import { typeOf, type ReferralType, type Settings } from './constants';
 import { age, fmtDate } from './dates';
 import { LEGAL_DECLARATION, bodyBlocks } from './letter';
 import { esc } from './emails';
@@ -78,7 +78,7 @@ ${l.letter_type === 'legal' ? `<div class="lt-decl">${esc(LEGAL_DECLARATION)}</d
 }
 
 export function letterFileName(l: LetterDoc, pt: PatientDoc) {
-  return `${TYPES[l.letter_type].label} - ${pt.name}.pdf`.replace(/[\\/:*?"<>|]+/g, ' ');
+  return `${typeOf(l.letter_type).label} - ${pt.name}.pdf`.replace(/[\\/:*?"<>|]+/g, ' ');
 }
 
 export async function renderPdf(html: string, footer: string): Promise<Buffer | null> {

@@ -1,4 +1,4 @@
-import { TYPES, type ReferralType } from './constants';
+import { typeOf, TYPES, type ReferralType } from './constants';
 import { dayNum, ilParts } from './dates';
 
 export type RepAppt = { id: string; case_no: number; starts_at: string; status: string; referral_type: ReferralType; price: number; payer: string; firm_id: string; firm_name: string; patient_name: string };
@@ -39,7 +39,7 @@ export function buildReport(appts: RepAppt[], pays: RepPay[], letters: RepLetter
   }
   const firms = [...fm.values()].map((f) => ({ ...f, balance: Math.max(0, f.billed - f.paid) })).sort((a, b) => b.billed - a.billed);
   const types = (Object.keys(TYPES) as ReferralType[]).map((t) => ({
-    type: t, label: TYPES[t].label,
+    type: t, label: typeOf(t).label,
     cases: live.filter((a) => a.referral_type === t).length,
     billed: live.filter((a) => a.referral_type === t).reduce((s, a) => s + Number(a.price), 0),
   }));

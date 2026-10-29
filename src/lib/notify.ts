@@ -197,3 +197,37 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
     info: sent ? (pdf ? `המכתב נשלח במייל כ־PDF (${sent === 2 ? 'למפנה ולמטופל' : 'למפנה'})` : 'נשלח מייל למפנה עם קישור למכתב') : r1.error || 'השליחה נכשלה',
   };
 }
+
+/**
+ * The final letter to addresses typed by hand (a lawyer's colleague, an insurer, the court's secretary).
+ * Callers check permission; at most 10 such sends per case per day.
+ */
+export async function sendLetterTo(id: string, emails: string[], opts: { byReferrer: boolean }): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const to = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))].slice(0, 5);
+  if (!to.length) return { ok: false, sent: 0, info: 'כתובת המייל לא תקינה' };
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const { count } = await db.from('email_log').select('id', { count: 'exact', head: true }).eq('appointment_id', id).eq('kind', 'letter_extra').gte('created_at', since);
+  if ((count ?? 0) + to.length > 10) return { ok: false, sent: 0, info: 'נשלחו כבר הרבה מיילים מהתיק היום. נסו שוב מחר.' };
+  const { a, s } = await load(db, id);
+  if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  const { data: l } = await db.from('letters').select('*').eq('appointment_id', id).maybeSingle();
+  if (!l?.is_final || !l.final_body) return { ok: false, sent: 0, info: 'המכתב עוד לא סופי' };
+  if (opts.byReferrer && s.letter_requires_payment) {
+    const { data: pays } = await db.from('payments').select('amount').eq('appointment_id', id);
+    const paid = (pays ?? []).reduce((x, p) => x + Number(p.amount), 0);
+    if (paid + 0.001 < Number(a.price)) return { ok: false, sent: 0, info: 'המכתב יהיה זמין לשליחה אחרי השלמת התשלום.' };
+  }
+  const ai = info(a);
+  ai.type = (l.final_letter_type || l.letter_type) as ReferralType;
+  const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_subject || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
+  const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
+  const pdf = await renderPdf(letterHtml(s, doc, pt), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
+  if (!pdf) return { ok: false, sent: 0, info: 'יצירת קובץ ה־PDF נכשלה. נסו שוב בעוד דקה.' };
+  const r = await sendMail(db, id, 'letter_extra', {
+    to,
+    ...letterEmail(s, ai, { forReferrer: true, attached: true }),
+    attachments: [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }],
+  });
+  return r.ok ? { ok: true, sent: to.length, info: `המכתב נשלח ל־${to.join(', ')}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
+}
