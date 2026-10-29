@@ -109,6 +109,7 @@ export async function extractFromFiles(docs: { file_name: string; storage_path: 
     if (!block || block.type !== 'tool_use') return { ok: false, error: 'לא התקבלה תשובה מהסריקה.' };
     return { ok: true, data: cleanExtract(block.input as Partial<Extracted>) };
   } catch (e) {
+    console.error('extract failed', (e as { status?: number })?.status ?? '', String((e as Error)?.message ?? e).slice(0, 600));
     return { ok: false, error: e instanceof Error && !('status' in e) ? e.message : aiErrorText(e) };
   }
 }
