@@ -1,4 +1,4 @@
-import { TYPES, type ReferralType } from '@/lib/constants';
+import { typeOf, type ReferralType } from '@/lib/constants';
 import { age, fmtDate } from '@/lib/dates';
 import { LEGAL_DECLARATION, bodyBlocks } from '@/lib/letter';
 
@@ -23,7 +23,7 @@ export default function PaperPreview({ info, type, recipient, subject, body, dat
   const ag = age(info.patient.dob);
   const blocks = bodyBlocks(body);
   return (
-    <article className="sheet" aria-label={`תצוגה מקדימה: ${TYPES[type].label}`}>
+    <article className="sheet" aria-label={`תצוגה מקדימה: ${typeOf(type).label}`}>
       <header className="lt-head">
         <div>
           <div className="lt-name">{info.lh_name}</div>
