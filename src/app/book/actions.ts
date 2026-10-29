@@ -7,6 +7,7 @@ import { ACCEPTED_TYPES, BUCKET, EMAIL_RE, MAX_FILE_BYTES, SETTINGS_DEFAULTS, db
 import { notifyNewRequest, sendSummons } from '@/lib/notify';
 import { runIntake } from '@/lib/intake';
 import { autoDraft } from '@/lib/autodraft';
+import { cleanExtract, extractFromFiles, type Extracted } from '@/lib/extract';
 
 /*
  * The public booking page (no sign-in). Everything runs with the service key, so every input is checked here:
@@ -26,6 +27,17 @@ async function clientKey() {
   return sha('ip:' + ip).slice(0, 32);
 }
 
+async function overLimit(db: ReturnType<typeof createAdminClient>, action: string, who: string, mine: number, all: number) {
+  const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+  const [{ count: a }, { count: b }] = await Promise.all([
+    db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', action).gte('at', hourAgo).contains('details', { who }),
+    db.from('audit_log').select('id', { count: 'exact', head: true }).eq('action', action).gte('at', hourAgo),
+  ]);
+  return (a ?? 0) >= mine || (b ?? 0) >= all;
+}
+
+const tmpFolder = (token: string) => `tmp/${sha('scan:' + token).slice(0, 40)}`;
+
 export type PublicBookingInput = {
   code?: string;
   serviceId: string;
@@ -34,11 +46,17 @@ export type PublicBookingInput = {
   patient: { name: string; idNumber: string; dob: string; phone: string; email: string };
   payer: 'patient' | 'referrer';
   notes: string;
+  /** more addresses for the summons and the letters */
+  extraEmails?: string[];
+  /** the documents uploaded before booking (see publicUploadStart) */
+  upload?: { token: string; files: { path: string; name: string; type: string }[] };
+  /** what the scan found (kept on the case for the doctor) */
+  extract?: Extracted | null;
   /** must stay empty (a field people don't see) */
   website?: string;
 };
 
-export async function publicBook(input: PublicBookingInput): Promise<R<{ id: string; caseNo: number; pending: boolean; key: string }>> {
+export async function publicBook(input: PublicBookingInput): Promise<R<{ id: string; caseNo: number; pending: boolean; key: string; docs: number }>> {
   if (input.website) return { ok: false, error: 'הבקשה נחסמה.' };
   const db = createAdminClient();
   const { data: s0 } = await db.from('settings').select('*').eq('id', 1).single();
@@ -99,6 +117,8 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
       firmEmail = email;
     }
   }
+  const extra = [...new Set((input.extraEmails ?? []).map((e) => clean(e, 200).toLowerCase()).filter(Boolean))].slice(0, 3);
+  if (extra.some((e) => !EMAIL_RE.test(e))) miss.push('מייל נוסף תקין');
   if (miss.length) return { ok: false, error: 'חסר: ' + miss.join(', ') };
 
   const key = randomBytes(24).toString('hex');
@@ -108,13 +128,16 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
     payer: input.payer === 'referrer' && r.kind !== 'private' ? 'referrer' : 'patient',
     notes: clean(input.notes, 5000), submitted_by: clean(r.contact, 120), source: 'public',
     upload_key_hash: sha(key), upload_key_expires: new Date(Date.now() + 3 * 3600_000).toISOString(),
+    notify_emails: extra,
+    ...(input.extract && typeof input.extract === 'object' ? { extract: cleanExtract(input.extract), extract_status: 'done' } : {}),
   }).select('id, case_no, status').single();
   if (error || !a) {
     if (error?.code === '23505' || error?.code === '23P01') return { ok: false, error: 'המועד הזה נתפס הרגע. בחרו מועד אחר.' };
     return { ok: false, error: dbError(error) };
   }
   await db.from('audit_log').insert({ user_id: null, action: 'public_book', entity: 'appointment', entity_id: a.id, details: { who, firm_known: !!firmEmail } });
-  return { ok: true, id: a.id, caseNo: a.case_no, pending: a.status === 'pending', key };
+  const docs = input.upload ? await attachUploads(db, input.upload, firmId, a.id) : 0;
+  return { ok: true, id: a.id, caseNo: a.case_no, pending: a.status === 'pending', key, docs };
 }
 
 async function byKey(id: string, key: string) {
@@ -125,39 +148,63 @@ async function byKey(id: string, key: string) {
   return { db, a };
 }
 
-/** Signed addresses to upload the documents straight to storage (no file passes through this server). */
-export async function publicUploadUrls(id: string, key: string, files: { name: string; size: number; type: string }[]): Promise<R<{ urls: { path: string; url: string }[] }>> {
-  const c = await byKey(id, key);
-  if (!c) return { ok: false, error: 'פג תוקף הטופס. אפשר לשלוח את המסמכים למרפאה במייל.' };
-  const { count } = await c.db.from('documents').select('id', { count: 'exact', head: true }).eq('appointment_id', id);
-  if ((count ?? 0) + files.length > 20) return { ok: false, error: 'אפשר לצרף עד 20 מסמכים.' };
+/**
+ * Step 3, before anything is booked: signed addresses to upload the documents straight to storage,
+ * in a temporary folder only this browser knows (by a random token). Nothing passes through this server.
+ */
+export async function publicUploadStart(files: { name: string; size: number; type: string }[], website?: string): Promise<R<{ token: string; urls: { path: string; url: string }[] }>> {
+  if (website) return { ok: false, error: 'הבקשה נחסמה.' };
+  if (!files.length || files.length > 20) return { ok: false, error: 'אפשר לצרף עד 20 מסמכים.' };
+  const db = createAdminClient();
+  const who = await clientKey();
+  if (await overLimit(db, 'public_upload', who, 15, 150)) return { ok: false, error: 'הועלו הרבה מסמכים בזמן קצר. נסו שוב בעוד שעה.' };
+  const token = randomBytes(24).toString('hex');
+  const folder = tmpFolder(token);
   const urls: { path: string; url: string }[] = [];
-  for (const f of files.slice(0, 20)) {
+  for (const f of files) {
     if (!ACCEPTED_TYPES.includes(f.type) || !(f.size > 0) || f.size > MAX_FILE_BYTES) return { ok: false, error: `${clean(f.name, 80)}: אפשר לצרף PDF או תמונה עד 25MB.` };
-    const path = `${c.a.firm_id}/${id}/${crypto.randomUUID()}.${EXT[f.type] || 'bin'}`;
-    const { data, error } = await c.db.storage.from(BUCKET).createSignedUploadUrl(path);
+    const path = `${folder}/${crypto.randomUUID()}.${EXT[f.type] || 'bin'}`;
+    const { data, error } = await db.storage.from(BUCKET).createSignedUploadUrl(path);
     if (error || !data) return { ok: false, error: 'ההעלאה לא זמינה כרגע.' };
     urls.push({ path, url: data.signedUrl });
   }
-  return { ok: true, urls };
+  await db.from('audit_log').insert({ user_id: null, action: 'public_upload', entity: 'upload', entity_id: null, details: { who, n: files.length } });
+  return { ok: true, token, urls };
 }
 
-/** Records the uploaded documents in the case (only files that really arrived, in this case's folder). */
-export async function publicConfirmUploads(id: string, key: string, done: { path: string; name: string; size: number; type: string }[]): Promise<R<{ count: number }>> {
-  const c = await byKey(id, key);
-  if (!c) return { ok: false, error: 'פג תוקף הטופס.' };
-  const folder = `${c.a.firm_id}/${id}`;
-  const { data: listed } = await c.db.storage.from(BUCKET).list(folder, { limit: 100 });
+/** The files of a temporary folder that really arrived (only paths inside the token's folder). */
+async function arrived(db: ReturnType<typeof createAdminClient>, token: string, files: { path: string; name: string; type: string }[]) {
+  if (!/^[0-9a-f]{48}$/.test(token)) return [];
+  const folder = tmpFolder(token);
+  const { data: listed } = await db.storage.from(BUCKET).list(folder, { limit: 100 });
   const sizes = new Map((listed ?? []).map((o) => [`${folder}/${o.name}`, Number((o.metadata as { size?: number } | null)?.size ?? 0)]));
-  const rows = done
-    .filter((d) => d.path.startsWith(folder + '/') && sizes.has(d.path) && ACCEPTED_TYPES.includes(d.type))
-    .slice(0, 20)
-    .map((d) => ({ appointment_id: id, firm_id: c.a.firm_id, storage_path: d.path, file_name: clean(d.name, 255) || 'מסמך', mime_type: d.type, size_bytes: sizes.get(d.path) || Math.max(1, Math.round(+d.size || 1)) }));
-  if (rows.length) {
-    const { error } = await c.db.from('documents').insert(rows);
-    if (error) return { ok: false, error: 'שמירת המסמכים נכשלה.' };
+  return files.filter((f) => typeof f.path === 'string' && f.path.startsWith(folder + '/') && sizes.has(f.path) && ACCEPTED_TYPES.includes(f.type))
+    .slice(0, 20).map((f) => ({ ...f, name: clean(f.name, 255) || 'מסמך', size: Number(sizes.get(f.path)) || 1 }));
+}
+
+/** Reads the uploaded documents and returns the details found in them, for the booker to check. */
+export async function publicScan(token: string, files: { path: string; name: string; type: string }[]): Promise<R<{ data: Extracted }> & { manual?: boolean }> {
+  const db = createAdminClient();
+  const who = await clientKey();
+  if (await overLimit(db, 'public_scan', who, 8, 80)) return { ok: false, manual: true, error: 'בוצעו הרבה סריקות בזמן קצר. אפשר למלא את הפרטים ידנית.' };
+  const got = await arrived(db, token, files);
+  if (!got.length) return { ok: false, manual: true, error: 'המסמכים לא הגיעו. אפשר למלא את הפרטים ידנית.' };
+  await db.from('audit_log').insert({ user_id: null, action: 'public_scan', entity: 'upload', entity_id: null, details: { who, n: got.length } });
+  const r = await extractFromFiles(got.map((f) => ({ file_name: f.name, storage_path: f.path })));
+  return r.ok ? { ok: true, data: r.data } : { ok: false, manual: true, error: r.error };
+}
+
+/** Moves the uploaded documents into the new case. */
+async function attachUploads(db: ReturnType<typeof createAdminClient>, up: { token: string; files: { path: string; name: string; type: string }[] }, firmId: string, id: string) {
+  const got = await arrived(db, up.token, up.files ?? []);
+  const rows: { appointment_id: string; firm_id: string; storage_path: string; file_name: string; mime_type: string; size_bytes: number }[] = [];
+  for (const f of got) {
+    const to = `${firmId}/${id}/${f.path.split('/').pop()}`;
+    const { error } = await db.storage.from(BUCKET).move(f.path, to);
+    if (!error) rows.push({ appointment_id: id, firm_id: firmId, storage_path: to, file_name: f.name, mime_type: f.type, size_bytes: f.size });
   }
-  return { ok: true, count: rows.length };
+  if (rows.length) await db.from('documents').insert(rows);
+  return rows.length;
 }
 
 /** After the booking (and the documents): tell the doctor, send the summons, and prepare the brief. */
@@ -185,3 +232,4 @@ export async function publicDraft(id: string, key: string): Promise<R> {
   after(async () => { await autoDraft(id).catch(() => undefined); });
   return { ok: true };
 }
+
