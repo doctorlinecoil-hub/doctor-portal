@@ -22,5 +22,5 @@ export default async function ClinicBookingPage({ searchParams }: { searchParams
   const first = sorted.find((f) => f.id === firm)?.id ?? sorted[0]?.id ?? '';
   // the clinic may book at short notice
   const slots = availableSlots({ ...settings, notice_hours: 0 }, (busy as Busy[] | null) ?? [], now);
-  return <BookingForm firmId={first} firms={sorted} slots={slots} horizon={settings.horizon_days} services={(services as Service[] | null) ?? []} clinicName={settings.lh_name} needsApproval={false} initialSlot={slot} />;
+  return <BookingForm firmId={first} firms={sorted} slots={slots} horizon={settings.horizon_days} services={(services as Service[] | null) ?? []} clinicName={settings.lh_name} needsApproval={false} initialSlot={slot} phoneOk={settings.phone_appointments !== false} />;
 }
