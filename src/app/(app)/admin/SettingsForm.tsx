@@ -107,16 +107,30 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
 
           <section className="panel">
             <div className="panel-head"><h2><Icon name="file" />נייר מכתבים</h2></div>
-            <p className="muted">מופיע בראש כל מכתב ובחתימה.</p>
-            <label className="field" htmlFor="lhName"><span>שם</span><input id="lhName" value={s.lh_name} onChange={text('lh_name')} /></label>
-            <label className="field" htmlFor="lhTitles"><span>תארים <small>שורה לכל תואר</small></span><textarea id="lhTitles" rows={2} value={s.lh_titles} onChange={text('lh_titles')} /></label>
-            <label className="field" htmlFor="lhLic"><span>מספרי רישיון</span><input id="lhLic" value={s.lh_licenses} onChange={text('lh_licenses')} /></label>
-            <label className="field" htmlFor="lhAddr"><span>כתובת המרפאה</span><input id="lhAddr" value={s.lh_address} onChange={text('lh_address')} /></label>
-            <div className="grid-2">
-              <label className="field" htmlFor="lhPhone"><span>טלפון</span><input id="lhPhone" dir="ltr" value={s.lh_phone} onChange={text('lh_phone')} /></label>
-              <label className="field" htmlFor="lhEmail"><span>אימייל</span><input id="lhEmail" dir="ltr" value={s.lh_email} onChange={text('lh_email')} /></label>
+            <p className="muted">כל מסמך שהמערכת מפיקה (מכתבים, חוות דעת, מרשמים) יוצא על נייר המכתבים הרשמי של ד״ר חנוך.</p>
+            <div className="lh-preview">
+              <img src="/brand/letterhead.jpg" alt="נייר המכתבים" />
             </div>
-            <label className="field" htmlFor="lhEdu"><span>השכלה וניסיון <small>נכנס לחוות דעת משפטית</small></span><textarea id="lhEdu" rows={4} value={s.lh_education} onChange={text('lh_education')} /></label>
+            <label className="check"><input type="checkbox" checked={s.use_banner} onChange={(e) => setS({ ...s, use_banner: e.target.checked })} />
+              <span>כותרת רשמית (הבאנר הכחול) בראש כל עמוד<small>בלי סימון תופיע כותרת טקסט פשוטה מהשדות למטה</small></span></label>
+            <label className="check"><input type="checkbox" checked={s.sign_final} onChange={(e) => setS({ ...s, sign_final: e.target.checked })} />
+              <span>החתימה והחותמת על מכתבים סופיים<small>רק על מכתב שסימנת כסופי. טיוטות ומרשמים נחתמים ביד.</small></span></label>
+            <label className="field" htmlFor="lhFoot"><span>שורות בתחתית כל עמוד <small>כמו בתבנית: שם, רישיונות, התמחות, כתובת</small></span><textarea id="lhFoot" rows={5} value={s.lh_footer} onChange={text('lh_footer')} /></label>
+            <label className="check"><input type="checkbox" checked={s.cv_in_opinions} onChange={(e) => setS({ ...s, cv_in_opinions: e.target.checked })} />
+              <span>קורות חיים בתחילת כל חוות דעת (משפטית וביטוח לאומי)<small>״פרטי השכלתי ותפקידי״, כמו בתבנית חוות הדעת</small></span></label>
+            <label className="field" htmlFor="lhCv"><span>קורות חיים לחוות דעת <small>שורה שנגמרת בנקודתיים = כותרת</small></span><textarea id="lhCv" rows={10} value={s.lh_cv} onChange={text('lh_cv')} /></label>
+            <details className="lh-more">
+              <summary>שם, תארים ופרטי קשר (לכותרת הטקסט ולמיילים)</summary>
+              <label className="field" htmlFor="lhName"><span>שם</span><input id="lhName" value={s.lh_name} onChange={text('lh_name')} /></label>
+              <label className="field" htmlFor="lhTitles"><span>תארים <small>שורה לכל תואר</small></span><textarea id="lhTitles" rows={2} value={s.lh_titles} onChange={text('lh_titles')} /></label>
+              <label className="field" htmlFor="lhLic"><span>מספרי רישיון</span><input id="lhLic" value={s.lh_licenses} onChange={text('lh_licenses')} /></label>
+              <label className="field" htmlFor="lhAddr"><span>כתובת המרפאה</span><input id="lhAddr" value={s.lh_address} onChange={text('lh_address')} /></label>
+              <div className="grid-2">
+                <label className="field" htmlFor="lhPhone"><span>טלפון</span><input id="lhPhone" dir="ltr" value={s.lh_phone} onChange={text('lh_phone')} /></label>
+                <label className="field" htmlFor="lhEmail"><span>אימייל</span><input id="lhEmail" dir="ltr" value={s.lh_email} onChange={text('lh_email')} /></label>
+              </div>
+              <label className="field" htmlFor="lhEdu"><span>השכלה בקצרה <small>ל־AI, כשלא משתמשים בקורות החיים המלאים</small></span><textarea id="lhEdu" rows={3} value={s.lh_education} onChange={text('lh_education')} /></label>
+            </details>
           </section>
 
           <section className="panel">
