@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import type { CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
 import { FirmCaseView } from '@/views/FirmViews';
+import Icon from '@/components/Icon';
 import CaseActions from './CaseActions';
+import ForwardLetter from './ForwardLetter';
 import RescheduleRequest, { type MyReschedule } from './RescheduleRequest';
 import { availableSlots, type Busy } from '@/lib/slots';
 
@@ -46,8 +48,10 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
       payments={payments}
       paid={paid}
       letter={{ ready: !!final, awaitingPayment: c.status === 'done' && !final, finalizedAt: final?.finalized_at ?? null }}
+      forward={final ? <ForwardLetter appointmentId={id} /> : null}
       actions={<>
         {movable && <RescheduleRequest appointmentId={id} firmId={profile.firm_id!} slots={slots} last={last} />}
+        {c.details_at && c.status !== 'done' && c.status !== 'cancelled' && <a className="btn btn-sm" href={`/firm/cases/${id}/details`} style={{ alignSelf: 'flex-start' }}><Icon name="user" />עריכת פרטי המטופל</a>}
         <CaseActions appointmentId={id} firmId={profile.firm_id!} canAdd={c.status !== 'cancelled'} canCancel={canCancel} />
       </>}
     />
