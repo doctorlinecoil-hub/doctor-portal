@@ -21,7 +21,7 @@ export const settings: Settings = {
   lh_phone: '052-4266440',
   lh_email: 'd.m.elranhanoch@gmail.com',
   lh_education: '',
-  require_approval: true, notify_email: '', bring_items: 'תעודת זהות\nכל המסמכים הרפואיים\nרשימת תרופות עדכנית', summons_note: '', reminders_on: true, email_letters: true, auto_intake: true, auto_draft: true, lh_footer: 'דוקטור חנוך אלרן מספר רישיון 18425\nנוירוכירורג ילדים ומבוגרים מספר רישיון מומחה 12732\nמומחה לניתוחי מערכת עצבים מרכזית בגישה זעיר פולשניים\nמנהל המכון לחקר שינה S.M.L החרש 9 חדרה\nכתובת מרפאה: מגדל ספיר מתחם הבורסה, רחוב תובל 40 קומה 23 רמת גן', lh_cv: 'פרטי השכלתי ותפקידי:\nרופא ראשי מומחה בכיר במחלקה הנוירוכירורגית בבית-החולים איכילוב, 1995–2021.\nמומחה בנוירוכירורגיה משנת 1992 (מ.ר.מ. 12732).\nהשכלה והתמחות:\n1976–1982 – בית הספר לרפואה ע״ש סאקלר, אוניברסיטת תל-אביב.', use_banner: true, sign_final: true, cv_in_opinions: true,
+  require_approval: true, notify_email: '', bring_items: 'תעודת זהות\nכל המסמכים הרפואיים\nרשימת תרופות עדכנית', summons_note: '', reminders_on: true, email_letters: true, auto_intake: true, auto_draft: true, lh_footer: 'דוקטור חנוך אלרן מספר רישיון 18425\nנוירוכירורג ילדים ומבוגרים מספר רישיון מומחה 12732\nמומחה לניתוחי מערכת עצבים מרכזית בגישה זעיר פולשניים\nמנהל המכון לחקר שינה S.M.L החרש 9 חדרה\nכתובת מרפאה: מגדל ספיר מתחם הבורסה, רחוב תובל 40 קומה 23 רמת גן', lh_cv: 'פרטי השכלתי ותפקידי:\nרופא ראשי מומחה בכיר במחלקה הנוירוכירורגית בבית-החולים איכילוב, 1995–2021.\nמומחה בנוירוכירורגיה משנת 1992 (מ.ר.מ. 12732).\nהשכלה והתמחות:\n1976–1982 – בית הספר לרפואה ע״ש סאקלר, אוניברסיטת תל-אביב.', use_banner: true, sign_final: true, cv_in_opinions: true, public_booking: true,
 };
 
 /** Next working day at or after `offset` days from today. */
