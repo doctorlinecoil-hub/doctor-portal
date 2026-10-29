@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import AuthFrame from '@/components/AuthFrame';
 import LoginForm from '@/app/login/LoginForm';
+import SlotBooking from '@/app/(app)/firm/book/SlotBooking';
+import DetailsWizard from '@/app/(app)/firm/cases/[id]/details/DetailsWizard';
 import BookingForm from '@/app/(app)/firm/book/BookingForm';
 import CaseActions from '@/app/(app)/firm/cases/[id]/CaseActions';
 import LetterEditor from '@/app/(app)/doctor/cases/[id]/LetterEditor';
@@ -46,7 +48,13 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'firm-home':
       return firmShell('/firm', <FirmDashboardView firmName={fx.firms[0].name} clinicName={clinic} rows={fx.firmRows} />);
     case 'firm-book':
-      return firmShell('/firm/book', <BookingForm firmId="f1" slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} horizon={30} prices={fx.settings.prices} clinicName={clinic} needsApproval preview />);
+      return firmShell('/firm/book', <SlotBooking firmId="f1" slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} horizon={30} clinicName={clinic} needsApproval preview />);
+    case 'firm-details':
+      return firmShell('/firm/book', <DetailsWizard firmId="f1" prices={fx.settings.prices} preview
+        docs={[{ id: 'd1', file_name: 'כתב תביעה - ישראלי.pdf', size_bytes: 1800000, created_at: fx.rows[0].starts_at }, { id: 'd2', file_name: 'MRI עמוד שדרה צווארי.pdf', size_bytes: 2400000, created_at: fx.rows[0].starts_at }]}
+        c={{ id: 'x', caseNo: 1060, startsAt: fx.rows[0].starts_at, status: 'pending', type: 'legal', name: 'ישראל ישראלי', idNumber: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', payer: 'referrer',
+          notes: 'מבקשים חוות דעת לבית משפט בעניין נכות בעמוד שדרה צווארי לאחר תאונת עבודה, כולל קשר סיבתי.\nהאירוע: נפילה מסולם (2025-03)', submittedBy: 'עו״ד דנה לוי', detailsAt: null,
+          extract: { name: 'ישראל ישראלי', id_number: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', suggested_type: 'legal', request: '', event: '', event_date: '', sure: [], warning: '' } }} />);
     case 'firm-cases':
       return firmShell('/firm/cases', <FirmCasesView rows={fx.firmRows} filter="all" />);
     case 'firm-case':
