@@ -150,7 +150,11 @@ export default function LetterEditor({
       update({ recipient: r.recipient || before.recipient, subject: r.subject || before.subject });
       onBody(textToHtml(r.body));
       await save();
-      setAi({ running: false, text: '', note: 'הטיוטה מוכנה. עברו עליה, ערכו והשלימו את מה שמסומן בצהוב.' });
+      setAi({
+        running: false, text: '',
+        note: r.note ? `שימו לב: ${r.note}` : before.exam_notes.trim() ? 'המסמך מוכן. עברו עליו ושנו רק אם צריך.' : 'המסמך מוכן. סעיף הבדיקה נכתב לפי התיעוד הרפואי, כי עוד לא נרשמו ממצאי בדיקה. עברו עליו ושנו רק אם צריך.',
+        bad: !!r.note,
+      });
     } catch (e) {
       const aborted = (e as Error).name === 'AbortError';
       if (text) onBody(textToHtml(parseDraft(text.split('\u0000ERR:')[0]).body));
