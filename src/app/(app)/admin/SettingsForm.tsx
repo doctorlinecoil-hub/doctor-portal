@@ -80,6 +80,8 @@ export default function SettingsForm({ initial, morning, mail, cron, preview }: 
         <div className="stack">
           <section className="panel">
             <div className="panel-head"><h2><Icon name="mail" />אישור תורים, זימונים ומיילים</h2></div>
+            <label className="check"><input type="checkbox" checked={s.public_booking} onChange={(e) => setS({ ...s, public_booking: e.target.checked })} />
+              <span>דף ציבורי לקביעת תור (בלי שם משתמש)<small>קישור אחד ששולחים לעורכי דין, מתווכים ומטופלים: /book · כל מפנה מקבל גם קישור אישי במסך ״מפנים ומשתמשים״</small></span></label>
             <label className="check"><input type="checkbox" checked={s.require_approval} onChange={(e) => setS({ ...s, require_approval: e.target.checked })} />
               <span>תור ממפנה נכנס כבקשה וממתין לאישור הרופא<small>אחרי האישור נשלח זימון במייל למפנה ולמטופל. בלי סימון: התור נקבע מיד והזימון נשלח מיד.</small></span></label>
             <label className="field" htmlFor="notify"><span>מייל לקבלת התראות על בקשות חדשות <small>ריק = המייל של הרופא במערכת</small></span>

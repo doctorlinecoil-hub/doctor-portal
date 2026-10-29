@@ -27,7 +27,7 @@ export async function saveSettings(input: {
   weekly: Record<string, WeekDay>; slot_minutes: number; horizon_days: number; notice_hours: number; blocked_dates: string[];
   require_staff_mfa: boolean; max_open_per_firm: number; prices: Record<ReferralType, number>; letter_requires_payment: boolean; invoice_item: string;
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
-  lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean;
+  lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
@@ -58,6 +58,7 @@ export async function saveSettings(input: {
     lh_phone: clean(input.lh_phone, 40), lh_email: clean(input.lh_email, 120), lh_education: clean(input.lh_education, 4000),
     lh_footer: clean(input.lh_footer, 1500), lh_cv: clean(input.lh_cv, 12000),
     use_banner: !!input.use_banner, sign_final: !!input.sign_final, cv_in_opinions: !!input.cv_in_opinions,
+    public_booking: !!input.public_booking,
     require_approval: !!input.require_approval,
     notify_email: notifyEmail,
     bring_items: clean(input.bring_items, 2000),
