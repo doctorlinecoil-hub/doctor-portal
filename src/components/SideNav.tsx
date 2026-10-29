@@ -4,11 +4,12 @@ import { usePathname } from 'next/navigation';
 import Icon from './Icon';
 import type { NavItem } from './AppShell';
 
-export default function SideNav({ items, active }: { items: NavItem[]; active?: string }) {
+export default function SideNav({ items, all, active }: { items: NavItem[]; all?: string[]; active?: string }) {
   const path = usePathname();
-  const current = active ?? items
-    .filter((l) => path === l.href || path.startsWith(l.href + '/'))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  // the best match across the whole menu (so /admin/reports doesn't also light up /admin)
+  const current = active ?? (all ?? items.map((l) => l.href))
+    .filter((h) => path === h || path.startsWith(h + '/'))
+    .sort((a, b) => b.length - a.length)[0];
   return (
     <nav className="side-nav">
       {items.map((l) => (

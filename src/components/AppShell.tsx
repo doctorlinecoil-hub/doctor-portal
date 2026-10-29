@@ -60,7 +60,7 @@ export default function AppShell({ role, userName, orgName, clinicName, active, 
         {groups.map((g) => (
           <div key={g.title} className="stack-sm">
             <div className="side-label">{g.title}</div>
-            <SideNav items={g.items} active={active} />
+            <SideNav items={g.items} all={groups.flatMap((x) => x.items.map((i) => i.href))} active={active} />
           </div>
         ))}
         <div className="side-foot">
