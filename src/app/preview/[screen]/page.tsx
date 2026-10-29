@@ -64,12 +64,12 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
           patient={{ phone: c.patient_phone, email: 'israel@example.com' }} firm={{ phone: c.firm.phone, name: c.firm.name }} letterFinal={false} letterSentAt={null} emails={fx.emails} mailOn preview />}
         resolve={() => <button type="button" className="btn btn-sm btn-ghost">סימון כטופל</button>}
         payment={<PaymentPanel appointmentId={c.id} price={c.price} payer={c.payer} paid={paid} payments={fx.payments} morning payerName={payerName(c)} preview />}
-        letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={fx.letter} docCount={fx.docs.length} cancelled={false} preview />} />);
+        letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={fx.letter} docCount={fx.docs.length} cancelled={false} preview paper={{ ...fx.settings, patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />} />);
     case 'doctor-pending': {
       const pc = { ...c, status: 'pending' as const, patient_email: '' };
       return staffShell('/doctor', <DoctorCaseView c={pc} notes={[]} docs={fx.docs} approval={<ApprovalButtons id={c.id} preview />}
         intake={<IntakePanel appointmentId={c.id} intake={{ ...fx.intake, status: 'running', data: null }} docCount={fx.docs.length} requestedType={c.referral_type} cancelled={false} preview />}
-        letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={null} docCount={fx.docs.length} cancelled={false} preview />} />);
+        letter={<LetterEditor appointmentId={c.id} defaultType={c.referral_type} initial={null} docCount={fx.docs.length} cancelled={false} preview paper={{ ...fx.settings, patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />} />);
     }
     case 'doctor-calendar':
     case 'doctor-month': {
