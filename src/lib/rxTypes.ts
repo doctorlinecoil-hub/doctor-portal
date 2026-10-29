@@ -19,3 +19,11 @@ export function cleanItems(raw: unknown): RxItem[] {
 }
 
 export const rxLine = (i: RxItem) => [i.dose, i.frequency, i.duration && `למשך ${i.duration}`].filter(Boolean).join(' · ');
+
+const esc = (t: string) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** The prescription's table, as HTML (everything is escaped). Shared by the print page, the PDF and the live preview. */
+export function rxTable(rx: { items: RxItem[]; notes: string }) {
+  const rows = rx.items.map((i, n) => `<tr><td class="n">${n + 1}</td><td><b>${esc(i.name)}</b>${i.form || i.strength ? `<div class="sub">${esc([i.form, i.strength].filter(Boolean).join(' · '))}</div>` : ''}${i.notes ? `<div class="sub">${esc(i.notes)}</div>` : ''}</td><td>${esc(rxLine(i))}</td><td>${esc(i.quantity || '')}</td></tr>`).join('');
+  return `<table class="rx"><thead><tr><th class="n">#</th><th>תרופה</th><th>מינון ואופן נטילה</th><th>כמות</th></tr></thead><tbody>${rows}</tbody></table>${rx.notes ? `<p><b>הערות:</b> ${esc(rx.notes)}</p>` : ''}`;
+}

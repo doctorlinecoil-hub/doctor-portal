@@ -69,6 +69,11 @@ export type Settings = {
   lh_phone: string;
   lh_email: string;
   lh_education: string;
+  lh_footer: string;
+  lh_cv: string;
+  use_banner: boolean;
+  sign_final: boolean;
+  cv_in_opinions: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -117,4 +122,9 @@ export const SETTINGS_DEFAULTS = {
   email_letters: true,
   auto_intake: true,
   auto_draft: true,
+  lh_footer: '',
+  lh_cv: '',
+  use_banner: true,
+  sign_final: true,
+  cv_in_opinions: true,
 } as const;

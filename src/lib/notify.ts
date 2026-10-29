@@ -20,7 +20,7 @@ import type { RxItem } from './rxTypes';
 type Appt = {
   id: string; case_no: number; starts_at: string; ends_at: string; referral_type: ReferralType; status: string;
   service_label?: string; patient_name: string; patient_id_number: string; patient_dob: string | null; patient_email: string; patient_phone: string;
-  price: number; firm_id: string; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
+  price: number; firm_id: string; walk_in?: boolean; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
   firm: { name: string; email: string } | null;
 };
 
@@ -181,7 +181,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
 
   const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_subject || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
-  const pdf = await renderPdf(letterHtml(s, doc, pt), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
+  const pdf = await renderPdf(letterHtml(s, doc, pt, { title: ai.label, visitDate: ilParts(a.starts_at).date, signed: true }), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
   const attachments = pdf ? [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }] : undefined;
 
   let sent = 0;
@@ -224,7 +224,7 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
   ai.type = (l.final_letter_type || l.letter_type) as ReferralType;
   const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_subject || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
-  const pdf = await renderPdf(letterHtml(s, doc, pt), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
+  const pdf = await renderPdf(letterHtml(s, doc, pt, { title: ai.label, visitDate: ilParts(a.starts_at).date, signed: true }), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
   if (!pdf) return { ok: false, sent: 0, info: 'יצירת קובץ ה־PDF נכשלה. נסו שוב בעוד דקה.' };
   const r = await sendMail(db, id, 'letter_extra', {
     to,

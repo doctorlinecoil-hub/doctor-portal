@@ -4,7 +4,7 @@ import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } f
 
 // Email templates. Table layout and inline styles so they look right in Gmail, Outlook and phones. RTL Hebrew.
 
-const ACCENT = '#0B7A75';
+const ACCENT = '#1B3A6B';
 const INK = '#0F1B2A';
 const MUTED = '#5B6878';
 
@@ -17,7 +17,7 @@ export function clinicOf(s: Settings): ClinicInfo {
 
 function button(href: string, label: string, primary = true) {
   return `<a href="${esc(href)}" style="display:inline-block;margin:4px 0 4px 8px;padding:11px 20px;border-radius:10px;font-weight:600;font-size:15px;text-decoration:none;${
-    primary ? `background:${ACCENT};color:#ffffff;` : `background:#ffffff;color:${ACCENT};border:1px solid #A8DAD5;`
+    primary ? `background:${ACCENT};color:#ffffff;` : `background:#ffffff;color:${ACCENT};border:1px solid #B7C6E0;`
   }">${esc(label)}</a>`;
 }
 
@@ -30,7 +30,7 @@ function layout(s: Settings, o: { preheader: string; title: string; body: string
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF2F5;padding:24px 12px;">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;direction:rtl;text-align:right;font-family:Arial,'Segoe UI',Helvetica,sans-serif;color:${INK};box-shadow:0 2px 10px rgba(15,27,42,.06);">
-<tr><td style="background:linear-gradient(135deg,#0D1B2A,#0B4A46);background-color:#0D1B2A;padding:22px 28px;">
+<tr><td style="background:linear-gradient(135deg,#0E1C38,#15284D);background-color:#0E1C38;border-bottom:3px solid #C9A43A;padding:22px 28px;">
   <div style="font-size:21px;font-weight:700;color:#ffffff;line-height:1.3">${esc(s.lh_name)}</div>
   ${titles.map((t) => `<div style="font-size:13px;color:#B7D5D2;line-height:1.5">${esc(t)}</div>`).join('')}
 </td></tr>
