@@ -20,7 +20,7 @@ import type { RxItem } from './rxTypes';
 type Appt = {
   id: string; case_no: number; starts_at: string; ends_at: string; referral_type: ReferralType; status: string;
   service_label?: string; patient_name: string; patient_id_number: string; patient_dob: string | null; patient_email: string; patient_phone: string;
-  price: number; firm_id: string; walk_in?: boolean; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
+  price: number; firm_id: string; walk_in?: boolean; notify_emails?: string[] | null; decline_reason: string; reminder_sent_at: string | null; letter_sent_at: string | null;
   firm: { name: string; email: string } | null;
 };
 
@@ -44,9 +44,11 @@ function info(a: Appt): ApptInfo {
   return { caseNo: a.case_no, startsAt: a.starts_at, minutes, type: a.referral_type, label: a.service_label || '', patientName: a.patient_name, firmName: a.firm?.name || '' };
 }
 
-async function firmEmails(db: SupabaseClient, firmId: string, office?: string | null) {
+/** The referrer's addresses, plus the extra addresses typed when booking (they get the summons and the letters too). */
+async function firmEmails(db: SupabaseClient, firmId: string, office?: string | null, extra?: string[] | null) {
   const { data } = await db.from('profiles').select('email').eq('firm_id', firmId).eq('role', 'firm').eq('active', true);
-  return [...(data ?? []).map((r) => r.email as string), office || ''].filter(Boolean);
+  const all = [...(data ?? []).map((r) => r.email as string), office || '', ...(extra ?? [])].map((e) => String(e || '').trim().toLowerCase()).filter(Boolean);
+  return [...new Set(all)];
 }
 
 async function staffEmails(db: SupabaseClient, s: Settings) {
@@ -89,7 +91,7 @@ export async function sendSummons(id: string, opts: { force?: boolean } = {}): P
     if (r.ok) sent++; else if (r.error) errors.push(r.error);
   }
   const m = summonsEmail(s, ai, { forReferrer: true, patientHasEmail, link: caseLink(id, false) });
-  const r = await sendMail(db, id, 'summons_firm', { to: await firmEmails(db, a.firm_id, a.firm?.email), ...m, attachments });
+  const r = await sendMail(db, id, 'summons_firm', { to: await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails), ...m, attachments });
   if (r.ok) sent++; else if (r.error) errors.push(r.error);
   return { ok: sent > 0, sent, info: errors[0] || '' };
 }
@@ -99,7 +101,7 @@ export async function sendDeclined(id: string): Promise<NotifyResult> {
   const { a, s } = await load(db, id);
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
   const m = declinedEmail(s, info(a), a.decline_reason, `${appUrl()}/firm/book`);
-  const r = await sendMail(db, id, 'declined', { to: await firmEmails(db, a.firm_id, a.firm?.email), ...m });
+  const r = await sendMail(db, id, 'declined', { to: await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails), ...m });
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
 
@@ -108,7 +110,7 @@ export async function sendDocRequest(id: string, items: string[], note: string):
   const { a, s } = await load(db, id);
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
   const m = docRequestEmail(s, info(a), items, note, caseLink(id, false));
-  const r = await sendMail(db, id, 'doc_request', { to: await firmEmails(db, a.firm_id, a.firm?.email), ...m });
+  const r = await sendMail(db, id, 'doc_request', { to: await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails), ...m });
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
 
@@ -142,7 +144,7 @@ export async function sendReminders(): Promise<NotifyResult> {
       const r = await sendMail(db, a.id, 'reminder_patient', { to: [a.patient_email], ...reminderEmail(s, ai, false) });
       if (r.ok) sent++;
     }
-    const r = await sendMail(db, a.id, 'reminder_firm', { to: await firmEmails(db, a.firm_id, a.firm?.email), ...reminderEmail(s, ai, true) });
+    const r = await sendMail(db, a.id, 'reminder_firm', { to: await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails), ...reminderEmail(s, ai, true) });
     if (r.ok) sent++;
     await db.from('appointments').update({ reminder_sent_at: new Date().toISOString() }).eq('id', a.id);
   }
@@ -167,7 +169,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   const { data: pays } = await db.from('payments').select('amount').eq('appointment_id', id);
   const paid = (pays ?? []).reduce((x, p) => x + Number(p.amount), 0);
   const price = Number(a.price);
-  const firmTo = await firmEmails(db, a.firm_id, a.firm?.email);
+  const firmTo = await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails);
   const ai = info(a);
   ai.type = (l.final_letter_type || l.letter_type) as ReferralType;
 
