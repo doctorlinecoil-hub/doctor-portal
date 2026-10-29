@@ -21,7 +21,7 @@ export const settings: Settings = {
   lh_phone: '052-4266440',
   lh_email: 'd.m.elranhanoch@gmail.com',
   lh_education: '',
-  require_approval: true, notify_email: '', bring_items: 'תעודת זהות\nכל המסמכים הרפואיים\nרשימת תרופות עדכנית', summons_note: '', reminders_on: true, email_letters: true, auto_intake: true,
+  require_approval: true, notify_email: '', bring_items: 'תעודת זהות\nכל המסמכים הרפואיים\nרשימת תרופות עדכנית', summons_note: '', reminders_on: true, email_letters: true, auto_intake: true, auto_draft: true,
 };
 
 /** Next working day at or after `offset` days from today. */
@@ -63,6 +63,7 @@ export const rows: ApptRow[] = [
 export const firmRows = rows.filter((r) => r.firm_name === F1.name);
 
 export const caseDetail: CaseDetail = {
+  details_at: "2026-10-26T08:00:00Z",
   ...rows[5],
   patient_id_number: '012345678',
   patient_dob: '1980-05-12',
