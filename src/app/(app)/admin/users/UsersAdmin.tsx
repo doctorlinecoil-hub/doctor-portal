@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
 import Icon from '@/components/Icon';
+import ShareLink from '@/components/ShareLink';
 import { KindBadge } from '@/components/Badges';
 import { KIND, type ReferrerKind } from '@/lib/constants';
 import { addUser, createFirm, resetPassword, resetTwoStep, setFirmActive, setUserActive, updateFirm } from '../actions';
 
-export type FirmRow = { id: string; name: string; kind: ReferrerKind; tax_id: string; contact_name: string; phone: string; email: string; active: boolean };
+export type FirmRow = { id: string; name: string; kind: ReferrerKind; tax_id: string; contact_name: string; phone: string; email: string; active: boolean; book_code?: string | null };
 export type UserRow = { id: string; role: 'admin' | 'doctor' | 'firm'; firm_id: string | null; full_name: string; email: string; must_change_password: boolean; active: boolean };
 type R = { ok: boolean; error?: string; email?: string; password?: string; info?: string };
 
@@ -151,6 +152,11 @@ export default function UsersAdmin({ firms, users, me, preview }: { firms: FirmR
                 <button type="button" className={`btn btn-sm btn-danger${armed === 'firm' + f.id ? ' armed' : ''}`} disabled={busy} onClick={confirmThen('firm' + f.id, () => run(() => setFirmActive(f.id, !f.active)))}>{armed === 'firm' + f.id ? 'לאשר?' : f.active ? 'השבתה' : 'הפעלה'}</button>
               </div>
             </div>
+            {f.active && f.book_code && f.kind !== 'private' && (
+              <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--line)' }}>
+                <ShareLink compact path={`/book?r=${f.book_code}`} title="קישור אישי לקביעת תור (המשרד כבר ממולא):" />
+              </div>
+            )}
             {editing && edit && (
               <div className="stack" style={{ padding: 20, borderBottom: '1px solid var(--line)' }}>
                 <FirmFields v={edit.v} set={(v) => setEdit({ id: f.id, v })} idp={`e${f.id.slice(0, 4)}`} />
