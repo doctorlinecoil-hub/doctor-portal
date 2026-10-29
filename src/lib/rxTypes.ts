@@ -3,7 +3,7 @@ export type RxItem = {
   name: string; reg?: string; form?: string; strength?: string;
   dose: string; frequency: string; duration: string; quantity: string; notes?: string;
 };
-export type RxRow = { id: string; appointment_id: string; items: RxItem[]; notes: string; rx_date: string; created_at: string; sent_at: string | null };
+export type RxRow = { id: string; appointment_id: string; items: RxItem[]; notes: string; rx_date: string; rx_no?: number | null; created_at: string; sent_at: string | null };
 
 export const FREQUENCIES = ['פעם ביום', 'פעמיים ביום', '3 פעמים ביום', '4 פעמים ביום', 'כל 8 שעות', 'כל 12 שעות', 'לפני השינה', 'בבוקר', 'לפי הצורך', 'פעם בשבוע'];
 export const DURATIONS = ['3 ימים', '5 ימים', '7 ימים', '10 ימים', '14 ימים', 'חודש', '3 חודשים', 'טיפול קבוע'];

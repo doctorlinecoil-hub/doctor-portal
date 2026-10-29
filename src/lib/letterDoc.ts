@@ -46,11 +46,8 @@ export function docHtml(d: DocInput) {
   const titles = (s.lh_titles || '').split('\n').filter(Boolean);
   const to = (d.recipient || '').split('|').map((x) => x.trim()).filter(Boolean);
   const opinion = isOpinion(d.baseType);
-  const footer = (s.lh_footer || [s.lh_name, s.lh_licenses, s.lh_address, s.lh_phone].filter(Boolean).join('\n')).split('\n').filter(Boolean);
 
-  const head = d.banner && s.use_banner
-    ? `<img class="doc-banner" src="${esc(d.banner)}" alt="${esc(s.lh_name)}">`
-    : `<div class="doc-texthead"><div><div class="th-name">${esc(s.lh_name)}</div>${titles.map((t) => `<div class="th-small">${esc(t)}</div>`).join('')}</div><div class="th-small th-contact">${[s.lh_licenses, s.lh_address, s.lh_phone && `טל׳ ${s.lh_phone}`, s.lh_email].filter(Boolean).map((x) => `<div>${esc(String(x))}</div>`).join('')}</div></div>`;
+  const head = headHtml(s, d.banner);
 
   const title = opinion ? `חוות דעת רפואית${to[0] ? ` עבור ${to[0]}` : ''}` : d.title;
   const intro = opinion
@@ -76,7 +73,75 @@ export function docHtml(d: DocInput) {
   </div>
 </td></tr></tbody>
 <tfoot><tr><td><div class="doc-foot-space"></div></td></tr></tfoot></table>
-<div class="doc-foot">${footer.map((l, i) => `<div${i === 0 ? ' class="f1"' : ''}>${esc(l)}</div>`).join('')}</div>`;
+${footHtml(s)}`;
+}
+
+function headHtml(s: DocInput['settings'], banner: string | null) {
+  const titles = (s.lh_titles || '').split('\n').filter(Boolean);
+  return banner && s.use_banner
+    ? `<img class="doc-banner" src="${esc(banner)}" alt="${esc(s.lh_name)}">`
+    : `<div class="doc-texthead"><div><div class="th-name">${esc(s.lh_name)}</div>${titles.map((t) => `<div class="th-small">${esc(t)}</div>`).join('')}</div><div class="th-small th-contact">${[s.lh_licenses, s.lh_address, s.lh_phone && `טל׳ ${s.lh_phone}`, s.lh_email].filter(Boolean).map((x) => `<div>${esc(String(x))}</div>`).join('')}</div></div>`;
+}
+
+function footHtml(s: DocInput['settings']) {
+  const footer = (s.lh_footer || [s.lh_name, s.lh_licenses, s.lh_address, s.lh_phone].filter(Boolean).join('\n')).split('\n').filter(Boolean);
+  return `<div class="doc-foot">${footer.map((l, i) => `<div${i === 0 ? ' class="f1"' : ''}>${esc(l)}</div>`).join('')}</div>`;
+}
+
+export type RxDocItem = { name: string; form?: string; strength?: string; dose: string; frequency: string; duration: string; quantity: string; notes?: string };
+
+/**
+ * A prescription laid out like an official prescription form: the letterhead, a numbered and dated header,
+ * the patient's details in a box, the drugs one by one under ℞, a closing line (nothing can be added after it),
+ * and the doctor's details with signature and stamp.
+ */
+export function rxDocHtml(d: {
+  settings: DocInput['settings'];
+  rxNo: number | string | null;
+  date: string;
+  patient: DocInput['patient'];
+  items: RxDocItem[];
+  notes: string;
+  banner: string | null;
+  signature?: string | null;
+}) {
+  const s = d.settings;
+  const ag = age(d.patient.dob);
+  const titles = (s.lh_titles || '').split('\n').filter(Boolean);
+  const no = d.rxNo == null || d.rxNo === '' ? 'יוקצה בשמירה' : String(d.rxNo);
+  const items = d.items.map((i, n) => {
+    const sig = [i.dose, i.frequency, i.duration && `למשך ${i.duration}`].filter(Boolean).join(' · ');
+    return `<li class="rx-it"><div class="rx-it-n">${n + 1}</div><div class="rx-it-b">
+      <div class="rx-it-name">${esc(i.name)}</div>
+      ${i.form || i.strength ? `<div class="rx-it-form">${[i.strength && `<span class="rx-it-str">${esc(i.strength)}</span>`, i.form && esc(i.form)].filter(Boolean).join(' · ')}</div>` : ''}
+      <div class="rx-it-sig"><span>אופן השימוש:</span> ${sig ? esc(sig) : '—'}</div>
+      ${i.quantity ? `<div class="rx-it-q"><span>כמות לניפוק:</span> ${esc(i.quantity)}</div>` : ''}
+      ${i.notes ? `<div class="rx-it-note">${esc(i.notes)}</div>` : ''}
+    </div></li>`;
+  }).join('');
+  return `
+<table class="ldoc"><thead><tr><td><div class="doc-head">${headHtml(s, d.banner)}</div></td></tr></thead>
+<tbody><tr><td class="doc-main">
+  <div class="rxo-top">
+    <div><div class="rxo-title">מרשם רופא</div><div class="rxo-sub">Medical Prescription</div></div>
+    <div class="rxo-meta"><div><span>מס׳ מרשם</span><b>${esc(no)}</b></div><div><span>תאריך</span><b>${esc(fmtDate(d.date))}</b></div></div>
+  </div>
+  <div class="rxo-pt">
+    <div><span>שם המטופל/ת</span><b>${esc(d.patient.name) || '&nbsp;'}</b></div>
+    <div><span>מס׳ זהות</span><b>${esc(d.patient.idNumber) || '&nbsp;'}</b></div>
+    <div><span>תאריך לידה</span><b>${d.patient.dob ? esc(fmtDate(d.patient.dob)) : '&nbsp;'}</b></div>
+    <div><span>גיל</span><b>${ag != null ? ag : '&nbsp;'}</b></div>
+  </div>
+  <div class="rxo-rx"><div class="rxo-sym">℞</div><ol class="rxo-list">${items || '<li class="rx-empty">—</li>'}</ol></div>
+  <div class="rxo-end">— סוף המרשם · ${d.items.length} ${d.items.length === 1 ? 'פריט' : 'פריטים'} —</div>
+  ${d.notes ? `<div class="rxo-notes"><b>הערות:</b> ${esc(d.notes)}</div>` : ''}
+  <div class="rxo-sign">
+    <div class="rxo-doc"><b>${esc(s.lh_name)}</b>${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}</div>
+    <div class="rxo-stamp">${d.signature ? `<img class="doc-sig" src="${esc(d.signature)}" alt="חתימה">` : '<div class="rxo-sigspace"></div>'}<div class="rxo-line">חתימה וחותמת הרופא</div></div>
+  </div>
+</td></tr></tbody>
+<tfoot><tr><td><div class="doc-foot-space"></div></td></tr></tfoot></table>
+${footHtml(s)}`;
 }
 
 /** The document's styles. With a scope, every rule is limited to that element (the print pages). */
@@ -130,6 +195,39 @@ ${p}table.rx th, ${p}table.rx td { border: 1px solid #B6BFCD; padding: 6px 8px; 
 ${p}table.rx td.n, ${p}table.rx th.n { width: 26px; text-align: center; color: #555; }
 ${p}table.rx .sub { font-size: 9.5pt; color: #444; }
 ${p}table.rx tr { break-inside: avoid; }
+${p}.rxo-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #112243; padding-bottom: 2.5mm; margin-bottom: 4mm; }
+${p}.rxo-title { font-size: 19pt; font-weight: 700; color: #112243; line-height: 1.1; }
+${p}.rxo-sub { font-size: 9pt; color: #6b7385; letter-spacing: .08em; direction: ltr; text-align: right; }
+${p}.rxo-meta { display: flex; gap: 6px; }
+${p}.rxo-meta > div { border: 1px solid #112243; border-radius: 3px; padding: 1.5mm 3mm; text-align: center; min-width: 26mm; }
+${p}.rxo-meta span, ${p}.rxo-pt span { display: block; font-size: 8.5pt; color: #5b6475; }
+${p}.rxo-meta b { font-size: 11.5pt; letter-spacing: .03em; }
+${p}.rxo-pt { display: grid; grid-template-columns: 2fr 1.4fr 1.2fr .6fr; border: 1px solid #9AA4B5; border-radius: 3px; margin-bottom: 5mm; }
+${p}.rxo-pt > div { padding: 1.5mm 3mm; border-inline-start: 1px solid #D5DAE3; }
+${p}.rxo-pt > div:first-child { border-inline-start: 0; }
+${p}.rxo-pt b { font-size: 11pt; }
+${p}.rxo-rx { display: flex; gap: 4mm; align-items: flex-start; }
+${p}.rxo-sym { font-family: "Times New Roman", serif; font-size: 30pt; line-height: 1; color: #112243; font-weight: 700; margin-top: -1mm; }
+${p}.rxo-list { list-style: none; margin: 0; padding: 0; flex: 1; }
+${p}.rx-it { display: flex; gap: 3mm; padding: 2.5mm 0; border-bottom: 1px dashed #B6BFCD; break-inside: avoid; }
+${p}.rx-it:last-child { border-bottom: 0; }
+${p}.rx-it-n { width: 6mm; height: 6mm; border-radius: 50%; border: 1.5px solid #112243; color: #112243; font-weight: 700; font-size: 9.5pt; display: flex; align-items: center; justify-content: center; flex: none; margin-top: .6mm; }
+${p}.rx-it-b { flex: 1; }
+${p}.rx-it-name { font-size: 12.5pt; font-weight: 700; }
+${p}.rx-it-str { font-weight: 600; color: #333; direction: ltr; unicode-bidi: isolate; }
+${p}.rx-it-form { font-size: 9.5pt; color: #555; }
+${p}.rx-it-sig, ${p}.rx-it-q { font-size: 10.5pt; }
+${p}.rx-it-sig span, ${p}.rx-it-q span { color: #5b6475; }
+${p}.rx-it-note { font-size: 10pt; font-style: italic; color: #333; }
+${p}.rxo-end { text-align: center; font-size: 9.5pt; color: #5b6475; margin: 3mm 0 3mm; letter-spacing: .02em; }
+${p}.rxo-notes { border-top: 1px solid #D5DAE3; padding-top: 2mm; font-size: 10.5pt; }
+${p}.rxo-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 10mm; break-inside: avoid; }
+${p}.rxo-doc { font-size: 10.5pt; line-height: 1.5; }
+${p}.rxo-doc b { font-size: 12pt; }
+${p}.rxo-stamp { text-align: center; min-width: 60mm; }
+${p}.rxo-stamp .doc-sig { margin: 0 auto 1mm; width: 46mm; }
+${p}.rxo-sigspace { height: 18mm; }
+${p}.rxo-line { border-top: 1px solid #111; padding-top: 1mm; font-size: 9.5pt; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }
