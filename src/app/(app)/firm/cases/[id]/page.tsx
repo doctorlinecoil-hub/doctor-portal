@@ -5,6 +5,8 @@ import { FirmCaseView } from '@/views/FirmViews';
 import Icon from '@/components/Icon';
 import CaseActions from './CaseActions';
 import ForwardLetter from './ForwardLetter';
+import FirmPayBox from './FirmPayBox';
+import { payLines } from '@/lib/constants';
 import RescheduleRequest, { type MyReschedule } from './RescheduleRequest';
 import { availableSlots, type Busy } from '@/lib/slots';
 
@@ -39,6 +41,16 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
     slots = availableSlots(settings, (busy as Busy[] | null) ?? [], now);
     last = (rq as MyReschedule) ?? null;
   }
+  const dep = Number((a as { deposit_amount?: number }).deposit_amount) || 0;
+  const depPaid = !!(a as { deposit_paid_at?: string | null }).deposit_paid_at;
+  const proof = !!(a as { deposit_proof_at?: string | null }).deposit_proof_at;
+  const due = Math.max(0, c.price - paid);
+  const pay = payLines(settings);
+  const payBox = c.status === 'pending' && dep > 0 && !depPaid
+    ? <FirmPayBox appointmentId={id} firmId={profile.firm_id!} mode="deposit" amount={dep} pay={pay} holdHours={settings.deposit_hold_hours} sent={proof} />
+    : (c.status === 'booked' || c.status === 'draft' || c.status === 'done') && due > 0 && (pay.bank.length > 0 || !!pay.bit)
+      ? <FirmPayBox appointmentId={id} firmId={profile.firm_id!} mode="balance" amount={due} pay={pay} />
+      : null;
   const canCancel = (c.status === 'pending' || c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
   return (
     <FirmCaseView
@@ -49,6 +61,7 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
       paid={paid}
       letter={{ ready: !!final, awaitingPayment: c.status === 'done' && !final, finalizedAt: final?.finalized_at ?? null }}
       forward={final ? <ForwardLetter appointmentId={id} /> : null}
+      payBox={payBox}
       actions={<>
         {movable && <RescheduleRequest appointmentId={id} firmId={profile.firm_id!} slots={slots} last={last} />}
         {c.details_at && c.status !== 'done' && c.status !== 'cancelled' && <a className="btn btn-sm" href={`/firm/cases/${id}/details`} style={{ alignSelf: 'flex-start' }}><Icon name="user" />עריכת פרטי המטופל</a>}
