@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { EMAIL_RE, PAYERS, TYPES, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import { typeOf, EMAIL_RE, PAYERS, TYPES, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
 import { afterBooking } from '../actions';
 import { DAYS, fmtDate, fmtDay, ilParts, weekday } from '@/lib/dates';
 import type { DaySlots } from '@/lib/slots';
@@ -101,7 +101,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
           <div className="success-mark"><Icon name={done.pending ? 'clock' : 'checkCircle'} /></div>
           <div className={`callout${done.pending ? ' warn' : ''}`}><div><Icon name={done.pending ? 'clock' : 'checkCircle'} />{done.name} · {fmtDay(p.date)} בשעה {p.time}{done.pending ? ' · ממתין לאישור הרופא' : ''}</div></div>
           <dl className="kv">
-            <dt>סוג</dt><dd>{TYPES[done.type].label}</dd>
+            <dt>סוג</dt><dd>{typeOf(done.type).label}</dd>
             <dt>מסמכים</dt><dd>{done.count ? `${done.count - done.failed.length} קבצים הועברו לרופא` : 'לא צורפו. אפשר להוסיף מתוך התיק.'}</dd>
             <dt>זימון</dt><dd>{done.email ? `יישלח למטופל (${done.email}) ואליכם` : 'יישלח אליכם במייל. נא להעביר אותו למטופל.'}</dd>
           </dl>
@@ -135,8 +135,8 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
             <div className="options">
               {(Object.keys(TYPES) as ReferralType[]).map((k) => (
                 <button key={k} type="button" className="opt" aria-pressed={type === k} onClick={() => setType(k)}>
-                  <span className="opt-ic"><Icon name={TYPES[k].icon} /></span>
-                  <span><b>{TYPES[k].label}</b><span>{TYPES[k].desc}</span>{Number(prices?.[k]) > 0 && <span className="price">{ils(prices[k])}</span>}</span>
+                  <span className="opt-ic"><Icon name={typeOf(k).icon} /></span>
+                  <span><b>{typeOf(k).label}</b><span>{typeOf(k).desc}</span>{Number(prices?.[k]) > 0 && <span className="price">{ils(prices[k])}</span>}</span>
                 </button>
               ))}
             </div>
@@ -197,7 +197,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
         <aside className="panel summary-card">
           <div className="panel-head"><h2><Icon name="receipt" />סיכום</h2></div>
           <div>
-            <div className="sum-row"><span>סוג</span><b>{type ? TYPES[type].label : '—'}</b></div>
+            <div className="sum-row"><span>סוג</span><b>{type ? typeOf(type).label : '—'}</b></div>
             <div className="sum-row"><span>מועד</span><b>{chosen ? `${fmtDay(chosen.date)} · ${chosen.time}` : '—'}</b></div>
             <div className="sum-row"><span>מטופל</span><b>{f.name.trim() || '—'}</b></div>
             <div className="sum-row"><span>מסמכים</span><b>{files.length ? `${files.length} קבצים` : 'ללא'}</b></div>
