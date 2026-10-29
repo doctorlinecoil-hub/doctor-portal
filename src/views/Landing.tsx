@@ -200,7 +200,7 @@ export default function Landing({ s, services, home }: { s: Settings; services: 
           {bring.length > 0 && <details><summary>מה להביא לביקור?</summary><ul>{bring.map((b) => <li key={b}>{b}</li>)}</ul></details>}
           <details><summary>איך מקבלים את המסמך?</summary><p>אחרי הביקור המסמך החתום נשלח במייל כקובץ PDF, למפנה ולמטופל, ומופיע גם במערכת להורדה.</p></details>
           <details><summary>אפשר לשנות או לבטל תור?</summary><p>כן. מתוך המערכת אפשר לבקש מועד אחר או לבטל{s.lh_phone ? `, ואפשר גם להתקשר: ${s.lh_phone}` : ''}.</p></details>
-          <details><summary>שכחתי סיסמה, מה עושים?</summary><p>בדף הכניסה לוחצים ״שכחתי סיסמה״, ומקבלים במייל סיסמה זמנית. נכנסים איתה ובוחרים סיסמה חדשה.</p></details>
+          <details><summary>שכחתי סיסמה, מה עושים?</summary><p>בדף הכניסה לוחצים ״שכחתי סיסמה״, ומקבלים במייל קישור אישי לבחירת סיסמה חדשה.</p></details>
         </div>
       </section>
 
