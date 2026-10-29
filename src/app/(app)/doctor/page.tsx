@@ -3,6 +3,7 @@ import { loadAppointments } from '@/lib/queries';
 import type { IntakeData } from '@/lib/intakeTypes';
 import { DoctorAgendaView, type IntakeChip } from '@/views/DoctorViews';
 import ApprovalButtons from './ApprovalButtons';
+import ShareLink from '@/components/ShareLink';
 import { SetupStatus, type SetupItem } from '@/views/SetupStatus';
 import { mailEnabled } from '@/lib/mail';
 import { isAuthError } from '@/lib/aiErrors';
@@ -60,6 +61,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
   }
   return (
     <DoctorAgendaView
+      share={<ShareLink path="/book" title="קישור לקביעת תור — לשלוח לעורכי דין, מתווכים ומטופלים" sub="בלי שם משתמש ובלי סיסמה. ממלאים פרטים, בוחרים מועד ומעלים מסמכים, והבקשה מגיעה אליך לאישור." />}
       rows={rows}
       past={view === 'past'}
       isAdmin={profile.role === 'admin'}
