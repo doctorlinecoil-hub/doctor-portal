@@ -1,5 +1,5 @@
 import 'server-only';
-import { typeOf, type Settings } from './constants';
+import { ils, payLines, typeOf, type Settings } from './constants';
 import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } from './messages';
 import { appUrl } from './mail';
 
@@ -86,7 +86,7 @@ export function newRequestEmail(s: Settings, a: ApptInfo, link: string, needsApp
 }
 
 /** The official summons, to the patient (if an email was given) and to the referrer. */
-export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean; patientHasEmail: boolean; link?: string }): Rendered {
+export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean; patientHasEmail: boolean; link?: string; due?: number }): Rendered {
   const c = clinicOf(s);
   const w = when(a.startsAt);
   const bring = bringList(c);
@@ -107,6 +107,7 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
     (c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
     (bring.length ? `<h2 style="margin:6px 0 6px;font-size:16px;color:${INK}">מה להביא</h2>` + list(bring) : '') +
     (c.note ? p(esc(c.note).replace(/\n/g, '<br>')) : '') +
+    (o.due && o.due > 0 ? payBlock(s, o.due, 'לתשלום לפני הביקור') + p('נא להעביר את התשלום לפני מועד הביקור. אחרי ההעברה אפשר להעלות את האישור לתיק או להשיב למייל הזה.') : '') +
     p(`מצורף קובץ <b>הוספה ליומן</b>. ${c.phone ? `לשאלות או לשינוי מועד: <span dir="ltr">${esc(c.phone)}</span>.` : ''}`) +
     (o.forReferrer && o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'צפייה בתיק')}</div>` : '');
   return {
@@ -115,25 +116,119 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
     text: textOf([
       o.forReferrer ? `התור של ${a.patientName} אושר.${o.patientHasEmail ? '' : ' לא הוזן מייל של המטופל – נא להעביר לו את הזימון.'}` : `שלום ${a.patientName},`,
       `מועד: ${w.label}`, c.address && `כתובת: ${c.address}`, c.address && `ניווט: ${wazeLink(c.address)}`,
-      bring.length ? `מה להביא: ${bring.join(', ')}` : '', c.note, c.phone && `טלפון: ${c.phone}`,
+      bring.length ? `מה להביא: ${bring.join(', ')}` : '', c.note, o.due && o.due > 0 ? payText(s, o.due) : '', c.phone && `טלפון: ${c.phone}`,
     ]),
   };
 }
 
-export function reminderEmail(s: Settings, a: ApptInfo, forReferrer: boolean): Rendered {
+export type RemindWhen = 'tomorrow' | '3d' | '2h';
+const WHEN_TEXT: Record<RemindWhen, string> = { tomorrow: 'מחר', '3d': 'בעוד 3 ימים', '2h': 'בעוד שעתיים' };
+
+/** A reminder before the appointment: to the patient, the referrer, or the doctor. */
+export function reminderEmail(s: Settings, a: ApptInfo, forReferrer: boolean | 'doctor', at: RemindWhen = 'tomorrow', o: { due?: number; link?: string } = {}): Rendered {
   const c = clinicOf(s);
   const w = when(a.startsAt);
-  const subject = `תזכורת: תור מחר בשעה ${w.time} · ${s.lh_name}`;
+  const soon = WHEN_TEXT[at];
+  const doctor = forReferrer === 'doctor';
+  const subject = doctor
+    ? `תזכורת: ${a.patientName} ${soon} (${w.time}) · ${a.label || typeOf(a.type).label}`
+    : `תזכורת: תור ${soon} · ${w.label} · ${s.lh_name}`;
+  const intro = doctor
+    ? `תזכורת: התור של <b>${esc(a.patientName)}</b> ${soon}.`
+    : forReferrer ? `תזכורת: התור של <b>${esc(a.patientName)}</b> ${soon}.` : `שלום ${esc(a.patientName)}, תזכורת לתור שלך ${soon}.`;
   const body =
-    p(forReferrer ? `תזכורת: מחר התור של <b>${esc(a.patientName)}</b>.` : `שלום ${esc(a.patientName)}, תזכורת לתור שלך מחר.`) +
-    card([['מועד', esc(w.label)], ['כתובת', esc(c.address || '—')]]) +
-    (c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}</div>` : '') +
-    (bringList(c).length ? p(`נא להביא: ${esc(bringList(c).join(', '))}.`) : '');
+    p(intro) +
+    card([
+      ['מועד', esc(w.label)],
+      ...(doctor ? ([['סוג', esc(a.label || typeOf(a.type).label)], ['מפנה', esc(a.firmName || '—')], ['תיק', String(a.caseNo)]] as [string, string][]) : ([['כתובת', esc(c.address || '—')]] as [string, string][])),
+    ]) +
+    (!doctor && c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
+    (!doctor && bringList(c).length ? p(`נא להביא: ${esc(bringList(c).join(', '))}.`) : '') +
+    (!doctor && o.due && o.due > 0 ? payBlock(s, o.due, 'יתרה לתשלום') : '') +
+    (!doctor && c.phone ? p(`לשינוי מועד או לשאלות: <span dir="ltr">${esc(c.phone)}</span>.`) : '') +
+    (o.link ? `<div style="margin:6px 0 10px">${button(o.link, doctor ? 'פתיחת התיק' : 'צפייה בתיק')}</div>` : '');
   return {
     subject,
-    html: layout(s, { preheader: w.label, title: 'תזכורת לתור מחר', body }),
-    text: textOf([subject, `מועד: ${w.label}`, c.address && `כתובת: ${c.address}`, c.address && wazeLink(c.address)]),
+    html: layout(s, { preheader: w.label, title: `תזכורת לתור ${soon}`, body }),
+    text: textOf([subject, `מועד: ${w.label}`, !doctor && c.address && `כתובת: ${c.address}`, !doctor && c.address && wazeLink(c.address), o.link]),
   };
+}
+
+/** How to pay: amount, bank transfer details, Bit. Empty when the clinic hasn't filled in details. */
+export function payBlock(s: Settings, amount: number, title = 'לתשלום'): string {
+  const pl = payLines(s);
+  if (!pl.bank.length && !pl.bit) return amount > 0 ? card([[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]]) : '';
+  const rows: [string, string][] = [[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]];
+  if (pl.bank.length) rows.push(['העברה בנקאית', pl.bank.map(esc).join('<br>')]);
+  if (pl.bit) rows.push(['ביט / פייבוקס', `<span dir="ltr">${esc(pl.bit)}</span>`]);
+  return `<h2 style="margin:10px 0 6px;font-size:16px;color:${INK}">פרטי תשלום</h2>` + card(rows) + (pl.note ? p(esc(pl.note).replace(/\n/g, '<br>')) : '');
+}
+
+const payText = (s: Settings, amount: number) => {
+  const pl = payLines(s);
+  return [`סכום: ${ils(amount)}`, pl.bank.length ? `העברה בנקאית: ${pl.bank.join(', ')}` : '', pl.bit ? `ביט: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
+};
+
+/** To a patient who booked by himself: the slot waits for the deposit. */
+export function depositEmail(s: Settings, a: ApptInfo, amount: number, holdHours: number, link: string): Rendered {
+  const w = when(a.startsAt);
+  const subject = `כדי לשריין את התור: מקדמה של ${ils(amount)} · ${s.lh_name}`;
+  const body =
+    p(`שלום ${esc(a.patientName)},<br>קיבלנו את הבקשה לתור. <b>כדי שהתור יישמר, יש להעביר מקדמה של ${esc(ils(amount))} בתוך ${holdHours} שעות.</b>`) +
+    card([['מועד מבוקש', esc(w.label)], ['סוג הביקור', esc(a.label || typeOf(a.type).label)], ['מספר תיק', String(a.caseNo)]]) +
+    payBlock(s, amount, 'מקדמה') +
+    p('אחרי ההעברה, העלו צילום של אישור ההעברה בקישור למטה (או השיבו למייל הזה עם הצילום). מיד כשהמקדמה תתקבל, הרופא יאשר את התור ויישלח אליכם זימון.') +
+    `<div style="margin:6px 0 10px">${button(link, 'העלאת אישור העברה')}</div>` +
+    p(`אם המקדמה לא תתקבל בתוך ${holdHours} שעות, הבקשה תבוטל והמועד ישוחרר.`);
+  return { subject, html: layout(s, { preheader: `מקדמה ${ils(amount)} · ${w.label}`, title: 'נשאר רק להעביר מקדמה', body }), text: textOf([subject, `מועד: ${w.label}`, payText(s, amount), link]) };
+}
+
+export function depositExpiredEmail(s: Settings, a: ApptInfo, link: string): Rendered {
+  const w = when(a.startsAt);
+  const subject = `הבקשה לתור בוטלה (לא התקבלה מקדמה) · ${s.lh_name}`;
+  const body = p(`שלום ${esc(a.patientName)},<br>הבקשה לתור (${esc(w.label)}) בוטלה, כי המקדמה לא התקבלה בזמן.`) + p('אפשר לקבוע תור חדש בכל עת:') + `<div style="margin:6px 0 10px">${button(link, 'קביעת תור חדש')}</div>`;
+  return { subject, html: layout(s, { preheader: 'הבקשה בוטלה', title: 'הבקשה לתור בוטלה', body }), text: textOf([subject, link]) };
+}
+
+/* ---------- accounts ---------- */
+
+export function signupReceivedEmail(s: Settings, name: string): Rendered {
+  const subject = `קיבלנו את ההרשמה שלך · ${s.lh_name}`;
+  const body = p(`שלום ${esc(name)},<br>תודה שנרשמת. ההרשמה הועברה לאישור המרפאה, ונעדכן אותך במייל ברגע שהחשבון יאושר.`) + p('בינתיים אפשר לקבוע תור גם בלי חשבון, דרך דף קביעת התור.') + `<div style="margin:6px 0 10px">${button(`${appUrl()}/book`, 'קביעת תור')}</div>`;
+  return { subject, html: layout(s, { preheader: 'ההרשמה התקבלה', title: 'ההרשמה התקבלה', body }), text: textOf([subject, 'ההרשמה הועברה לאישור המרפאה.']) };
+}
+
+export function signupStaffEmail(s: Settings, r: { name: string; org: string; kind: string; email: string; phone: string }, link: string): Rendered {
+  const subject = `הרשמה חדשה ממתינה לאישור · ${r.org || r.name}`;
+  const body = p('נרשם חשבון חדש למערכת, והוא ממתין לאישור שלך.') +
+    card([['סוג', esc(r.kind)], ...(r.org ? ([['שם', esc(r.org)]] as [string, string][]) : []), ['איש קשר', esc(r.name)], ['מייל', `<span dir="ltr">${esc(r.email)}</span>`], ['טלפון', `<span dir="ltr">${esc(r.phone)}</span>`]]) +
+    `<div style="margin:6px 0 10px">${button(link, 'לאישור ההרשמה')}</div>`;
+  return { subject, html: layout(s, { preheader: `${r.kind} · ${r.org || r.name}`, title: 'הרשמה חדשה', body }), text: textOf([subject, r.email, r.phone, link]) };
+}
+
+export function accountApprovedEmail(s: Settings, name: string, email: string): Rendered {
+  const link = `${appUrl()}/login`;
+  const subject = `החשבון שלך אושר · ${s.lh_name}`;
+  const body = p(`שלום ${esc(name)},<br>החשבון שלך במערכת של ${esc(s.lh_name)} אושר. אפשר להתחבר עם המייל והסיסמה שבחרת בהרשמה.`) +
+    card([['מייל לכניסה', `<span dir="ltr">${esc(email)}</span>`]]) + `<div style="margin:6px 0 10px">${button(link, 'כניסה למערכת')}</div>` +
+    p('שכחת את הסיסמה? בדף הכניסה לוחצים ״שכחתי סיסמה״ ומקבלים סיסמה זמנית במייל.');
+  return { subject, html: layout(s, { preheader: 'אפשר להתחבר', title: 'החשבון אושר', body }), text: textOf([subject, `כניסה: ${link}`]) };
+}
+
+export function accountRejectedEmail(s: Settings, name: string, reason: string): Rendered {
+  const subject = `ההרשמה לא אושרה · ${s.lh_name}`;
+  const body = p(`שלום ${esc(name)},<br>ההרשמה שלך למערכת לא אושרה.`) + (reason ? card([['הסיבה', esc(reason)]]) : '') + (s.lh_phone ? p(`לפרטים: <span dir="ltr">${esc(s.lh_phone)}</span>`) : '');
+  return { subject, html: layout(s, { preheader: 'ההרשמה לא אושרה', title: 'ההרשמה לא אושרה', body }), text: textOf([subject, reason]) };
+}
+
+export function tempPasswordEmail(s: Settings, name: string, password: string): Rendered {
+  const link = `${appUrl()}/login`;
+  const subject = `סיסמה זמנית לכניסה · ${s.lh_name}`;
+  const body = p(`שלום ${esc(name)},<br>ביקשת סיסמה חדשה. זו הסיסמה הזמנית שלך:`) +
+    `<div style="margin:6px 0 16px;padding:14px 18px;background:#F1F7F6;border:1px solid #CFE6E3;border-radius:12px;font-size:22px;font-weight:700;letter-spacing:.08em;text-align:center;direction:ltr;font-family:Consolas,Menlo,monospace">${esc(password)}</div>` +
+    p('נכנסים עם המייל והסיסמה הזמנית, ומיד בוחרים סיסמה חדשה.') + `<div style="margin:6px 0 10px">${button(link, 'כניסה למערכת')}</div>` +
+    p('<span style="color:#5B6878;font-size:13px">לא ביקשת סיסמה חדשה? אפשר להתעלם מההודעה, אבל הסיסמה הקודמת כבר לא פעילה: היכנסו עם הזמנית ובחרו חדשה.</span>');
+  return { subject, html: layout(s, { preheader: 'סיסמה זמנית', title: 'סיסמה זמנית', body }), text: textOf([subject, `סיסמה זמנית: ${password}`, link]) };
 }
 
 export function declinedEmail(s: Settings, a: ApptInfo, reason: string, link: string): Rendered {

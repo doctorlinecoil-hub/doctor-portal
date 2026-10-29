@@ -3,10 +3,12 @@ export type ReferralType = 'referral' | 'summary' | 'nii' | 'legal';
 export type ApptStatus = 'pending' | 'booked' | 'draft' | 'done' | 'cancelled';
 export type Payer = 'referrer' | 'patient';
 export type PayMethod = 'transfer' | 'bit' | 'check' | 'cash' | 'card' | 'other';
-export type ReferrerKind = 'law' | 'broker' | 'private';
+export type ReferrerKind = 'law' | 'broker' | 'company' | 'private' | 'patient';
 export type PayState = 'free' | 'unpaid' | 'partial' | 'paid';
 
-export const KIND: Record<ReferrerKind, string> = { law: 'משרד עורכי דין', broker: 'מתווך', private: 'פנייה ישירה' };
+export const KIND: Record<ReferrerKind, string> = { law: 'משרד עורכי דין', broker: 'מתווך', company: 'חברה', private: 'פנייה ישירה', patient: 'מטופל' };
+/** Accounts of patients (not referrers): they pay a deposit when booking. */
+export const isPatientKind = (k: string | null | undefined) => k === 'private' || k === 'patient';
 export const PAYERS: Record<Payer, string> = { referrer: 'המפנה', patient: 'המטופל' };
 export const PAY_METHODS: Record<PayMethod, string> = {
   transfer: 'העברה בנקאית', bit: 'ביט', check: 'צ׳ק', cash: 'מזומן', card: 'כרטיס אשראי', other: 'אחר',
@@ -75,6 +77,12 @@ export type Settings = {
   sign_final: boolean;
   cv_in_opinions: boolean;
   public_booking: boolean;
+  deposit_amount: number;
+  deposit_hold_hours: number;
+  bank_details: string;
+  bit_phone: string;
+  pay_note: string;
+  open_registration: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -91,6 +99,8 @@ const DB_ERRORS: Record<string, string> = {
   TOO_MANY_BOOKINGS: 'למשרד יש כבר הרבה תורים פתוחים. פנו למרפאה.',
   CANNOT_CANCEL: 'אי אפשר לבטל את התור הזה.',
   CANNOT_APPROVE: 'הבקשה כבר טופלה.',
+  DEPOSIT_REQUIRED: 'אי אפשר לאשר את התור לפני שהמקדמה התקבלה. סמנו קודם ״המקדמה התקבלה״.',
+  BAD_AMOUNT: 'סכום לא תקין.',
   SLOT_TAKEN: 'המועד הזה כבר תפוס. בחרו מועד אחר.',
   CANNOT_RESCHEDULE: 'אי אפשר לשנות את המועד של התור הזה.',
   CANNOT_DECLINE: 'הבקשה כבר טופלה.',
@@ -129,4 +139,19 @@ export const SETTINGS_DEFAULTS = {
   sign_final: true,
   cv_in_opinions: true,
   public_booking: true,
+  deposit_amount: 300,
+  deposit_hold_hours: 48,
+  bank_details: '',
+  bit_phone: '',
+  pay_note: '',
+  open_registration: true,
 } as const;
+
+/** The clinic's payment details, as lines (bank transfer, Bit, a note). Empty when nothing was filled in. */
+export function payLines(s: Pick<Settings, 'bank_details' | 'bit_phone' | 'pay_note'>) {
+  return {
+    bank: String(s.bank_details || '').split('\n').map((l) => l.trim()).filter(Boolean),
+    bit: String(s.bit_phone || '').trim(),
+    note: String(s.pay_note || '').trim(),
+  };
+}
