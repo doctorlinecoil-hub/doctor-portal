@@ -34,6 +34,20 @@ export async function approveRequest(id: string): Promise<Result> {
   return { ok: true, info: r.sent ? 'התור אושר והזימון נשלח במייל' : `התור אושר.${r.info ? ` הזימון לא נשלח במייל: ${r.info}` : ''} אפשר לשלוח בוואטסאפ.` };
 }
 
+/** The deposit arrived: record it as a payment, approve, and send the summons. */
+export async function approveWithDeposit(id: string, method: 'transfer' | 'bit' | 'cash' | 'card', amount: number): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const m = ['transfer', 'bit', 'cash', 'card'].includes(method) ? method : 'transfer';
+  const { error: e1 } = await c.supabase.rpc('record_deposit', { p_id: id, p_method: m, p_amount: Math.max(0, Number(amount) || 0) });
+  if (e1) return { ok: false, error: dbError(e1) };
+  const { error } = await c.supabase.rpc('approve_appointment', { p_id: id });
+  if (error) return { ok: false, error: dbError(error) };
+  const r = await sendSummons(id);
+  done(id);
+  return { ok: true, info: r.sent ? 'המקדמה נרשמה, התור אושר והזימון נשלח' : `המקדמה נרשמה והתור אושר.${r.info ? ` הזימון לא נשלח במייל: ${r.info}` : ''}` };
+}
+
 export async function declineRequest(id: string, reason: string): Promise<Result> {
   const c = await staffCase(id);
   if (!c) return { ok: false, error: 'אין הרשאה.' };

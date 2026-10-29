@@ -2,7 +2,7 @@ import { requireUser } from '@/lib/auth';
 import { loadAppointments } from '@/lib/queries';
 import type { IntakeData } from '@/lib/intakeTypes';
 import { DoctorAgendaView, type IntakeChip } from '@/views/DoctorViews';
-import ApprovalButtons from './ApprovalButtons';
+import ApprovalButtons, { type DepositState } from './ApprovalButtons';
 import ShareLink from '@/components/ShareLink';
 import { SetupStatus, type SetupItem } from '@/views/SetupStatus';
 import { mailEnabled } from '@/lib/mail';
@@ -59,6 +59,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       missing: i.data?.missing?.length ?? 0,
     };
   }
+  const { data: depRows } = await supabase.from('appointments').select('id, deposit_amount, deposit_paid_at, deposit_proof_at').eq('status', 'pending').gt('deposit_amount', 0);
+  const deposits: Record<string, DepositState> = Object.fromEntries((depRows ?? []).map((d) => [d.id, { amount: Number(d.deposit_amount), paid: !!d.deposit_paid_at, proof: !!d.deposit_proof_at }]));
   return (
     <DoctorAgendaView
       share={<ShareLink path="/book" title="קישור לקביעת תור — לשלוח לעורכי דין, מתווכים ומטופלים" sub="בלי שם משתמש ובלי סיסמה. ממלאים פרטים, בוחרים מועד ומעלים מסמכים, והבקשה מגיעה אליך לאישור." />}
@@ -68,7 +70,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       name={profile.full_name || ''}
       intake={chips}
       openRequests={openRequests ?? 0}
-      approvals={(id) => <ApprovalButtons id={id} compact />}
+      approvals={(id) => <ApprovalButtons id={id} compact deposit={deposits[id] ?? null} />}
       reschedules={reschedules}
       setup={<SetupStatus items={setupItems} />}
     />
