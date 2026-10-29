@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { TYPES, type ReferralType } from '@/lib/constants';
 import { fmtStamp, todayIL } from '@/lib/dates';
-import { PLACEHOLDER_RE, parseDraft } from '@/lib/letter';
+import { PLACEHOLDER_RE, outlineFor, parseDraft } from '@/lib/letter';
 import Icon from '@/components/Icon';
 import { sendLetter } from '../../actions';
 import Dictate from '@/components/Dictate';
@@ -199,6 +199,7 @@ export default function LetterEditor({
         <input id="ltSubj" value={d.subject} onChange={(e) => update({ subject: e.target.value })} disabled={ai.running} />
       </label>
       <div className="field-tools">
+        <button type="button" className="btn btn-sm" title="כותרות הסעיפים לפי סוג המכתב, כדי לכתוב בלי AI" onClick={() => insertBody(outlineFor(d.letter_type))} disabled={ai.running}><Icon name="list" />מבנה מוכן</button>
         <TemplatePicker letterType={d.letter_type} onInsert={insertBody} selection={() => { const el = bodyRef.current; return el ? el.value.slice(el.selectionStart, el.selectionEnd) : ''; }} />
         <Dictate onText={insertBody} />
       </div>
