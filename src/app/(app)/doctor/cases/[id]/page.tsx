@@ -72,7 +72,7 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
       notes={(notes as NoteRow[]) ?? []}
       docs={docRows}
       cancel={open ? <DoctorCancel appointmentId={id} /> : null}
-      approval={<ApprovalButtons id={id} />}
+      approval={<ApprovalButtons id={id} deposit={Number(a.deposit_amount) > 0 ? { amount: Number(a.deposit_amount), paid: !!a.deposit_paid_at, proof: !!a.deposit_proof_at } : null} />}
       history={<PatientHistory rows={history} />}
       reschedule={resched ? <RescheduleDecision req={resched as RescheduleRow} fromLabel={label(a.starts_at)} toLabel={label((resched as RescheduleRow).requested_starts_at)} /> : null}
       resolve={(n) => <ResolveButton noteId={n.id} caseId={id} />}
