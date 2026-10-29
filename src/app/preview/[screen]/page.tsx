@@ -9,6 +9,8 @@ import DiagnosesPanel from '@/app/(app)/doctor/cases/[id]/DiagnosesPanel';
 import PrescriptionPanel from '@/app/(app)/doctor/cases/[id]/PrescriptionPanel';
 import ServicesAdmin from '@/app/(app)/doctor/services/ServicesAdmin';
 import type { Service } from '@/lib/services';
+import TemplatePicker from '@/app/(app)/doctor/cases/[id]/TemplatePicker';
+import PublicBooking from '@/app/book/PublicBooking';
 import BookingForm from '@/app/(app)/firm/book/BookingForm';
 import CaseActions from '@/app/(app)/firm/cases/[id]/CaseActions';
 import LetterEditor from '@/app/(app)/doctor/cases/[id]/LetterEditor';
@@ -115,6 +117,11 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       </div>);
     case 'doctor-services':
       return staffShell('/doctor/services', <><PageHead title="סוגי שירות ומחירים" /><ServicesAdmin initial={SVC} preview /></>);
+    case 'tpl-modal':
+      return staffShell('/doctor', <TemplatePicker letterType="legal" onInsert={() => undefined} selection={() => ''} demo={fx.templates.map((t) => ({ id: t.id, title: t.title, body: t.body, letter_type: t.letter_type ?? null }))} />);
+    case 'public-book':
+      return <PublicBooking open clinic={{ name: clinic, address: 'מגדל ספיר, רחוב תובל 40, רמת גן', phone: '052-4266440', needsApproval: true }} services={SVC} code="" firm={null}
+        slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} />;
     case 'doctor-templates':
       return staffShell('/doctor/templates', <><PageHead title="תבניות למכתבים" /><TemplatesAdmin list={fx.templates} preview /></>);
     case 'firm-resched':
