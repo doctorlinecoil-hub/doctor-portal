@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { PageHead, Stat, Empty } from '@/components/ui';
 import { PayBadge, StatusBadge, TypeBadge } from '@/components/Badges';
-import { PAYERS, PAY_METHODS, TYPES, ils, payState } from '@/lib/constants';
+import { typeOf, PAYERS, PAY_METHODS, ils, payState } from '@/lib/constants';
 import { age, fmtDate, fmtDay, fmtStamp, ilParts, todayIL } from '@/lib/dates';
 import type { ApptRow, CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
 
@@ -12,13 +12,15 @@ function owes(r: ApptRow) {
 
 export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; staff?: boolean; extra?: React.ReactNode }) {
   const p = ilParts(r.starts_at);
+  const waiting = !r.patient_name && r.status !== 'cancelled';
   return (
-    <Link href={href} className="item">
+    <Link href={waiting && !staff ? `${href}/details` : href} className="item">
       <span className="item-time">{p.time}<small>{fmtDay(p.date).split(',')[0]}</small></span>
       <span className="item-main">
-        <b>{r.patient_name}</b>
+        <b>{r.patient_name || 'ממתין לפרטי המטופל'}</b>
+        {waiting && <span className="wait-chip"><Icon name="upload" size={13} />{staff ? 'המפנה עוד לא העלה מסמכים ופרטים' : 'להשלמה: מסמכים ופרטים'}</span>}
         <span className="item-meta">
-          <span>{TYPES[r.referral_type].label}</span>
+          <span>{typeOf(r.referral_type).label}</span>
           <span>·</span>
           <span className="num">תיק {r.case_no}</span>
           {r.firm_name && <><span>·</span><span>{r.firm_name}</span></>}
@@ -69,7 +71,7 @@ export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: st
               {ready.slice(0, 6).map((r) => (
                 <Link key={r.id} href={`/firm/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '40px minmax(0,1fr) auto' }}>
                   <span className="file-ic" style={{ width: 36, height: 36 }}>PDF</span>
-                  <span className="item-main"><b>{r.patient_name}</b><span className="item-meta">{TYPES[r.referral_type].label} · תיק {r.case_no}</span></span>
+                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{typeOf(r.referral_type).label} · תיק {r.case_no}</span></span>
                   <span className="item-side">{r.payer === 'referrer' && <PayBadge state={payState(r.price, r.paid)} />}</span>
                 </Link>
               ))}
@@ -136,8 +138,8 @@ export function FirmCasesView({ rows, filter }: { rows: ApptRow[]; filter: strin
                   return (
                     <tr key={r.id}>
                       <td className="num muted">{r.case_no}</td>
-                      <td><Link href={`/firm/cases/${r.id}`} className="row-link"><b style={{ fontWeight: 500 }}>{r.patient_name}</b></Link></td>
-                      <td>{TYPES[r.referral_type].label}</td>
+                      <td><Link href={`/firm/cases/${r.id}`} className="row-link"><b style={{ fontWeight: 500 }}>{r.patient_name || 'ממתין לפרטים'}</b></Link></td>
+                      <td>{typeOf(r.referral_type).label}</td>
                       <td className="num">{fmtDate(p.date)} <span className="muted">{p.time}</span></td>
                       <td><StatusBadge status={r.status} /></td>
                       <td>{r.payer === 'patient' ? <span className="muted">המטופל משלם</span> : <PayBadge state={payState(r.price, r.paid)} />}</td>
@@ -154,28 +156,31 @@ export function FirmCasesView({ rows, filter }: { rows: ApptRow[]; filter: strin
   );
 }
 
-export function CaseHero({ c, staff, children }: { c: CaseDetail; staff?: boolean; children?: React.ReactNode }) {
+export function CaseHero({ c, staff, referrer, actions }: { c: CaseDetail; staff?: boolean; referrer?: React.ReactNode; actions?: React.ReactNode }) {
   const p = ilParts(c.starts_at);
   const a = age(c.patient_dob);
   return (
     <section className="case-hero">
-      <div className="case-id">
+      <div className="ch-main">
         <div className="case-avatar"><Icon name="user" /></div>
-        <div>
-          <div className="case-no">תיק מס׳ {c.case_no}</div>
-          <h1>{c.patient_name}</h1>
+        <div className="ch-body">
+          <div className="ch-top">
+            <span className="case-no">תיק מס׳ {c.case_no}</span>
+            <TypeBadge type={c.referral_type} />
+            <StatusBadge status={c.status} staff={staff} />
+          </div>
+          <h1>{c.patient_name || 'ממתין לפרטי המטופל'}</h1>
           <div className="facts">
             <span className="fact"><Icon name="calendar" />{fmtDay(p.date)} · {p.time}</span>
-            <span className="fact"><Icon name="idcard" /><span className="num">{c.patient_id_number}</span></span>
+            {c.patient_id_number && <span className="fact"><Icon name="idcard" /><span className="num">{c.patient_id_number}</span></span>}
             {a != null && <span className="fact"><Icon name="cake" />גיל {a}</span>}
-            <span className="fact"><Icon name="phone" /><span className="num ltr">{c.patient_phone}</span></span>
+            {c.patient_phone && <span className="fact"><Icon name="phone" /><span className="num ltr">{c.patient_phone}</span></span>}
+            {c.patient_email && <span className="fact"><Icon name="mail" /><span className="ltr">{c.patient_email}</span></span>}
           </div>
         </div>
+        {actions && <div className="ch-actions">{actions}</div>}
       </div>
-      <div className="case-side">
-        <div className="row"><TypeBadge type={c.referral_type} /><StatusBadge status={c.status} staff={staff} /></div>
-        {children}
-      </div>
+      {referrer && <div className="ch-foot">{referrer}</div>}
     </section>
   );
 }
@@ -264,15 +269,23 @@ export function PaymentSummary({ price, paid, payer, payments, title = 'תשלו
   );
 }
 
-export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions }: {
+export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, forward }: {
   c: CaseDetail; notes: NoteRow[]; docs: DocRow[]; payments: PaymentRow[]; paid: number;
-  letter: { ready: boolean; awaitingPayment: boolean; finalizedAt: string | null }; actions: React.ReactNode;
+  letter: { ready: boolean; awaitingPayment: boolean; finalizedAt: string | null }; actions: React.ReactNode; forward?: React.ReactNode;
 }) {
+  const incomplete = !c.details_at && c.status !== 'cancelled';
   return (
     <>
       <PageHead title="" crumbs={[{ href: '/firm/cases', label: 'התיקים שלי' }]} />
       <CaseHero c={c} />
-      {c.status === 'pending' && (
+      {incomplete && (
+        <section className="complete-bar">
+          <span className="complete-ic"><Icon name="upload" /></span>
+          <div><b>התור נשמר. נשאר להעלות מסמכים ולאשר את פרטי המטופל</b><span>המערכת קוראת את הפרטים מהמסמכים וממלאת בשבילכם. הרופא מקבל את התיק רק אחרי השלב הזה.</span></div>
+          <a className="btn btn-primary" href={`/firm/cases/${c.id}/details`}><Icon name="sparkles" />השלמת התיק</a>
+        </section>
+      )}
+      {c.status === 'pending' && !incomplete && (
         <div className="callout warn"><div><Icon name="clock" />הבקשה ממתינה לאישור הרופא. מיד אחרי האישור יישלח זימון במייל{c.patient_email ? ' לכם ולמטופל' : ' אליכם'}.</div></div>
       )}
       {c.status === 'cancelled' && c.decline_reason && (
@@ -282,7 +295,10 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions }
       {letter.ready && (
         <div className="callout">
           <div><Icon name="checkCircle" />המכתב של הרופא מוכן{letter.finalizedAt ? ` · ${fmtStamp(letter.finalizedAt)}` : ''}</div>
-          <a className="btn btn-ok" href={`/letters/${c.id}/print`} target="_blank" rel="noopener"><Icon name="download" />צפייה והורדת PDF</a>
+          <div className="row" style={{ gap: 8 }}>
+            <a className="btn btn-ok" href={`/letters/${c.id}/print`} target="_blank" rel="noopener"><Icon name="download" />צפייה והורדת PDF</a>
+            {forward}
+          </div>
         </div>
       )}
       {letter.awaitingPayment && (

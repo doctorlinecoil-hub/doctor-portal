@@ -3,7 +3,7 @@ import Icon from '@/components/Icon';
 import Tabs from '@/components/Tabs';
 import { Empty, PageHead, Stat } from '@/components/ui';
 import { KindBadge, StatusBadge } from '@/components/Badges';
-import { TYPES, ils } from '@/lib/constants';
+import { typeOf, ils } from '@/lib/constants';
 import { DAYS, dayNum, fmtDate, fmtDay, ilParts, todayIL, weekday } from '@/lib/dates';
 import type { ApptRow, CaseDetail, DocRow, NoteRow } from '@/lib/types';
 import { ApptItem, CaseHero, DocsPanel, NotesPanel, groupByDay } from './FirmViews';
@@ -64,8 +64,8 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
         {next && np && (
           <Link href={`/doctor/cases/${next.id}`} className="hero-next">
             <span className="hint">התור הבא</span>
-            <b>{next.patient_name}</b>
-            <span>{fmtDay(np.date)} · <span className="num">{np.time}</span> · {TYPES[next.referral_type].label}</span>
+            <b>{next.patient_name || 'ממתין לפרטים'}</b>
+            <span>{fmtDay(np.date)} · <span className="num">{np.time}</span> · {typeOf(next.referral_type).label}</span>
             <AiChip i={intake[next.id]} />
           </Link>
         )}
@@ -90,8 +90,8 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
                   <Link href={`/doctor/cases/${r.id}`} className="req-main">
                     <span className="req-when"><b className="num">{p.time}</b><small>{fmtDay(p.date)}</small></span>
                     <span className="item-main">
-                      <b>{r.patient_name}</b>
-                      <span className="item-meta"><span>{TYPES[r.referral_type].label}</span><span>·</span><span>{r.firm_name}</span><span>·</span><span className="num">תיק {r.case_no}</span></span>
+                      <b>{r.patient_name || 'ממתין לפרטים'}</b>
+                      <span className="item-meta"><span>{typeOf(r.referral_type).label}</span><span>·</span><span>{r.firm_name}</span><span>·</span><span className="num">תיק {r.case_no}</span></span>
                       {new Date(r.starts_at) < now ? <span className="badge b-cancelled">המועד עבר · כדאי לדחות ולבקש מועד חדש</span> : <AiChip i={intake[r.id]} />}
                     </span>
                   </Link>
@@ -136,7 +136,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
             <div className="list">
               {waiting.slice(0, 12).map((r) => (
                 <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
-                  <span className="item-main"><b>{r.patient_name}</b><span className="item-meta">{TYPES[r.referral_type].label} · {fmtDate(ilParts(r.starts_at).date)}</span></span>
+                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{typeOf(r.referral_type).label} · {fmtDate(ilParts(r.starts_at).date)}</span></span>
                   <StatusBadge status={r.status} staff />
                 </Link>
               ))}
@@ -159,7 +159,7 @@ export function PatientHistory({ rows }: { rows: HistoryRow[] }) {
         {rows.map((r) => (
           <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '84px minmax(0,1fr) auto' }}>
             <span className="item-time num" style={{ fontSize: 14 }}>{fmtDate(ilParts(r.starts_at).date)}<small>תיק {r.case_no}</small></span>
-            <span className="item-main"><b>{TYPES[r.referral_type].label}</b><span className="item-meta">{r.firm_name}</span></span>
+            <span className="item-main"><b>{typeOf(r.referral_type).label}</b><span className="item-meta">{r.firm_name}</span></span>
             <StatusBadge status={r.status} staff />
           </Link>
         ))}
@@ -177,12 +177,17 @@ export function DoctorCaseView({ c, notes, docs, payment, letter, cancel, intake
   return (
     <>
       <PageHead title="" crumbs={[{ href: '/doctor', label: 'יומן ותיקים' }]} />
-      <CaseHero c={c} staff>
-        <div className="hint row" style={{ gap: 6 }}><KindBadge kind={c.firm.kind} /><b style={{ color: 'var(--fg)', fontWeight: 500 }}>{c.firm.name}</b></div>
-        <div className="hint">{[c.firm.contact_name, c.firm.phone].filter(Boolean).join(' · ')}</div>
-        {c.patient_email && <div className="hint row" style={{ gap: 6 }}><Icon name="mail" size={14} /><span className="ltr">{c.patient_email}</span></div>}
-        {cancel}
-      </CaseHero>
+      <CaseHero c={c} staff actions={cancel} referrer={
+        <>
+          <span className="ch-label">מפנה</span>
+          <KindBadge kind={c.firm.kind} />
+          <b>{c.firm.name}</b>
+          {[c.firm.contact_name, c.firm.phone].filter(Boolean).map((x) => <span key={x} className="ch-sep">{x}</span>)}
+        </>
+      } />
+      {!c.details_at && c.status !== 'cancelled' && (
+        <div className="callout warn"><div><Icon name="clock" />המפנה קבע את התור ועוד לא העלה מסמכים ופרטי מטופל. ברגע שישלים, תקבלו התראה, סיכום של התיק וטיוטת מכתב.</div></div>
+      )}
       {c.status === 'pending' && approval && (
         <section className="approval-bar">
           <div className="approval-text"><span className="pulse" aria-hidden="true" /><div><b>בקשה חדשה ממתינה לאישורך</b><span>אחרי האישור יישלח זימון במייל {c.patient_email ? 'למטופל ולמפנה' : 'למפנה'}, עם קובץ ליומן וקישור לניווט.</span></div></div>

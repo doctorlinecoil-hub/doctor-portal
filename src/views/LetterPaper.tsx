@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Icon from '@/components/Icon';
-import { TYPES, type ReferralType, type Settings } from '@/lib/constants';
+import { typeOf, type ReferralType, type Settings } from '@/lib/constants';
 import { age, fmtDate } from '@/lib/dates';
 import { LEGAL_DECLARATION, bodyBlocks } from '@/lib/letter';
 import { isRich, sanitizeHtml, stripMarker } from '@/lib/richtext';
@@ -57,7 +57,7 @@ export default function LetterPaper({ settings: s, letter, patient, backHref, dr
           {printButton}
         </div>
       </div>
-      <article className="paper" aria-label={TYPES[letter.letter_type]?.label}>
+      <article className="paper" aria-label={typeOf(letter.letter_type)?.label}>
         <header className="lt-head">
           <div>
             <div className="lt-name">{s.lh_name}</div>

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { Empty, PageHead, Stat } from '@/components/ui';
 import { KindBadge, PayBadge } from '@/components/Badges';
-import { PAYERS, TYPES, ils, payState, type PayState } from '@/lib/constants';
+import { typeOf, PAYERS, ils, payState, type PayState } from '@/lib/constants';
 import { fmtDate, ilParts, todayIL } from '@/lib/dates';
 import type { ApptRow } from '@/lib/types';
 
@@ -88,7 +88,7 @@ export function PaymentsView({ rows, filter, q, collectedThisMonth }: { rows: Ap
                   {list.map((r) => (
                     <tr key={r.id}>
                       <td className="num muted">{r.case_no}</td>
-                      <td><div className="cell-main"><b>{r.patient_name}</b><span>{TYPES[r.referral_type].label}</span></div></td>
+                      <td><div className="cell-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span>{typeOf(r.referral_type).label}</span></div></td>
                       <td>{r.firm_name}</td>
                       <td className="num">{fmtDate(ilParts(r.starts_at).date)}</td>
                       <td>{PAYERS[r.payer]}</td>

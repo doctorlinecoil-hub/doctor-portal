@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { PageHead } from '@/components/ui';
-import { STATUS_STAFF, TYPES, type Settings } from '@/lib/constants';
+import { typeOf, STATUS_STAFF, type Settings } from '@/lib/constants';
 import { DAYS, dayNum, fmtDate, fromDayNum, hm2min, ilParts, ilToUtc, min2hm, todayIL, weekday } from '@/lib/dates';
 import type { ApptRow } from '@/lib/types';
 
@@ -145,9 +145,9 @@ function WeekGrid({ start, rows, blocks, settings, today, now, slotAction, block
                 const len = Math.max(step, (new Date(r.ends_at ?? r.starts_at).getTime() - new Date(r.starts_at).getTime()) / 60000 || step);
                 return (
                   <Link key={r.id} href={`/doctor/cases/${r.id}`} className={`cal-ev ${r.status}`} style={{ top: (s.min - top) * PX, height: len * PX - 2 }}
-                    title={`${r.patient_name} · ${TYPES[r.referral_type].label} · ${STATUS_STAFF[r.status]}`}>
-                    <b>{r.patient_name}</b>
-                    <span className="num">{ilParts(r.starts_at).time} · {TYPES[r.referral_type].label}</span>
+                    title={`${r.patient_name} · ${typeOf(r.referral_type).label} · ${STATUS_STAFF[r.status]}`}>
+                    <b>{r.patient_name || 'ממתין לפרטים'}</b>
+                    <span className="num">{ilParts(r.starts_at).time} · {typeOf(r.referral_type).label}</span>
                   </Link>
                 );
               })}
@@ -178,7 +178,7 @@ function MonthGrid({ start, month, rows, blocks, settings, today, days }: {
           <Link key={d} href={`/doctor/calendar?view=week&d=${d}`}
             className={`cal-day${d.slice(0, 7) !== month ? ' out' : ''}${d === today ? ' today' : ''}${!cfg?.on ? ' closed' : ''}${blocked ? ' blocked' : ''}`}>
             <span className="cal-dn num">{+d.slice(8, 10)}</span>
-            {dayRows.slice(0, 3).map((r) => <span key={r.id} className={`cal-chip ${r.status}`}><span className="num">{ilParts(r.starts_at).time}</span> {r.patient_name}</span>)}
+            {dayRows.slice(0, 3).map((r) => <span key={r.id} className={`cal-chip ${r.status}`}><span className="num">{ilParts(r.starts_at).time}</span> {r.patient_name || 'ממתין לפרטים'}</span>)}
             {dayRows.length > 3 && <span className="hint">+{dayRows.length - 3} נוספים</span>}
             {pend > 0 && <span className="cal-pend">{pend} לאישור</span>}
           </Link>
