@@ -3,7 +3,9 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { typeOf, EMAIL_RE, PAYERS, TYPES, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import { EMAIL_RE, PAYERS, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import type { Service } from '@/lib/services';
+import ServicePicker from '@/components/ServicePicker';
 import { afterBooking } from '../actions';
 import { DAYS, fmtDate, fmtDay, ilParts, weekday } from '@/lib/dates';
 import type { DaySlots } from '@/lib/slots';
@@ -13,7 +15,7 @@ import Icon from '@/components/Icon';
 import { PageHead } from '@/components/ui';
 
 type Props = {
-  firmId: string; slots: DaySlots[]; horizon: number; prices: Record<ReferralType, number>; clinicName: string; needsApproval: boolean; preview?: boolean;
+  firmId: string; slots: DaySlots[]; horizon: number; services: Service[]; clinicName: string; needsApproval: boolean; preview?: boolean;
   /** clinic mode: the doctor books for a referrer or for someone who called directly */
   firms?: { id: string; name: string; kind: string }[];
   /** a slot chosen in advance (from the calendar) */
@@ -21,12 +23,13 @@ type Props = {
 };
 const EMPTY = { name: '', id: '', dob: '', phone: '', email: '', notes: '' };
 
-export default function BookingForm({ firmId: defaultFirm, slots, horizon, prices, clinicName, needsApproval, preview, firms, initialSlot }: Props) {
+export default function BookingForm({ firmId: defaultFirm, slots, horizon, services, clinicName, needsApproval, preview, firms, initialSlot }: Props) {
   const staff = !!firms;
   const [firmId, setFirmId] = useState(defaultFirm);
   const supabase = useSupabase();
   const router = useRouter();
-  const [type, setType] = useState<ReferralType | null>(preview ? 'nii' : null);
+  const [svc, setSvc] = useState<Service | null>(preview ? services[2] ?? null : null);
+  const type: ReferralType | null = svc?.base_type ?? null;
   const [taken, setTaken] = useState<Set<string>>(new Set());
   const visible = useMemo(
     () => slots.map((d) => ({ ...d, times: d.times.filter((t) => !taken.has(t.iso)) })).filter((d) => d.times.length),
@@ -41,11 +44,11 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [err, setErr] = useState('');
-  const [done, setDone] = useState<{ id: string; slot: string; name: string; type: ReferralType; failed: string[]; count: number; pending: boolean; email: string } | null>(null);
+  const [done, setDone] = useState<{ id: string; slot: string; name: string; label: string; failed: string[]; count: number; pending: boolean; email: string } | null>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const dayTimes = visible.find((d) => d.date === day)?.times ?? [];
   const chosen = slot ? ilParts(slot) : null;
-  const price = type ? Number(prices?.[type] || 0) : 0;
+  const price = svc ? Number(svc.price || 0) : 0;
   const emailOk = !f.email.trim() || EMAIL_RE.test(f.email.trim());
   const patientOk = f.name.trim().length >= 2 && f.id.trim().length >= 5 && f.phone.trim().length >= 7 && emailOk;
 
@@ -65,7 +68,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
     const { data, error } = await supabase
       .from('appointments')
       .insert({
-        firm_id: firmId, starts_at: slot, referral_type: type, payer, patient_name: f.name.trim(), patient_id_number: f.id.trim(),
+        firm_id: firmId, starts_at: slot, service_id: svc!.id, referral_type: type, payer, patient_name: f.name.trim(), patient_id_number: f.id.trim(),
         patient_dob: f.dob || null, patient_phone: f.phone.trim(), patient_email: f.email.trim().toLowerCase(), notes: f.notes.trim(),
       })
       .select('id, status')
@@ -86,7 +89,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
     }
     // tell the doctor, send the summons when no approval is needed, and start the AI scan of the documents
     await afterBooking(data.id).catch(() => undefined);
-    setDone({ id: data.id, slot: slot!, name: f.name.trim(), type: type!, failed, count: files.length, pending: data.status === 'pending', email: f.email.trim() });
+    setDone({ id: data.id, slot: slot!, name: f.name.trim(), label: svc!.label, failed, count: files.length, pending: data.status === 'pending', email: f.email.trim() });
     setBusy(false);
     setProgress(null);
     router.refresh();
@@ -101,14 +104,14 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
           <div className="success-mark"><Icon name={done.pending ? 'clock' : 'checkCircle'} /></div>
           <div className={`callout${done.pending ? ' warn' : ''}`}><div><Icon name={done.pending ? 'clock' : 'checkCircle'} />{done.name} · {fmtDay(p.date)} בשעה {p.time}{done.pending ? ' · ממתין לאישור הרופא' : ''}</div></div>
           <dl className="kv">
-            <dt>סוג</dt><dd>{typeOf(done.type).label}</dd>
+            <dt>סוג</dt><dd>{done.label}</dd>
             <dt>מסמכים</dt><dd>{done.count ? `${done.count - done.failed.length} קבצים הועברו לרופא` : 'לא צורפו. אפשר להוסיף מתוך התיק.'}</dd>
             <dt>זימון</dt><dd>{done.email ? `יישלח למטופל (${done.email}) ואליכם` : 'יישלח אליכם במייל. נא להעביר אותו למטופל.'}</dd>
           </dl>
           {done.failed.length > 0 && <p className="err">הקבצים האלה לא הועלו: {done.failed.join(', ')}. אפשר להוסיף אותם שוב מתוך התיק.</p>}
           <div className="row">
             <Link className="btn btn-primary" href={`/${staff ? 'doctor' : 'firm'}/cases/${done.id}`}><Icon name="folder" />מעבר לתיק</Link>
-            <button type="button" className="btn" onClick={() => { setDone(null); setType(null); setSlot(null); setFiles([]); setF(EMPTY); }}><Icon name="plus" />תור נוסף</button>
+            <button type="button" className="btn" onClick={() => { setDone(null); setSvc(null); setSlot(null); setFiles([]); setF(EMPTY); }}><Icon name="plus" />תור נוסף</button>
           </div>
         </section>
       </>
@@ -132,14 +135,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
           )}
           <section className="step">
             <div className="step-title"><span className={`step-no${type ? ' done' : ''}`}>{type ? <Icon name="check" size={15} /> : 1}</span><h2>מה צריך מהרופא?</h2></div>
-            <div className="options">
-              {(Object.keys(TYPES) as ReferralType[]).map((k) => (
-                <button key={k} type="button" className="opt" aria-pressed={type === k} onClick={() => setType(k)}>
-                  <span className="opt-ic"><Icon name={typeOf(k).icon} /></span>
-                  <span><b>{typeOf(k).label}</b><span>{typeOf(k).desc}</span>{Number(prices?.[k]) > 0 && <span className="price">{ils(prices[k])}</span>}</span>
-                </button>
-              ))}
-            </div>
+            <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} />
           </section>
 
           <section className="step">
@@ -197,7 +193,7 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, price
         <aside className="panel summary-card">
           <div className="panel-head"><h2><Icon name="receipt" />סיכום</h2></div>
           <div>
-            <div className="sum-row"><span>סוג</span><b>{type ? typeOf(type).label : '—'}</b></div>
+            <div className="sum-row"><span>סוג</span><b>{svc ? svc.label : '—'}</b></div>
             <div className="sum-row"><span>מועד</span><b>{chosen ? `${fmtDay(chosen.date)} · ${chosen.time}` : '—'}</b></div>
             <div className="sum-row"><span>מטופל</span><b>{f.name.trim() || '—'}</b></div>
             <div className="sum-row"><span>מסמכים</span><b>{files.length ? `${files.length} קבצים` : 'ללא'}</b></div>
