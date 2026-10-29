@@ -28,6 +28,8 @@ export type LetterRow = {
 
 type Draft = { letter_type: ReferralType; recipient: string; subject: string; body: string; exam_notes: string };
 
+const escHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /** Removes an error line that older versions wrote into the letter when the AI failed. */
 const cleanBody = (b?: string | null) => String(b ?? '').replace(/\n*\[הניסוח נעצר בגלל תקלה\. נסו שוב\.\]\s*/g, '').trim();
 
@@ -49,8 +51,8 @@ function AutoText(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { m
  * Side panel: letter details, the doctor's findings, the AI draft and writing aids.
  */
 export default function LetterEditor({
-  appointmentId, defaultType, initial, docCount, cancelled, preview, paper,
-}: { appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
+  appointmentId, defaultType, initial, docCount, cancelled, preview, paper, diagnoses = [],
+}: { diagnoses?: { code: string; name: string; primary: boolean }[]; appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
   const supabase = useSupabase();
   const router = useRouter();
   const [startHtml] = useState(() => bodyToHtml(cleanBody(initial?.body)));
@@ -304,6 +306,11 @@ export default function LetterEditor({
             <div className="tool-list">
               <button type="button" className="btn" onClick={() => editor.current?.insertHtml(textToHtml(outlineFor(d.letter_type)))} disabled={ai.running || cancelled}><Icon name="list" />מבנה מוכן לפי סוג המכתב</button>
               <TemplatePicker letterType={d.letter_type} onInsert={(t) => editor.current?.insertHtml(textToHtml(t))} selection={() => editor.current?.selectedText() ?? ''} />
+              {diagnoses.length > 0 && (
+                <button type="button" className="btn" disabled={ai.running || cancelled} onClick={() => editor.current?.insertHtml(
+                  `<h3>אבחנות:</h3><ul>${[...diagnoses].sort((a, b) => Number(b.primary) - Number(a.primary)).map((x) => `<li>${x.code ? `${escHtml(x.code)} · ` : ''}${escHtml(x.name)}</li>`).join('')}</ul>`,
+                )}><Icon name="stethoscope" />הכנסת האבחנות ({diagnoses.length})</button>
+              )}
               {placeholders > 0 && <button type="button" className="btn btn-warn" onClick={() => editor.current?.focusNextPlaceholder()}><Icon name="flag" />{placeholders} סימונים להשלמה · מעבר לבא</button>}
             </div>
           </div>

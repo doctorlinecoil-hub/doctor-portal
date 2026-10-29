@@ -16,6 +16,10 @@ import IntakePanel from './IntakePanel';
 import CommsPanel, { type EmailLogRow } from './CommsPanel';
 import ResolveButton from './ResolveButton';
 import ApprovalButtons from '../../ApprovalButtons';
+import DiagnosesPanel, { type DxRow } from './DiagnosesPanel';
+import PrescriptionPanel, { type FavRow } from './PrescriptionPanel';
+import type { RxRow } from '@/lib/rxTypes';
+import type { IntakeData } from '@/lib/intakeTypes';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -36,6 +40,15 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
     supabase.from('case_intake').select('status, data, error, doc_count, started_at, finished_at').eq('appointment_id', id).maybeSingle(),
     supabase.from('email_log').select('id, kind, to_addr, status, error, created_at').eq('appointment_id', id).order('created_at', { ascending: false }).limit(30),
   ]);
+  const [{ data: rxRows }, { data: favs }, { data: dx }, { data: pastRx }] = await Promise.all([
+    supabase.from('prescriptions').select('id, appointment_id, items, notes, rx_date, created_at, sent_at').eq('appointment_id', id).order('created_at', { ascending: false }),
+    supabase.from('drug_favorites').select('*').order('name'),
+    supabase.from('case_diagnoses').select('id, code, name, is_primary, note').eq('appointment_id', id).order('created_at'),
+    a.patient_id_number
+      ? supabase.from('prescriptions').select('id, appointment_id, items, notes, rx_date, created_at, sent_at, appointments!inner(case_no, patient_id_number)').eq('appointments.patient_id_number', a.patient_id_number).neq('appointment_id', id).order('created_at', { ascending: false }).limit(10)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const intakeDx = intake?.status === 'done' ? ((intake.data as IntakeData)?.diagnoses ?? []).map((d) => d.name).filter(Boolean) : [];
   const [{ data: hist }, { data: resched }] = await Promise.all([
     supabase.from('appointments').select('id, case_no, starts_at, referral_type, status, firms(name)').eq('patient_id_number', a.patient_id_number).neq('id', id).order('starts_at', { ascending: false }).limit(30),
     supabase.from('reschedule_requests').select('id, appointment_id, requested_starts_at, reason, created_at').eq('appointment_id', id).eq('status', 'pending').maybeSingle(),
@@ -78,8 +91,17 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
           mailOn={mailEnabled()}
         />
       }
+      rx={
+        <div className="cols case-cols">
+          <div className="stack"><DiagnosesPanel appointmentId={id} rows={(dx as DxRow[] | null) ?? []} suggestions={intakeDx} readOnly={c.status === 'cancelled'} /></div>
+          <div className="stack">
+            <PrescriptionPanel appointmentId={id} rows={(rxRows as RxRow[] | null) ?? []} favorites={(favs as FavRow[] | null) ?? []} patientEmail={c.patient_email || ''} readOnly={c.status === 'cancelled'}
+              past={((pastRx as unknown as (RxRow & { appointments: { case_no: number } })[] | null) ?? []).map(({ appointments, ...r }) => ({ ...r, case_no: appointments.case_no }))} />
+          </div>
+        </div>
+      }
       payment={isAdmin ? <PaymentPanel appointmentId={id} price={c.price} payer={c.payer} paid={paid} payments={payments} morning={morningEnabled()} payerName={payerName(c)} /> : null}
-      letter={<LetterEditor appointmentId={id} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
+      letter={<LetterEditor appointmentId={id} diagnoses={((dx as DxRow[] | null) ?? []).map((d) => ({ code: d.code, name: d.name, primary: d.is_primary }))} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
         paper={{ lh_name: settings.lh_name, lh_titles: settings.lh_titles, lh_licenses: settings.lh_licenses, lh_address: settings.lh_address, lh_phone: settings.lh_phone, lh_email: settings.lh_email,
           patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />}
     />
