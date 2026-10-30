@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import { released } from '@/lib/types';
 import { loadAppointments } from '@/lib/queries';
 import type { IntakeData } from '@/lib/intakeTypes';
 import { DoctorAgendaView, type IntakeChip } from '@/views/DoctorViews';
@@ -95,6 +96,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       past={mode === 'past'}
       mode={mode}
       calendar={calendar}
+      awaitingPay={rows.filter((r) => r.status === 'done' && !released(r, settings.letter_requires_payment !== false)).length}
       isAdmin={profile.role === 'admin'}
       name={profile.full_name || ''}
       intake={chips}
