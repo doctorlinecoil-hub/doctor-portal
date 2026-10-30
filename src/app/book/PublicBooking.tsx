@@ -8,17 +8,18 @@ import type { Extracted } from '@/lib/extract';
 import { checkFile } from '@/lib/upload';
 import Icon from '@/components/Icon';
 import ServicePicker from '@/components/ServicePicker';
-import DepositBox, { type PayInfo } from '@/components/DepositBox';
+import type { PayInfo } from '@/components/DepositBox';
 import ModePicker, { type Mode } from '@/components/ModePicker';
-import { depositProofDone, depositProofUrl, publicBook, publicDraft, publicFinish, publicScan, publicUploadStart } from './actions';
+import { publicBook, publicDraft, publicFinish, publicScan, publicUploadStart } from './actions';
 
 type Kind = 'law' | 'broker' | 'private';
 type Up = { token: string; files: { path: string; name: string; type: string }[] };
-const KINDS: { k: Kind; label: string; icon: string }[] = [
-  { k: 'law', label: 'משרד עורכי דין', icon: 'scale' },
-  { k: 'broker', label: 'מתווך / חברה', icon: 'briefcase' },
-  { k: 'private', label: 'אני המטופל', icon: 'user' },
+const KINDS: { k: Kind; label: string; icon: string; sub: string }[] = [
+  { k: 'private', label: 'מטופל/ת', icon: 'user', sub: 'קובעים לעצמכם או לבן משפחה' },
+  { k: 'law', label: 'משרד עורכי דין', icon: 'scale', sub: 'קובעים ללקוח של המשרד' },
+  { k: 'broker', label: 'חברת ביטוח / מתווך', icon: 'building', sub: 'קובעים למבוטח או ללקוח' },
 ];
+const ics = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const STEPS = ['שירות', 'מועד', 'מסמכים', 'אישור פרטים'];
 const EMPTY_PT = { name: '', idNumber: '', dob: '', phone: '', email: '' };
 
@@ -52,11 +53,11 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   const [scan, setScan] = useState<{ phase: 'idle' | 'upload' | 'read' | 'done' | 'manual'; text: string; n?: number }>(demo?.scanning ? { phase: 'read', text: 'מצרפים את המסמכים לפנייה…' } : demo?.ext ? { phase: 'done', text: '' } : { phase: 'idle', text: '' });
   const [ext, setExt] = useState<Extracted | null>(demo?.ext ?? null);
 
-  const [kind, setKind] = useState<Kind>(firm ? (firm.kind === 'broker' ? 'broker' : 'law') : 'law');
+  const [kind, setKind] = useState<Kind>(firm ? (firm.kind === 'broker' ? 'broker' : 'law') : 'private');
   const [ref, setRef] = useState(demo?.ext ? { office: demo.ext.referrer_office || '', contact: demo.ext.referrer_contact || '', phone: demo.ext.referrer_phone || '', email: demo.ext.referrer_email || '' } : { office: '', contact: '', phone: '', email: '' });
   const [pt, setPt] = useState(demo?.ext ? { name: demo.ext.name, idNumber: demo.ext.id_number, dob: demo.ext.dob, phone: demo.ext.phone, email: demo.ext.email } : EMPTY_PT);
   const [extra, setExtra] = useState<string[]>(demo?.ext ? ['secretary@cohen-law.co.il'] : []);
-  const [payer, setPayer] = useState<'patient' | 'referrer'>('patient');
+  const payer = 'patient' as const;
   const [notes, setNotes] = useState(demo?.ext?.request || '');
   const [website, setWebsite] = useState('');
   const [busy, setBusy] = useState('');
@@ -177,50 +178,74 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     if (!firm) setRef({ office: '', contact: '', phone: '', email: '' });
   }
 
+  const tel = clinic.phone.replace(/[^\d+]/g, '');
+  const wa = clinic.phone ? `https://wa.me/${(() => { const d = clinic.phone.replace(/\D/g, ''); return d.startsWith('0') ? `972${d.slice(1)}` : d; })()}` : '';
   const Head = (
-    <header className="pb-head">
-      <img src="/brand/letterhead.jpg" alt={clinic.name} className="pb-banner" />
-      <div className="pb-sub"><b>קביעת תור</b><span>{[clinic.address, clinic.phone && `טל׳ ${clinic.phone}`].filter(Boolean).join(' · ')}</span></div>
+    <header className="pbx-head">
+      <div className="pbx-head-in">
+        <a href="/" className="pbx-back"><Icon name="arrowLeft" size={15} className="flip" />לאתר</a>
+        <div className="pbx-id">
+          <span className="pbx-avatar"><img src="/brand/doctor.webp" alt="" width={64} height={64} /></span>
+          <div>
+            <span className="pbx-kicker"><img src="/brand/emblem.png" alt="" width={18} height={18} />קביעת תור אונליין</span>
+            <h1 className="pbx-name">{clinic.name}</h1>
+            <div className="pbx-chips">
+              {clinic.address && <span><Icon name="navigation" size={14} />{clinic.address}</span>}
+              {clinic.phone && <a href={`tel:${tel}`} dir="ltr"><Icon name="phone" size={14} />{clinic.phone}</a>}
+            </div>
+          </div>
+        </div>
+        <ul className="pbx-perks">
+          <li><Icon name="checkCircle" size={16} />בלי תשלום מראש</li>
+          <li><Icon name="clock" size={16} />פחות משתי דקות</li>
+          <li><Icon name="mail" size={16} />אישור ותזכורות במייל</li>
+        </ul>
+      </div>
     </header>
   );
 
-  if (!open) return <main className="pb"><div ref={top} />{Head}<section className="pb-card"><p className="muted">קביעת תור מקוונת סגורה כרגע. צרו קשר עם המרפאה{clinic.phone ? ` בטלפון ${clinic.phone}` : ''}.</p></section></main>;
+  if (!open) return <main className="pb pbx"><div ref={top} />{Head}<section className="pb-card"><p className="muted">קביעת תור מקוונת סגורה כרגע. צרו קשר עם המרפאה{clinic.phone ? ` בטלפון ${clinic.phone}` : ''}.</p></section></main>;
 
   if (done) {
     const p = ilParts(slot!);
     const to = [!self && ref.email, pt.email, ...extra].filter(Boolean) as string[];
+    const start = new Date(slot!);
+    const end = new Date(start.getTime() + 30 * 60000);
+    const title = `${mode === 'phone' ? 'שיחה טלפונית' : 'תור'} · ${clinic.name}${svc ? ` · ${svc.label}` : ''}`;
+    const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${ics(start)}/${ics(end)}&location=${encodeURIComponent(mode === 'phone' ? 'שיחה טלפונית' : clinic.address)}&details=${encodeURIComponent(`תיק ${done.caseNo}`)}`;
+    const icsFile = `data:text/calendar;charset=utf-8,${encodeURIComponent(['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//doctorline//he', 'BEGIN:VEVENT', `UID:${done.id}@doctorline`, `DTSTAMP:${ics(new Date())}`, `DTSTART:${ics(start)}`, `DTEND:${ics(end)}`, `SUMMARY:${title}`, `LOCATION:${mode === 'phone' ? 'שיחה טלפונית' : clinic.address}`, `DESCRIPTION:תיק ${done.caseNo}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))}`;
     return (
-      <main className="pb">
+      <main className="pb pbx">
         <div ref={top} />
         {Head}
-        <section className="pb-card pb-done">
-          <span className="pb-check"><Icon name={done.deposit > 0 ? 'wallet' : 'checkCircle'} /></span>
-          <h1>{done.deposit > 0 ? 'נשאר רק להעביר מקדמה' : done.pending ? 'הבקשה נשלחה לרופא' : 'התור נקבע'}</h1>
-          <p className="pb-lead">{done.deposit > 0
-            ? 'המועד שמור עבורכם. כדי שהרופא יאשר את התור, העבירו את המקדמה והעלו צילום של אישור ההעברה. פרטי התשלום נשלחו גם למייל.'
-            : done.pending ? 'ברגע שהרופא יאשר, יישלח אישור זימון במייל.' : 'אישור הזימון נשלח במייל.'}{to.length && !done.deposit ? ` המכתבים של הרופא יישלחו לאותן כתובות.` : ''}</p>
-          {done.deposit > 0 && (
-            <DepositBox amount={done.deposit} title="מקדמה לשריון התור" pay={done.pay} holdHours={done.holdHours}
-              upload={async (f) => {
-                const u = await depositProofUrl(done.id, done.key, { name: f.name, size: f.size, type: f.type });
-                if (!u.ok) return { ok: false, error: u.error };
-                const body = new FormData();
-                body.append('cacheControl', '3600');
-                body.append('', f);
-                const res = await fetch(u.url, { method: 'PUT', body, headers: { 'x-upsert': 'false' } }).catch(() => null);
-                if (!res?.ok) return { ok: false, error: 'ההעלאה נכשלה. נסו שוב.' };
-                return depositProofDone(done.id, done.key, { path: u.path, name: f.name, type: f.type });
-              }} />
-          )}
-          <dl className="kv">
-            <dt>מספר תיק</dt><dd className="num">{done.caseNo}</dd>
-            <dt>מטופל</dt><dd>{pt.name}</dd>
-            <dt>מועד</dt><dd>{fmtDay(p.date)} · {p.time}{mode === 'phone' ? ' · שיחה טלפונית' : ''}</dd>
-            <dt>שירות</dt><dd>{svc?.label}</dd>
-            <dt>מסמכים</dt><dd>{done.docs ? `${done.docs} מסמכים צורפו לתיק` : 'לא צורפו'}</dd>
-            {to.length > 0 && <><dt>עדכונים יישלחו אל</dt><dd dir="ltr" className="pb-mails">{to.join(', ')}</dd></>}
-          </dl>
-          <button type="button" className="btn btn-primary" onClick={reset}><Icon name="plus" />קביעת תור למטופל נוסף</button>
+        <section className="pb-card pbx-done">
+          <div className="pbx-done-ic" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" /><path d="m15 27 7 7 15-16" /></svg></div>
+          <h2>{done.pending ? 'הבקשה נשלחה לרופא' : 'התור נקבע'}</h2>
+          <p className="pb-lead">{done.pending ? 'ברגע שהרופא יאשר, יישלח אליכם אישור זימון במייל.' : 'אישור הזימון נשלח אליכם במייל.'}{to.length ? ' המכתבים של הרופא יישלחו לאותן כתובות.' : ''}</p>
+          <div className="pbx-ticket">
+            <div className="pbx-ticket-top">
+              <span className="pbx-ticket-date"><b className="num">{+p.date.slice(8, 10)}</b><small>{DAYS[weekday(p.date)]}</small></span>
+              <div><b>{fmtDay(p.date)}</b><span className="num">{p.time} · {mode === 'phone' ? 'שיחה טלפונית' : 'במרפאה'}</span></div>
+              <span className="pbx-case">תיק <b className="num">{done.caseNo}</b></span>
+            </div>
+            <dl>
+              <dt>מטופל</dt><dd>{pt.name}</dd>
+              <dt>שירות</dt><dd>{svc?.label}</dd>
+              <dt>מסמכים</dt><dd>{done.docs ? `${done.docs} צורפו לתיק` : 'לא צורפו'}</dd>
+              {mode !== 'phone' && clinic.address && <><dt>כתובת</dt><dd>{clinic.address}</dd></>}
+              {to.length > 0 && <><dt>עדכונים אל</dt><dd dir="ltr" className="pb-mails">{to.join(', ')}</dd></>}
+            </dl>
+          </div>
+          <div className="pbx-done-act">
+            {!done.pending && <a className="btn" href={gcal} target="_blank" rel="noopener"><Icon name="calendar" />הוספה ל־Google Calendar</a>}
+            {!done.pending && <a className="btn" href={icsFile} download={`tor-${done.caseNo}.ics`}><Icon name="download" />הוספה ליומן (iPhone / Outlook)</a>}
+            {mode !== 'phone' && clinic.address && <a className="btn" href={`https://waze.com/ul?q=${encodeURIComponent(clinic.address)}&navigate=yes`} target="_blank" rel="noopener"><Icon name="navigation" />ניווט ב־Waze</a>}
+            {wa && <a className="btn" href={wa} target="_blank" rel="noopener"><Icon name="message" />שאלה למרפאה בוואטסאפ</a>}
+          </div>
+          <div className="pbx-done-foot">
+            <button type="button" className="btn btn-primary" onClick={reset}><Icon name="plus" />קביעת תור נוסף</button>
+            <a className="btn btn-ghost" href="/">חזרה לאתר</a>
+          </div>
         </section>
       </main>
     );
@@ -233,11 +258,14 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     </label>
   );
 
+  const pct = Math.round(((step - 1) / (STEPS.length - 1)) * 100);
   return (
-    <main className="pb">
+    <main className="pb pbx">
       <div ref={top} />
       {Head}
-
+      <div className="pbx-body">
+      <div className="pbx-main">
+      <div className="pbx-progress" aria-hidden="true"><i style={{ width: `${Math.max(6, pct)}%` }} /></div>
       <nav className="pbw-steps" aria-label="שלבים">
         {STEPS.map((s, i) => {
           const n = i + 1;
@@ -251,7 +279,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
       </nav>
 
       {(svc || chosen) && step > 1 && (
-        <div className="pbw-sum">
+        <div className="pbw-sum pbx-sum-m">
           {firm && <span><Icon name="briefcase" size={15} />{firm.name}</span>}
           {svc && <span><Icon name="stethoscope" size={15} />{svc.label}</span>}
           {chosen && step > 2 && <span><Icon name={mode === 'phone' ? 'phone' : 'calendar'} size={15} />{mode === 'phone' ? 'שיחה טלפונית · ' : ''}{fmtDay(chosen.date)} · {chosen.time}</span>}
@@ -261,7 +289,20 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
       <section className="pb-card pbw-card">
         {step === 1 && (
           <div className="pbw-pane">
-            <h1 className="pbw-h">במה הרופא יכול לעזור?</h1>
+            {!firm && (
+              <>
+                <h2 className="pbw-h">מי קובע את התור?</h2>
+                <div className="pbx-who" role="radiogroup" aria-label="מי קובע את התור">
+                  {KINDS.map((x) => (
+                    <button key={x.k} type="button" role="radio" aria-checked={kind === x.k} className={kind === x.k ? 'on' : ''} onClick={() => setKind(x.k)}>
+                      <span className="pbx-who-ic"><Icon name={x.icon} /></span><b>{x.label}</b><small>{x.sub}</small>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {firm && <div className="pbw-note ok"><Icon name="briefcase" /><div>קביעת תור עבור <b>{firm.name}</b></div></div>}
+            <h2 className="pbw-h" style={{ marginTop: firm ? 0 : 22 }}>במה הרופא יכול לעזור?</h2>
             <p className="pbw-lead">בחרו את סוג השירות. בשלב הבא בוחרים מועד.</p>
             <ServicePicker services={services} value={svc?.id ?? null} onChange={(s) => { setSvc(s); setTimeout(() => go(2), 180); }} />
           </div>
@@ -269,7 +310,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
         {step === 2 && (
           <div className="pbw-pane">
-            <h1 className="pbw-h">מתי נוח לכם?</h1>
+            <h2 className="pbw-h">מתי נוח לכם?</h2>
             <p className="pbw-lead">{phoneOk ? 'בחרו פגישה במרפאה או שיחה טלפונית, ואז יום ושעה.' : 'בחרו יום ושעה. השעות המוצגות פנויות כרגע.'}</p>
             {phoneOk && <ModePicker value={mode} onChange={setMode} />}
             {err && <p className="err" role="alert">{err}</p>}
@@ -282,10 +323,15 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
                     </button>
                   ))}
                 </div>
-                {day && <div className="pbw-dayname">{fmtDay(day)}</div>}
-                <div className="times">
-                  {dayTimes.map((t) => <button key={t.iso} type="button" className="time" aria-pressed={slot === t.iso} onClick={() => { setSlot(t.iso); setTimeout(() => go(3), 180); }}>{t.time}</button>)}
-                </div>
+                {day && <div className="pbw-dayname"><Icon name="calendar" size={16} />{fmtDay(day)}</div>}
+                {([['בוקר', dayTimes.filter((t) => t.time < '12:00')], ['צהריים ואחר הצהריים', dayTimes.filter((t) => t.time >= '12:00')]] as const).map(([lbl, list]) => list.length > 0 && (
+                  <div key={lbl} className="pbx-times">
+                    <span className="pbx-times-l">{lbl}</span>
+                    <div className="times">
+                      {list.map((t) => <button key={t.iso} type="button" className="time" aria-pressed={slot === t.iso} onClick={() => { setSlot(t.iso); setTimeout(() => go(3), 180); }}>{t.time}</button>)}
+                    </div>
+                  </div>
+                ))}
               </>
             )}
             <div className="pbw-nav"><button type="button" className="btn btn-ghost" onClick={() => go(1)}><Icon name="arrowLeft" size={15} className="flip" />חזרה</button></div>
@@ -294,7 +340,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
         {step === 3 && (
           <div className="pbw-pane">
-            <h1 className="pbw-h">העלאת מסמכים</h1>
+            <h2 className="pbw-h">העלאת מסמכים</h2>
             <p className="pbw-lead">אם יש בידיכם מסמכים שכדאי שהרופא יראה לפני הפגישה — הפניה, תוצאות בדיקות והדמיה, סיכומי ביקור או כתב תביעה — ניתן לצרף אותם כאן. <span className="muted">הצירוף אינו חובה.</span></p>
             {scan.phase === 'upload' || scan.phase === 'read' ? (
               <div className="pbw-scan" role="status" aria-live="polite">
@@ -331,7 +377,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
         {step === 4 && (
           <form className="pbw-pane" onSubmit={submit} noValidate>
-            <h1 className="pbw-h">בדיקת הפרטים</h1>
+            <h2 className="pbw-h">בדיקת הפרטים</h2>
             {scan.phase === 'done' ? (
               <div className="pbw-note ok"><Icon name="check" /><div><b>המסמכים צורפו לפנייה.</b> נא לוודא שהפרטים שלהלן נכונים ולהשלים את החסר.{ext?.warning ? <div className="pbw-warn">{ext.warning}</div> : null}</div></div>
             ) : scan.text ? (
@@ -348,19 +394,14 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
               </div>
             </fieldset>
 
-            {!firm && (
+            {!firm && !self && (
               <fieldset className="pbw-group">
-                <legend><Icon name="briefcase" size={16} />מי מפנה?</legend>
-                <div className="seg">
-                  {KINDS.map((x) => <button key={x.k} type="button" aria-pressed={kind === x.k} onClick={() => setKind(x.k)}><Icon name={x.icon} />{x.label}</button>)}
+                <legend><Icon name={kind === 'broker' ? 'building' : 'scale'} size={16} />{kind === 'broker' ? 'פרטי החברה / המתווך' : 'פרטי המשרד'} <button type="button" className="pbx-change" onClick={() => go(1)}>שינוי</button></legend>
+                <div className="grid-2">
+                  <label className="field"><span>{kind === 'broker' ? 'שם החברה / המתווך' : 'שם המשרד'}</span><input value={ref.office} onChange={(e) => setRef({ ...ref, office: e.target.value })} autoComplete="organization" /></label>
+                  <label className="field"><span>איש קשר</span><input value={ref.contact} onChange={(e) => setRef({ ...ref, contact: e.target.value })} autoComplete="name" /></label>
+                  <label className="field"><span>טלפון</span><input type="tel" dir="ltr" value={ref.phone} onChange={(e) => setRef({ ...ref, phone: e.target.value })} autoComplete="tel" /></label>
                 </div>
-                {!self && (
-                  <div className="grid-2">
-                    <label className="field"><span>{kind === 'broker' ? 'שם החברה / המתווך' : 'שם המשרד'}</span><input value={ref.office} onChange={(e) => setRef({ ...ref, office: e.target.value })} autoComplete="organization" /></label>
-                    <label className="field"><span>איש קשר</span><input value={ref.contact} onChange={(e) => setRef({ ...ref, contact: e.target.value })} autoComplete="name" /></label>
-                    <label className="field"><span>טלפון</span><input type="tel" dir="ltr" value={ref.phone} onChange={(e) => setRef({ ...ref, phone: e.target.value })} autoComplete="tel" /></label>
-                  </div>
-                )}
               </fieldset>
             )}
 
@@ -382,14 +423,6 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
             <fieldset className="pbw-group">
               <legend><Icon name="list" size={16} />עוד כמה דברים</legend>
-              {!self && (
-                <div className="field"><span>מי משלם לרופא?</span>
-                  <div className="payer">
-                    <label><input type="radio" name="payer" checked={payer === 'patient'} onChange={() => setPayer('patient')} />המטופל</label>
-                    <label><input type="radio" name="payer" checked={payer === 'referrer'} onChange={() => setPayer('referrer')} />המפנה</label>
-                  </div>
-                </div>
-              )}
               <label className="field"><span>מה חשוב שהרופא יידע <small>לא חובה</small></span><textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="לדוגמה: תאונת עבודה מ־03.2025, מבקשים חוות דעת לגבי עמוד שדרה צווארי." /></label>
               <div className="pbw-files">
                 <Icon name="file" size={15} />
@@ -412,6 +445,31 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
           </form>
         )}
       </section>
+      </div>
+      <aside className="pbx-aside" aria-label="סיכום">
+        <div className="pbx-aside-card">
+          <b className="pbx-aside-h">הפרטים שלכם</b>
+          <ul className="pbx-steps-sum">
+            <li className={kind ? 'ok' : ''}><span><Icon name={KINDS.find((x) => x.k === kind)?.icon || 'user'} size={16} /></span><div><small>קובע/ת</small><b>{firm ? firm.name : KINDS.find((x) => x.k === kind)?.label}</b></div></li>
+            <li className={svc ? 'ok' : ''}><span><Icon name="stethoscope" size={16} /></span><div><small>שירות</small><b>{svc?.label || 'עוד לא נבחר'}</b></div></li>
+            <li className={chosen ? 'ok' : ''}><span><Icon name={mode === 'phone' ? 'phone' : 'calendar'} size={16} /></span><div><small>מועד</small><b>{chosen ? `${fmtDay(chosen.date)} · ${chosen.time}` : 'עוד לא נבחר'}</b>{chosen && <small>{mode === 'phone' ? 'שיחה טלפונית' : 'במרפאה'}</small>}</div></li>
+            <li className={files.length ? 'ok' : ''}><span><Icon name="file" size={16} /></span><div><small>מסמכים</small><b>{files.length ? `${files.length} קבצים` : 'לא חובה'}</b></div></li>
+          </ul>
+          <p className="pbx-aside-note"><Icon name="checkCircle" size={15} />בלי מקדמה ובלי תשלום באתר. פרטי העלות נשלחים במייל מהמרפאה.</p>
+        </div>
+        {(clinic.phone || wa) && (
+          <div className="pbx-help">
+            <b>צריכים עזרה?</b>
+            <span>אנחנו כאן בשבילכם</span>
+            <div>
+              {clinic.phone && <a className="btn btn-sm" href={`tel:${tel}`}><Icon name="phone" size={15} />התקשרו</a>}
+              {wa && <a className="btn btn-sm" href={wa} target="_blank" rel="noopener"><Icon name="message" size={15} />וואטסאפ</a>}
+            </div>
+          </div>
+        )}
+        <p className="pbx-safe"><Icon name="shield" size={14} />מאובטח · הפרטים משמשים רק לטיפול בפנייה</p>
+      </aside>
+      </div>
     </main>
   );
 }
