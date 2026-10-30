@@ -10,8 +10,8 @@ export const maxDuration = 300;
 export const metadata: Metadata = { title: 'קביעת תור · ד״ר אלרן חנוך', robots: { index: false, follow: false } };
 
 /** The public booking page: one link the clinic sends to lawyers, brokers and patients. No sign-in. */
-export default async function PublicBookPage({ searchParams }: { searchParams: Promise<{ r?: string }> }) {
-  const { r } = await searchParams;
+export default async function PublicBookPage({ searchParams }: { searchParams: Promise<{ r?: string; s?: string }> }) {
+  const { r, s: pre } = await searchParams;
   const db = createAdminClient();
   const now = new Date();
   const { data: s0 } = await db.from('settings').select('*').eq('id', 1).single();
@@ -31,11 +31,12 @@ export default async function PublicBookPage({ searchParams }: { searchParams: P
     <PublicBooking
       open={s.public_booking !== false}
       clinic={{ name: s.lh_name, address: s.lh_address, phone: s.lh_phone, needsApproval: s.require_approval }}
-      services={((services as Service[] | null) ?? []).map((x) => ({ ...x, price: Number(x.price) }))}
+      services={((services as Service[] | null) ?? []).map((x) => ({ ...x, price: 0 }))}
       slots={slots}
       code={f?.active ? code : ''}
       firm={f?.active ? { name: f.name, kind: f.kind } : null}
       phoneOk={s.phone_appointments !== false}
+      preselect={pre && /^[0-9a-f-]{36}$/i.test(pre) ? pre : undefined}
     />
   );
 }

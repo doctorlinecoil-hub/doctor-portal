@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { EMAIL_RE, ils } from '@/lib/constants';
+import { EMAIL_RE } from '@/lib/constants';
 import { DAYS, fmtDay, ilParts, weekday } from '@/lib/dates';
 import type { DaySlots } from '@/lib/slots';
 import type { Service } from '@/lib/services';
@@ -26,16 +26,19 @@ const EMPTY_PT = { name: '', idNumber: '', dob: '', phone: '', email: '' };
  * The public booking page, one step at a time:
  * 1. what is needed  2. date and time  3. documents (read automatically)  4. check the details found, emails, send.
  */
-export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true }: {
+export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true, preselect }: {
   open: boolean; clinic: { name: string; address: string; phone: string; needsApproval: boolean };
   services: Service[]; slots: DaySlots[]; code: string; firm: { name: string; kind: string } | null;
   /** the design previews only: open on a given step */
   demo?: { step: number; ext?: Extracted; scanning?: boolean };
   phoneOk?: boolean;
+  /** a service chosen before (the landing page's service finder) */
+  preselect?: string;
 }) {
   const [mode, setMode] = useState<Mode>('clinic');
-  const [step, setStep] = useState(demo?.step ?? (services.length === 1 ? 2 : 1));
-  const [svc, setSvc] = useState<Service | null>(demo ? services[0] : services.length === 1 ? services[0] : null);
+  const pre = preselect ? services.find((x) => x.id === preselect) ?? null : null;
+  const [step, setStep] = useState(demo?.step ?? (services.length === 1 || pre ? 2 : 1));
+  const [svc, setSvc] = useState<Service | null>(demo ? services[0] : pre ?? (services.length === 1 ? services[0] : null));
   const [taken, setTaken] = useState<Set<string>>(new Set());
   const visible = useMemo(() => slots.map((d) => ({ ...d, times: d.times.filter((t) => !taken.has(t.iso)) })).filter((d) => d.times.length), [slots, taken]);
   const [day, setDay] = useState<string | null>(visible[0]?.date ?? null);
@@ -250,7 +253,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
       {(svc || chosen) && step > 1 && (
         <div className="pbw-sum">
           {firm && <span><Icon name="briefcase" size={15} />{firm.name}</span>}
-          {svc && <span><Icon name="stethoscope" size={15} />{svc.label}{Number(svc.price) > 0 ? ` · ${ils(Number(svc.price))}` : ''}</span>}
+          {svc && <span><Icon name="stethoscope" size={15} />{svc.label}</span>}
           {chosen && step > 2 && <span><Icon name={mode === 'phone' ? 'phone' : 'calendar'} size={15} />{mode === 'phone' ? 'שיחה טלפונית · ' : ''}{fmtDay(chosen.date)} · {chosen.time}</span>}
         </div>
       )}
