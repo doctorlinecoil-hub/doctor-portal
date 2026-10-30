@@ -20,9 +20,9 @@ export default function AuthFrame({ children }: { children: React.ReactNode }) {
         </div>
         <div className="auth-foot hint" style={{ color: '#7F91A5' }}><a href="/" style={{ color: 'inherit' }}>לדף הבית</a> · <a href="/privacy" style={{ color: 'inherit' }}>פרטיות</a> · <a href="/terms" style={{ color: 'inherit' }}>תנאי שימוש</a></div>
       </section>
-      <section className="auth-form">
+      <main className="auth-form" id="main">
         <div className="auth-card">{children}</div>
-      </section>
+      </main>
     </div>
   );
 }

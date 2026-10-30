@@ -2,9 +2,9 @@ import { ils } from '@/lib/constants';
 import type { Service } from '@/lib/services';
 import Icon from './Icon';
 
-/** "What do you need from the doctor?": the clinic's own list of services, with prices. */
-export default function ServicePicker({ services, value, onChange, suggested, compact }: {
-  services: Service[]; value: string | null; onChange: (s: Service) => void; suggested?: string | null; compact?: boolean;
+/** "What do you need from the doctor?": the clinic's own list of services. Prices only for the clinic's staff (the doctor sends the cost himself). */
+export default function ServicePicker({ services, value, onChange, suggested, compact, showPrice }: {
+  services: Service[]; value: string | null; onChange: (s: Service) => void; suggested?: string | null; compact?: boolean; showPrice?: boolean;
 }) {
   if (!services.length) return <p className="muted">עוד לא הוגדרו סוגי שירות. אפשר להגדיר אותם בהגדרות ← סוגי שירות.</p>;
   return (
@@ -15,7 +15,7 @@ export default function ServicePicker({ services, value, onChange, suggested, co
           <span>
             <b>{s.label}</b>
             {!compact && s.description && <span>{s.description}</span>}
-            {Number(s.price) > 0 && <span className="price">{ils(Number(s.price))}</span>}
+            {showPrice && Number(s.price) > 0 && <span className="price">{ils(Number(s.price))}</span>}
             {suggested === s.id && value !== s.id && <span className="ai-tag" style={{ marginInlineStart: 0, marginTop: 4 }}><Icon name="sparkles" size={12} />מתאים לפי המסמכים</span>}
           </span>
         </button>

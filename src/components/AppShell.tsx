@@ -84,7 +84,7 @@ export default function AppShell({ role, userName, orgName, clinicName, active, 
             <label htmlFor="nav-toggle" className="menu-btn" aria-label="תפריט"><Icon name="menu" /></label>
           </div>
         </header>
-        <main className="content">{children}</main>
+        <main className="content" id="main">{children}</main>
       </div>
     </div>
   );
