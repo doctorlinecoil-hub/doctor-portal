@@ -134,6 +134,18 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
                     <label className="field"><span>משך</span><input list="rx-dur" value={it.duration} onChange={(e) => set(i, { duration: e.target.value })} placeholder="7 ימים" /></label>
                     <label className="field"><span>כמות</span><input value={it.quantity} onChange={(e) => set(i, { quantity: e.target.value })} placeholder="1 אריזה" /></label>
                   </div>
+                  <div className="rx-quick" aria-label="בחירה מהירה">
+                    <div role="group" aria-label="תדירות">
+                      {['פעם ביום', 'פעמיים ביום', '3 פעמים ביום', 'לפי הצורך'].map((v) => (
+                        <button key={v} type="button" className={it.frequency === v ? 'on' : ''} onClick={() => set(i, { frequency: it.frequency === v ? '' : v })}>{v}</button>
+                      ))}
+                    </div>
+                    <div role="group" aria-label="משך">
+                      {['5 ימים', '7 ימים', '14 ימים', '30 ימים', 'טיפול קבוע'].map((v) => (
+                        <button key={v} type="button" className={it.duration === v ? 'on' : ''} onClick={() => set(i, { duration: it.duration === v ? '' : v })}>{v}</button>
+                      ))}
+                    </div>
+                  </div>
                   {!it.reg && (
                     <div className="rx-fields rx-fields-2">
                       <label className="field"><span>חוזק <small>לא חובה</small></span><input dir="auto" value={it.strength || ''} onChange={(e) => set(i, { strength: e.target.value })} placeholder="500 mg" /></label>
@@ -148,7 +160,7 @@ export default function PrescriptionPanel({ appointmentId, rows, past, favorites
               <button type="button" className="btn btn-ghost btn-sm rx-add-more" onClick={addFree}><Icon name="plus" size={15} />הוספת תרופה נוספת</button>
               <label className="field"><span>הערות למרשם <small>לא חובה</small></span><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
               {err && <p className="err">{err}</p>}
-              <div className="row" style={{ gap: 8 }}>
+              <div className="row rx-actions" style={{ gap: 8 }}>
                 <button type="button" className="btn btn-primary" disabled={busy} onClick={() => save(true)}><Icon name="printer" />שמירה והדפסה</button>
                 <button type="button" className="btn" disabled={busy} onClick={() => save(false)}><Icon name="save" />שמירה</button>
                 <button type="button" className="btn btn-ghost" onClick={() => { setItems([]); setNotes(''); }}>ביטול</button>
