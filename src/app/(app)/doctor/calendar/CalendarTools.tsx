@@ -24,7 +24,7 @@ export function FreeSlot({ iso, label, minutes }: { iso: string; label: string; 
   });
   return (
     <>
-      <button type="button" className="cal-free-btn" onClick={() => setOpen(!open)} aria-label={`קביעת תור · ${label}`} title={`קביעת תור · ${label}`} aria-expanded={open}><Icon name="plus" size={14} /></button>
+      <button type="button" className="cal-free-btn" onClick={() => setOpen(!open)} aria-label={`קביעת תור · ${label}`} title={`קביעת תור · ${label}`} aria-expanded={open}><Icon name="plus" size={13} /><span className="num">{label.split(' ').pop()}</span></button>
       {open && quick && <QuickBook iso={iso} onClose={() => setOpen(false)} onBlock={block} blocking={busy} />}
       {open && !quick && (
         <div className="cal-pop" role="menu">
