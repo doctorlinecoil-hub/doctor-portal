@@ -29,6 +29,7 @@ export function PaperFrame({ backHref, printButton, hint, html, embed }: { backH
   return (
     <div className="letter-view">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700&display=swap');
         @page { size: A4; margin: 10mm 14mm 10mm 14mm; }
         ${docCss('.paper')}
         .letter-view { background: #E6E9EF; min-height: 100vh; padding: 0 0 40px; }
