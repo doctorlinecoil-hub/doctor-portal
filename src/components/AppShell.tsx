@@ -20,7 +20,8 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'plus' },
     { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
     { href: '/doctor/services', label: 'סוגי שירות ומחירים', icon: 'receipt' },
-    { href: '/admin/reports', label: 'תשלומים ודוחות', icon: 'wallet' },
+    { href: '/doctor/payments', label: 'אישור תשלומים', icon: 'wallet' },
+    { href: '/admin/reports', label: 'דוחות וגבייה', icon: 'chart' },
   ] };
   if (role === 'doctor') return [doctor];
   return [doctor, { title: 'ניהול', items: [
