@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { useSupabase } from '@/lib/supabase/browser';
 import { typeOf, TYPES, type ReferralType } from '@/lib/constants';
 import { age, fmtDate, fmtStamp, todayIL } from '@/lib/dates';
@@ -486,7 +487,7 @@ export default function LetterEditor({
           </button>
         </div>
       </div>
-      {review && (
+      {review && createPortal(
         <div className="review-wrap" role="dialog" aria-modal="true" aria-label="תצוגה לפני שליחה">
           <div className="review-scrim" onClick={() => setReview(null)} />
           <div className="review">
@@ -494,7 +495,7 @@ export default function LetterEditor({
               <iframe title="המסמך כפי שיישלח" src={`/letters/${appointmentId}/print?v=preview&embed=1&t=${review}`} />
             </div>
             <aside className="review-side">
-              <div className="review-h"><Icon name="eye" /><div><b>כך המסמך ייראה</b><small>בדיוק כפי שיישלח ויודפס</small></div></div>
+              <div className="review-h"><Icon name="eye" /><div><b>בדיקה אחרונה לפני שליחה</b><small>כך בדיוק המסמך יודפס וישלח</small></div><button type="button" className="fc-x" aria-label="סגירה" onClick={() => setReview(null)}><Icon name="x" /></button></div>
               <ul className="review-checks">
                 <li><Icon name="checkCircle" size={16} /><span>{typeOf(d.letter_type).label}{paper.title ? ` · ${paper.title}` : ''}</span></li>
                 <li><Icon name="checkCircle" size={16} /><span>לכבוד: {d.recipient ? d.recipient.split('|').join(', ') : <em>ללא נמען</em>}</span></li>
@@ -513,7 +514,8 @@ export default function LetterEditor({
               </div>
             </aside>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );
