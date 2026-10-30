@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import ShareLink from '@/components/ShareLink';
+import { PendingPayView } from '@/views/PendingPayView';
 import AppShell from '@/components/AppShell';
 import AuthFrame from '@/components/AuthFrame';
 import LoginForm from '@/app/login/LoginForm';
@@ -114,6 +115,11 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         rows={fx.rows.map((r) => ({ ...r, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() }))}
         tools={<div className="row"><BlockForm today={todayIL()} /></div>}
         slotAction={(iso, label) => <FreeSlot iso={iso} label={label} minutes={30} />} blockAction={(b) => <RemoveBlock id={b.id} />} />);
+    }
+    case 'admin-money': {
+      const done = fx.rows.map((r, i) => ({ ...r, status: 'done' as const, payment_ok_at: i < 2 ? new Date().toISOString() : null }));
+      return staffShell('/admin/reports', <><nav className="pp-tabs"><a href="#" aria-current="true">ממתינים לתשלום<span className="pp-n">4</span></a><a href="#">גבייה ותשלומים</a><a href="#">דוחות</a></nav>
+        <PendingPayView gate waiting={done.slice(2, 6)} approved={done.slice(0, 2)} action={(id, undo) => undo ? <button type="button" className="btn btn-sm btn-ghost">ביטול</button> : <button type="button" className="btn btn-sm btn-ok">אישור תשלום ושליחה</button>} /></>);
     }
     case 'admin-reports':
       return staffShell('/admin/reports', <ReportsView report={buildReport(fx.rows.map((r) => ({ id: r.id, case_no: r.case_no, starts_at: r.starts_at, status: r.status, referral_type: r.referral_type, price: r.price, payer: r.payer, firm_id: r.firm_name ?? '', firm_name: r.firm_name ?? '', patient_name: r.patient_name })),
