@@ -10,13 +10,13 @@ export type NavItem = { href: string; label: string; icon: string };
 export function navFor(role: Role): { title: string; items: NavItem[] }[] {
   if (role === 'firm') {
     return [{ title: 'פורטל מפנים', items: [
-      { href: '/firm', label: 'לוח בקרה', icon: 'home' },
-      { href: '/firm/book', label: 'קביעת תור', icon: 'calendarPlus' },
+      { href: '/firm', label: 'דשבורד', icon: 'chart' },
+      { href: '/firm/book', label: 'זימון חדש', icon: 'calendarPlus' },
       { href: '/firm/cases', label: 'התיקים שלי', icon: 'folder' },
     ] }];
   }
   const doctor = { title: 'מרפאה', items: [
-    { href: '/doctor', label: 'לוח בקרה', icon: 'home' },
+    { href: '/doctor', label: 'דשבורד', icon: 'home' },
     { href: '/doctor/calendar', label: 'יומן', icon: 'calendar' },
     { href: '/doctor/book', label: 'קביעת תור', icon: 'calendarPlus' },
     { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'plus' },
