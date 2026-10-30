@@ -67,7 +67,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
   const deposits: Record<string, DepositState> = Object.fromEntries((depRows ?? []).map((d) => [d.id, { amount: Number(d.deposit_amount), paid: !!d.deposit_paid_at, proof: !!d.deposit_proof_at }]));
   return (
     <DoctorAgendaView
-      share={<ShareLink path="/book" title="קישור לקביעת תור — לשלוח לעורכי דין, מתווכים ומטופלים" sub="בלי שם משתמש ובלי סיסמה. ממלאים פרטים, בוחרים מועד ומעלים מסמכים, והבקשה מגיעה אליך לאישור." />}
+      share={<ShareLink path="/book" compact title="קישור לקביעת תור למפנים ולמטופלים" />}
       rows={rows}
       past={view === 'past'}
       isAdmin={profile.role === 'admin'}
