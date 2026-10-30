@@ -72,6 +72,8 @@ export type PromptInput = {
   /** the doctor's own instructions for this draft (what to stress, tone, conclusions) */
   instructions?: string;
   length?: DraftLength;
+  /** dates of the patient's earlier visits at the clinic */
+  visits?: string[];
 };
 
 export type DraftLength = 'short' | 'normal' | 'long';
@@ -102,6 +104,7 @@ export function buildPrompt(p: PromptInput) {
     `בקשת המפנה והערותיו:\n"""\n${p.notes.filter(Boolean).join('\n') || '(אין הערות)'}\n"""`,
     `ממצאי הרופא מהבדיקה:\n"""\n${p.exam.trim() || '(הרופא עוד לא רשם ממצאים)'}\n"""`,
     docs + skipped,
+    p.visits?.length ? `ביקור חוזר: המטופל/ת ביקר/ה במרפאה בעבר (${p.visits.map((d) => fmtDate(d)).join(', ')}). ציין זאת בקצרה בפתיחה, למשל: "מוכר/ת לי מביקור קודם במרפאתי ב־DD.MM.YYYY", והתייחס לשינוי מאז הביקור הקודם אם הוא עולה מהמסמכים.` : '',
     p.instructions?.trim() ? `הנחיות הרופא לניסוח הזה (חשובות מאוד; כשיש סתירה הן גוברות על המבנה):\n"""\n${p.instructions.trim()}\n"""` : '',
     p.length && LENGTH[p.length] ? LENGTH[p.length] : '',
     p.intake ? `סיכום מקדים של התיק שהוכן בסריקה אוטומטית (עזר בלבד – המקור הקובע הוא המסמכים עצמם):\n"""\n${p.intake}\n"""` : '',

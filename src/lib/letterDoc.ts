@@ -29,6 +29,8 @@ export type DocInput = {
   signature?: string | null;
   /** a line to sign by hand (prescriptions) */
   signLine?: boolean;
+  /** dates of the patient's earlier visits: the document says it is a follow-up visit */
+  visits?: string[];
   draft?: boolean;
 };
 
@@ -62,7 +64,7 @@ export function docHtml(d: DocInput) {
   <div class="cl-date">תאריך: ${esc(fmtDate(d.date))}</div>
   ${to.length ? `<div class="cl-to"><div>לכבוד</div>${to.map((r) => `<div><b>${esc(r)}</b></div>`).join('')}</div>` : ''}
   <h1 class="cl-title">${esc(title)}</h1>
-  <div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>
+  <div class="cl-ptw"><div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>${d.visits?.length ? `<div class="cl-rv"><b>ביקור חוזר</b> · ${d.visits.length === 1 ? 'ביקור קודם' : 'ביקורים קודמים'} במרפאה: ${d.visits.map((x) => esc(fmtDate(x))).join(' · ')}</div>` : ''}</div>
   ${intro}
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
@@ -250,7 +252,10 @@ ${p}.of-line { border-top: 1px solid #111; padding-top: 1mm; font-size: 9.5pt; c
 ${p}.cl-date { text-align: left; font-size: 11pt; margin: 1mm 0 5mm; }
 ${p}.cl-to { margin: 0 0 5mm; line-height: 1.5; }
 ${p}.cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 18pt; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; margin: 2mm 0 4mm; }
-${p}.cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 11pt; padding-bottom: 3mm; margin-bottom: 5mm; border-bottom: 1px solid #C9CFD8; }
+${p}.cl-ptw { padding-bottom: 3mm; margin-bottom: 5mm; border-bottom: 1px solid #C9CFD8; }
+${p}.cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 11pt; }
+${p}.cl-rv { text-align: center; font-size: 10pt; color: #0B5F5B; margin-top: 1.5mm; }
+${p}.cl-rv b { color: #0B5F5B; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }
