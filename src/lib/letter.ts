@@ -74,6 +74,8 @@ export type PromptInput = {
   length?: DraftLength;
   /** dates of the patient's earlier visits at the clinic */
   visits?: string[];
+  /** earlier letters of this patient, when the doctor asked to bring their background into this one */
+  history?: { date: string; label: string; text: string }[];
 };
 
 export type DraftLength = 'short' | 'normal' | 'long';
@@ -105,6 +107,7 @@ export function buildPrompt(p: PromptInput) {
     `ממצאי הרופא מהבדיקה:\n"""\n${p.exam.trim() || '(הרופא עוד לא רשם ממצאים)'}\n"""`,
     docs + skipped,
     p.visits?.length ? `ביקור חוזר: המטופל/ת ביקר/ה במרפאה בעבר (${p.visits.map((d) => fmtDate(d)).join(', ')}). ציין זאת בקצרה בפתיחה, למשל: "מוכר/ת לי מביקור קודם במרפאתי ב־DD.MM.YYYY", והתייחס לשינוי מאז הביקור הקודם אם הוא עולה מהמסמכים.` : '',
+    p.history?.length ? `הרופא ביקש לשלב את הרקע מהביקורים הקודמים. המסמכים מהביקורים הקודמים במרפאה:\n${p.history.map((h) => `--- ${h.label} מיום ${fmtDate(h.date)} ---\n${h.text}`).join('\n\n')}\nכתוב בתחילת גוף המסמך סעיף "רקע מביקורים קודמים:" שמסכם בקצרה ובעניינית (3–6 משפטים) את הרקע, הממצאים וההמלצות מהביקורים האלה, עם התאריכים, ואחריו המשך המסמך על הביקור הנוכחי.` : '',
     p.instructions?.trim() ? `הנחיות הרופא לניסוח הזה (חשובות מאוד; כשיש סתירה הן גוברות על המבנה):\n"""\n${p.instructions.trim()}\n"""` : '',
     p.length && LENGTH[p.length] ? LENGTH[p.length] : '',
     p.intake ? `סיכום מקדים של התיק שהוכן בסריקה אוטומטית (עזר בלבד – המקור הקובע הוא המסמכים עצמם):\n"""\n${p.intake}\n"""` : '',
