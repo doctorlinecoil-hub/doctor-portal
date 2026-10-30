@@ -181,7 +181,10 @@ function MonthGrid({ dayHref, start, month, rows, blocks, settings, today, days 
   const cells = Array.from({ length: days + 7 }, (_, i) => fromDayNum(dayNum(start) + i)).slice(0, 42);
   const lastRow = cells.findIndex((d, i) => i % 7 === 0 && d.slice(0, 7) > month);
   const list = lastRow > 0 ? cells.slice(0, lastRow) : cells;
+  const inMonth = rows.filter((r) => ilParts(r.starts_at).date.slice(0, 7) === month).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const agenda = [...new Set(inMonth.map((r) => ilParts(r.starts_at).date))].map((d) => ({ d, rows: inMonth.filter((r) => ilParts(r.starts_at).date === d) }));
   return (
+    <>
     <div className="cal-month">
       {DAYS.map((d) => <div key={d} className="cal-mh">{d}</div>)}
       {list.map((d) => {
@@ -190,15 +193,36 @@ function MonthGrid({ dayHref, start, month, rows, blocks, settings, today, days 
         const blocked = settings.blocked_dates.includes(d) || blocks.some((b) => minutesOf(b.starts_at).date <= d && minutesOf(b.ends_at).date >= d);
         const pend = dayRows.filter((r) => r.status === 'pending').length;
         return (
-          <Link key={d} href={dayHref(d)}
+          <Link key={d} href={dayHref(d)} title={dayRows.map((r) => `${ilParts(r.starts_at).time} ${r.patient_name || 'ממתין לפרטים'}`).join('\n') || undefined}
             className={`cal-day${d.slice(0, 7) !== month ? ' out' : ''}${d === today ? ' today' : ''}${!cfg?.on ? ' closed' : ''}${blocked ? ' blocked' : ''}`}>
-            <span className="cal-dn num">{+d.slice(8, 10)}</span>
-            {dayRows.slice(0, 3).map((r) => <span key={r.id} className={`cal-chip ${r.status}`}><span className="num">{ilParts(r.starts_at).time}</span> {r.patient_name || 'ממתין לפרטים'}</span>)}
-            {dayRows.length > 3 && <span className="hint">+{dayRows.length - 3} נוספים</span>}
+            <span className="cal-dh2"><span className="cal-dn num">{+d.slice(8, 10)}</span>{dayRows.length > 0 && <span className="cal-cnt num">{dayRows.length}</span>}</span>
+            {dayRows.slice(0, 4).map((r) => (
+              <span key={r.id} className={`cal-chip ${r.status}`}>
+                <span className="num">{ilParts(r.starts_at).time}</span><b>{r.patient_name || 'ממתין לפרטים'}</b>
+              </span>
+            ))}
+            {dayRows.length > 4 && <span className="cal-more">+{dayRows.length - 4} נוספים</span>}
+            {dayRows.length > 0 && <span className="cal-dots" aria-hidden>{dayRows.slice(0, 5).map((r) => <i key={r.id} className={r.status} />)}</span>}
             {pend > 0 && <span className="cal-pend">{pend} לאישור</span>}
           </Link>
         );
       })}
     </div>
+    <section className="cal-agenda" aria-label="המטופלים שנקבעו החודש">
+      <h3>המטופלים שנקבעו ב{MONTHS[+month.slice(5, 7) - 1]} <span className="num">{inMonth.length}</span></h3>
+      {agenda.length === 0 ? <p className="muted">אין תורים החודש.</p> : agenda.map((g) => (
+        <div key={g.d} className={`cal-ag-day${g.d === today ? ' today' : ''}`}>
+          <div className="cal-ag-h"><b>{g.d === today ? 'היום' : `יום ${DAYS[weekday(g.d)]}`}</b><span className="num">{fmtDate(g.d)}</span></div>
+          {g.rows.map((r) => (
+            <Link key={r.id} href={`/doctor/cases/${r.id}`} className={`cal-ag-row ${r.status}`}>
+              <span className="cal-ag-t num">{ilParts(r.starts_at).time}</span>
+              <span className="cal-ag-m"><b>{r.patient_name || 'ממתין לפרטים'}</b><small>{labelOf(r)}{r.mode === 'phone' ? ' · טלפוני' : ''}</small></span>
+              <span className={`cal-ag-s ${r.status}`}>{STATUS_STAFF[r.status]}</span>
+            </Link>
+          ))}
+        </div>
+      ))}
+    </section>
+    </>
   );
 }
