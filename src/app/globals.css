@@ -2782,3 +2782,10 @@ html.wm .studio.focus .studio-side { top: auto; }
 .ais-row .ais-go { flex: 1; width: auto; }
 .ais-note { font-size: 13px; }
 @media (max-width: 700px) { .ais-row { flex-direction: column; } .ais-row .ais-len { flex: none; } }
+
+/* v53: classic letter top - date, recipient, centered title, patient line */
+.page .cl-date { text-align: left; font-size: 14px; margin: 14px 0 14px; }
+.page .cl-to { margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
+.page .cl-to.ghost { color: #9AA4B5; font-style: italic; font-size: 13px; }
+.page .cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 23px; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 7px; margin: 6px 0 14px; }
+.page .cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 14px; padding-bottom: 10px; margin-bottom: 16px; border-bottom: 1px solid #C9CFD8; }
