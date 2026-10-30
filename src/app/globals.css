@@ -2321,3 +2321,26 @@ a.dx-next:hover { text-decoration: none; transform: translateY(-2px); border-col
   .dx-list { max-height: none; }
   .dx-share .share-compact .row { flex-wrap: wrap; }
 }
+
+/* ===== v36 dashboard + calendar in one ===== */
+.dx-grid { grid-template-columns: minmax(0, 1fr); }
+.dx-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.dx-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,.14); }
+.dx-actions .dx-share { margin: 0; padding: 0; border: 0; flex: 1; min-width: 0; }
+.dx-cta { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 14px; font-weight: 700; font-size: 15px; color: #06302E; text-decoration: none;
+  background: linear-gradient(135deg, #5EEAD4, #E9CF7A); box-shadow: 0 10px 26px rgba(94,234,212,.28); transition: transform .18s, box-shadow .18s; }
+.dx-cta:hover { text-decoration: none; transform: translateY(-2px); box-shadow: 0 14px 32px rgba(94,234,212,.38); }
+.dx-cal > .dx-h { flex-wrap: wrap; }
+.dx-cal .dx-seg { margin-inline-start: auto; }
+.dx-new { flex: none; }
+.dx-calbody { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.dx-calbody .cal-bar { margin: 0; }
+.dx-calbody .block-form { width: 100%; }
+@media (max-width: 760px) {
+  .dx-side { grid-template-columns: minmax(0, 1fr); }
+  .dx-cal .dx-seg { order: 3; width: 100%; margin: 0; }
+  .dx-cal .dx-seg a { flex: 1; text-align: center; padding: 6px 4px; }
+  .dx-actions { flex-direction: column; align-items: stretch; }
+  .dx-cta { justify-content: center; }
+  .dx-calbody { padding: 10px; }
+}
