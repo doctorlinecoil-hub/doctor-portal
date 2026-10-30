@@ -176,7 +176,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'admin-payments':
       return staffShell('/admin/payments', <PaymentsView rows={fx.rows} filter="open" q="" collectedThisMonth={27400} />);
     case 'admin-users':
-      return staffShell('/admin/users', <><PageHead title="מפנים ומשתמשים" sub="רק מי שמופיע כאן יכול להיכנס. כל מפנה רואה רק את התיקים שלו." /><UsersAdmin firms={fx.firms} users={fx.users} me="u0" preview /></>);
+      return staffShell('/admin/users', <><PageHead title="מפנים ומשתמשים" sub="רק מי שמופיע כאן יכול להיכנס. כל מפנה רואה רק את התיקים שלו." /><UsersAdmin firms={fx.firms} users={fx.users} me="u0" preview services={SVC.map((x) => ({ id: x.id, label: x.label, price: Number(x.price), active: true }))} prices={{ [fx.firms[0].id]: { [SVC[1].id]: 2000 } }} /></>);
     case 'admin-settings':
       return staffShell('/admin', <><PageHead title="הגדרות" sub="זמני קבלה, מחירים, נייר מכתבים ואבטחה" /><SettingsForm initial={fx.settings} morning mail cron preview /></>);
     case 'letter':
