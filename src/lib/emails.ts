@@ -311,6 +311,18 @@ export function awaitingPaymentEmail(s: Settings, a: ApptInfo, balance: string, 
   return { subject, html: layout(s, { preheader: 'המסמך מוכן וממתין לתשלום', title: 'המסמך מוכן', body }), text: textOf([subject, balance && `יתרה: ${balance}`, link]) };
 }
 
+/** A reminder from the clinic: the document is ready and waits for payment. */
+export function paymentReminderEmail(s: Settings, a: ApptInfo, amount: number, link: string): Rendered {
+  const label = (a.label || typeOf(a.type).label);
+  const subject = `תזכורת: ${label} מוכנה וממתינה לתשלום · ${a.patientName} · תיק ${a.caseNo}`;
+  const body =
+    p(`שלום,<br>${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה וממתינה לתשלום.`) +
+    (amount > 0 ? payBlock(s, amount, 'לתשלום') : '') +
+    p('מיד כשהתשלום יתקבל במרפאה, המסמך יישלח אליכם במייל אוטומטית. אם כבר שילמתם, אפשר להשיב למייל הזה עם אישור התשלום.') +
+    `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק')}</div>`;
+  return { subject, html: layout(s, { preheader: 'תזכורת: המסמך ממתין לתשלום', title: 'תזכורת לתשלום', body }), text: textOf([subject, amount > 0 ? payText(s, amount) : '', link]) };
+}
+
 export function rxEmail(s: Settings, patientName: string): Rendered {
   const subject = `מרשם · ${patientName} · ${s.lh_name}`;
   const body = p(`שלום ${esc(patientName)},<br>מצורף המרשם מ${esc(s.lh_name)} כקובץ PDF.`) + p('את המרשם יש להציג בבית המרקחת כשהוא חתום. בכל שאלה אפשר לפנות למרפאה.');

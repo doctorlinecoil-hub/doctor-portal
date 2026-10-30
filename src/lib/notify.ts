@@ -7,7 +7,7 @@ import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, paymentReminderEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
@@ -288,6 +288,22 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
  * The final letter to addresses typed by hand (a lawyer's colleague, an insurer, the court's secretary).
  * Callers check permission; at most 10 such sends per case per day.
  */
+/** The doctor's reminder: the document is ready and waits for payment. Goes to whoever pays (the patient, or the referrer who opened the case). */
+export async function sendPaymentReminder(id: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  const { data: released } = await db.rpc('letter_released', { p_id: id });
+  if (released) return { ok: false, sent: 0, info: 'התשלום כבר אושר.' };
+  const { data: pays } = await db.from('payments').select('amount').eq('appointment_id', id);
+  const due = Math.max(0, Number(a.price) - (pays ?? []).reduce((x, p) => x + Number(p.amount), 0));
+  const patientPays = a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient';
+  const to = patientPays ? (a.patient_email ? [a.patient_email] : await firmEmails(db, a.firm_id, a.firm?.email, null)) : await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails);
+  if (!to.length) return { ok: false, sent: 0, info: patientPays ? 'אין מייל למטופל. אפשר לשלוח בוואטסאפ.' : 'אין מייל למפנה. אפשר לשלוח בוואטסאפ.' };
+  const r = await sendMail(db, id, 'payment_reminder', { to, ...paymentReminderEmail(s, info(a), due, caseLink(id, false)) });
+  return r.ok ? { ok: true, sent: 1, info: `נשלחה תזכורת ל${patientPays ? 'מטופל' : 'מפנה'}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
+}
+
 export async function sendLetterTo(id: string, emails: string[], opts: { byReferrer: boolean }): Promise<NotifyResult> {
   const db = createAdminClient();
   const to = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))].slice(0, 5);
