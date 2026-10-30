@@ -27,6 +27,8 @@ export async function POST(req: Request) {
   const appointmentId = String(input?.appointmentId || '');
   const letterType = String(input?.letterType || '') as ReferralType;
   const exam = String(input?.exam || '').slice(0, 20000);
+  const instructions = String(input?.instructions || '').slice(0, 4000);
+  const length = (['short', 'normal', 'long'] as const).find((x) => x === input?.length) ?? 'normal';
   if (!UUID.test(appointmentId) || !(letterType in TYPES)) return fail(400, 'בקשה לא תקינה.');
 
   const [{ data: a }, { data: notes }, { data: docs }, { data: settings }, { data: intake }] = await Promise.all([
@@ -54,6 +56,8 @@ export async function POST(req: Request) {
       attached,
       skipped,
       intake: intake?.status === 'done' ? intakeForPrompt(intake.data as IntakeData) : '',
+      instructions,
+      length,
     }),
   });
 
