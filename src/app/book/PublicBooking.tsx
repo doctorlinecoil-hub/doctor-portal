@@ -58,7 +58,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   const [pt, setPt] = useState(demo?.ext ? { name: demo.ext.name, idNumber: demo.ext.id_number, dob: demo.ext.dob, phone: demo.ext.phone, email: demo.ext.email } : EMPTY_PT);
   const [extra, setExtra] = useState<string[]>(demo?.ext ? ['secretary@cohen-law.co.il'] : []);
   const payer = 'patient' as const;
-  const [notes, setNotes] = useState(demo?.ext?.request || '');
+  const [notes, setNotes] = useState('');
   const [website, setWebsite] = useState('');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
@@ -111,15 +111,13 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
       if (x.referrer_kind) setKind(x.referrer_kind);
       setRef((r) => ({ office: x.referrer_office || r.office, contact: x.referrer_contact || r.contact, phone: x.referrer_phone || r.phone, email: x.referrer_email || r.email }));
     }
-    const note = [x.request, x.event && `האירוע: ${x.event}${x.event_date ? ` (${x.event_date})` : ''}`].filter(Boolean).join('\n');
-    if (note) setNotes((n) => n || note);
   }
 
   async function scanDocs() {
     setErr('');
     const u = await upload();
     if (!u) return;
-    if (!u.files.length) { setScan({ phase: 'manual', text: 'המסמכים לא הועלו. אפשר להמשיך ולשלוח אותם למרפאה בהמשך.' }); go(4); return; }
+    if (!u.files.length) { setScan({ phase: 'manual', text: '' }); go(4); return; }
     setScan({ phase: 'read', text: 'מצרפים את המסמכים לפנייה…' });
     const r = await publicScan(u.token, u.files).catch(() => null);
     if (r?.ok) {
@@ -127,7 +125,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
       apply(r.data);
       setScan({ phase: 'done', text: '' });
     } else {
-      setScan({ phase: 'manual', text: 'המסמכים צורפו לפנייה. נא למלא את פרטי המטופל.' });
+      setScan({ phase: 'manual', text: '' });
     }
     go(4);
   }
@@ -378,11 +376,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
         {step === 4 && (
           <form className="pbw-pane" onSubmit={submit} noValidate>
             <h2 className="pbw-h">בדיקת הפרטים</h2>
-            {scan.phase === 'done' ? (
-              <div className="pbw-note ok"><Icon name="check" /><div><b>המסמכים צורפו לפנייה.</b> נא לוודא שהפרטים שלהלן נכונים ולהשלים את החסר.{ext?.warning ? <div className="pbw-warn">{ext.warning}</div> : null}</div></div>
-            ) : scan.text ? (
-              <div className="pbw-note"><Icon name="info" /><div>{scan.text}</div></div>
-            ) : <p className="pbw-lead">מלאו את פרטי המטופל ואת הכתובות לעדכונים.</p>}
+            <p className="pbw-lead">{scan.phase === 'done' && (pt.name || pt.idNumber) ? 'נא לוודא שהפרטים נכונים ולהשלים את החסר.' : 'מלאו את פרטי המטופל ואת הכתובות לעדכונים.'}</p>
 
             <fieldset className="pbw-group">
               <legend><Icon name="user" size={16} />המטופל</legend>
