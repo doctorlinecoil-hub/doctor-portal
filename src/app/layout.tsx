@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { supabaseConfig } from '@/lib/env';
 import { SupabaseProvider } from '@/lib/supabase/browser';
+import { appUrl } from '@/lib/mail';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl()),
   title: 'מרפאת ד״ר אלרן חנוך',
   description: 'תורים, תיקים, מכתבים רפואיים ותשלומים',
   robots: { index: false, follow: false },

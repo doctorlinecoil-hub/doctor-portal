@@ -1,15 +1,17 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession, homeFor } from '@/lib/auth';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { SETTINGS_DEFAULTS, type Settings } from '@/lib/constants';
-import { SERVICE_COLS, type Service } from '@/lib/services';
+import { landingData, physicianJsonLd, SITE_DESC } from '@/lib/landingData';
 import Landing from '@/views/Landing';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'ד״ר אלרן חנוך · נוירוכירורג · חוות דעת רפואיות',
-  description: 'ד״ר אלרן חנוך, נוירוכירורג ילדים ומבוגרים. חוות דעת רפואיות לבית משפט ולביטוח לאומי, סיכומי ביקור והפניות. קביעת תור מקוונת למשרדי עורכי דין, מתווכים ומטופלים.',
+  description: SITE_DESC,
+  robots: { index: true, follow: true },
+  alternates: { canonical: '/' },
+  openGraph: { type: 'website', locale: 'he_IL', title: 'ד״ר אלרן חנוך · נוירוכירורג ילדים ומבוגרים', description: SITE_DESC, images: [{ url: '/brand/og.jpg', width: 1200, height: 630 }] },
+  twitter: { card: 'summary_large_image', images: ['/brand/og.jpg'] },
 };
 
 /** Signed-in users go to their home; everyone else sees the clinic's page. */
@@ -19,11 +21,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const signedIn = !!(claims && profile?.active);
   // signed-in users go to their home, unless they asked to see the public page
   if (signedIn && view !== 'public') redirect(homeFor(profile!.role));
-  const db = createAdminClient();
-  const [{ data: s0 }, { data: services }] = await Promise.all([
-    db.from('settings').select('*').eq('id', 1).single(),
-    db.from('services').select(SERVICE_COLS).eq('active', true).order('sort').order('label'),
-  ]);
-  const s = { ...SETTINGS_DEFAULTS, ...(s0 as Settings) } as Settings;
-  return <Landing s={s} services={(services as Service[] | null) ?? []} home={signedIn ? homeFor(profile!.role) : null} />;
+  const { s, services } = await landingData();
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(physicianJsonLd(s, services)).replace(/</g, '\\u003c') }} />
+      <Landing s={s} services={services} />
+    </>
+  );
 }
