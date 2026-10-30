@@ -5,6 +5,7 @@ import type { ReferralType } from '@/lib/constants';
 import { ilParts, todayIL } from '@/lib/dates';
 import { SIGNATURE_DATA_URI } from '@/lib/brandAssets';
 import LetterPaper from '@/views/LetterPaper';
+import { priorVisits } from '@/lib/visits';
 import PrintButton from './PrintButton';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   await supabase.rpc('log_event', { p_action: draft || review ? 'print_draft' : 'print_final', p_entity: 'letter', p_entity_id: id });
 
   const date = draft || review ? todayIL() : letter.letter_date || todayIL();
+  const visits = await priorVisits(supabase, a);
   return (
     <LetterPaper
       settings={settings}
@@ -43,6 +45,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
       backHref={staff ? `/doctor/cases/${id}` : `/firm/cases/${id}`}
       title={(a.referral_type === letter.letter_type && a.service_label) || undefined}
       visitDate={ilParts(a.starts_at).date}
+      visits={visits}
       signature={!draft && settings.sign_final ? SIGNATURE_DATA_URI : null}
       embed={embed === '1'}
       draft={draft}
