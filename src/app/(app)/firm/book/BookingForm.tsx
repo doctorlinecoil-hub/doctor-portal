@@ -201,14 +201,14 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, servi
             <div className="sum-row"><span>מסמכים</span><b>{files.length ? `${files.length} קבצים` : 'ללא'}</b></div>
             <div className="sum-row"><span>זימון במייל</span><b>{staff ? (f.email.trim() && emailOk ? 'למטופל' : 'בוואטסאפ מתוך התיק') : f.email.trim() && emailOk ? 'למטופל ולכם' : 'אליכם'}</b></div>
           </div>
-          <div className="stack-sm">
+          {staff && <div className="stack-sm">
             <span className="hint">מי משלם על התיק?</span>
             <div className="payer">
               {(['referrer', 'patient'] as Payer[]).map((p) => (
                 <label key={p}><input type="radio" name="payer" checked={payer === p} onChange={() => setPayer(p)} />{p === 'referrer' ? (staff ? PAYERS.referrer : 'אנחנו (' + PAYERS.referrer + ')') : PAYERS.patient}</label>
               ))}
             </div>
-          </div>
+          </div>}
           {err && <p className="err" role="alert">{err}</p>}
           {progress != null && <div className="progress"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>}
           <button className="btn btn-primary btn-lg" type="submit" disabled={busy}>
