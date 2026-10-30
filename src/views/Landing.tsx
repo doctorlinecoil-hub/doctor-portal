@@ -245,7 +245,7 @@ export default function Landing({ s, services, audience = 'all' }: { s: Settings
             <ol className="lp-steps lp-steps-line">
               <li><span className="lp-step-n">1</span><b>בוחרים שירות ומועד</b><p>היומן של המרפאה פתוח אונליין. בוחרים יום ושעה, במרפאה או בשיחה טלפונית.</p></li>
               <li><span className="lp-step-n">2</span><b>מצרפים מסמכים</b><p>הפניה, תוצאות בדיקות וכל מה שחשוב שהרופא יראה לפני הפגישה.</p></li>
-              <li><span className="lp-step-n">3</span><b>אישור וזימון</b><p>הרופא מאשר, ונשלח זימון עם כתובת, ניווט ופרטי העלות.</p></li>
+              <li><span className="lp-step-n">3</span><b>אישור וזימון</b><p>הרופא מאשר, ונשלח אליכם זימון עם כתובת וניווט. בלי תשלום מראש.</p></li>
               <li><span className="lp-step-n">4</span><b>מקבלים את המסמך</b><p>אחרי הביקור המסמך החתום נשלח במייל כ־PDF, וזמין גם באזור האישי.</p></li>
             </ol>
           </div>
