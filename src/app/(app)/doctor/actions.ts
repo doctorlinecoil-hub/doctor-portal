@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { dbError, type PayMethod } from '@/lib/constants';
 import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
+import { deliverLetter, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
 
 type Result = { ok: boolean; error?: string; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -169,4 +169,12 @@ export async function approvePayment(id: string, pay: { amount: number; method: 
   const r = await setPaymentOk(id, true, opts.deliver !== false);
   revalidatePath('/doctor/payments');
   return r.ok ? { ok: true, info: pay && pay.amount > 0 ? 'התשלום נרשם ואושר. המסמך נפתח ונשלח במייל.' : 'התשלום אושר. המסמך נפתח ונשלח במייל.' } : r;
+}
+
+/** A payment reminder by email, to whoever pays for the case. */
+export async function remindPayment(id: string): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const r = await sendPaymentReminder(id);
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
