@@ -12,7 +12,8 @@ export async function landingData() {
     db.from('services').select(SERVICE_COLS).eq('active', true).order('sort').order('label'),
   ]);
   const s = { ...SETTINGS_DEFAULTS, ...(s0 as Settings) } as Settings;
-  return { s, services: (services as Service[] | null) ?? [] };
+  // prices never leave the server on public pages (the doctor sends the cost himself)
+  return { s, services: ((services as Service[] | null) ?? []).map((v) => ({ ...v, price: 0 })) };
 }
 
 /** Structured data (schema.org) so search engines show the doctor as a physician with address and phone. */
