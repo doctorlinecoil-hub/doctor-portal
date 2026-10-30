@@ -2957,3 +2957,9 @@ html.wm .studio.focus .studio-side { top: auto; }
 .pp-wa { color: #128C4A; border-color: #BDE5CC; background: #F1FBF4; }
 .pp-wa:hover { background: #E3F6E9; }
 .pp-remind small { flex-basis: 100%; font-size: 12px; }
+
+/* free slots are always visible: a soft "+ 11:00" the doctor can click to book */
+.cal-free-btn { display: flex; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 11.5px; font-weight: 600;
+  color: color-mix(in srgb, var(--accent) 55%, transparent); border: 1px dashed color-mix(in srgb, var(--accent) 28%, transparent); background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.cal-free-btn:hover, .cal-free-btn:focus-visible, .cal-free-btn[aria-expanded="true"] { color: #fff; background: var(--accent); border: 1px solid var(--accent); box-shadow: 0 4px 14px rgba(11,122,117,.3); }
+@media (max-width: 640px) { .cal-free-btn span { display: none; } }
