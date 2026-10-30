@@ -2798,3 +2798,10 @@ html.wm .studio.focus .studio-side { top: auto; }
 .rv-pay-ch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .rv-pay-ch button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; padding: 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font: inherit; font-weight: 700; cursor: pointer; color: var(--fg-2); }
 .rv-pay-ch button.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+/* v59: follow-up visit line, existing patient notice */
+.page .cl-rv { text-align: center; font-size: 13px; color: #0B5F5B; border-bottom: 1px solid #C9CFD8; padding-bottom: 10px; margin: 4px 0 16px; }
+.page .cl-pt:has(+ .cl-rv) { border-bottom: 0; padding-bottom: 0; margin-bottom: 0; }
+.nd-exists { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: #F0FDF4; border: 1.5px solid #86EFAC; color: #166534; animation: ppIn .2s ease-out; }
+.nd-exists b { display: block; }
+.nd-exists small { color: #166534; opacity: .85; }
