@@ -6,7 +6,7 @@ import { PAYERS, PAY_METHODS, ils, payState } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
 import FirmCasesBrowser from '@/components/FirmCasesBrowser';
 import { age, fmtDate, fmtDay, fmtStamp, ilParts, todayIL } from '@/lib/dates';
-import type { ApptRow, CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
+import { released, type ApptRow, type CaseDetail, type DocRow, type NoteRow, type PaymentRow } from '@/lib/types';
 
 function owes(r: ApptRow) {
   return r.status !== 'cancelled' && r.payer === 'referrer' ? Math.max(0, r.price - r.paid) : 0;
@@ -34,7 +34,7 @@ export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; 
   );
 }
 
-export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: string; clinicName: string; rows: ApptRow[] }) {
+export function FirmDashboardView({ firmName, clinicName, rows, gate = true }: { firmName: string; clinicName: string; rows: ApptRow[]; gate?: boolean }) {
   const today = todayIL();
   const live = rows.filter((r) => r.status !== 'cancelled');
   const upcoming = live.filter((r) => ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -87,7 +87,9 @@ export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: st
                 <li key={r.id}>
                   <span className="fd-pdf">PDF</span>
                   <Link href={`/firm/cases?open=${r.id}`} className="fd-doc-main"><b>{r.patient_name || 'מטופל'}</b><small className="num">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)} · תיק {r.case_no}</small></Link>
-                  <a className="btn btn-sm btn-ok" href={`/letters/${r.id}/print`} target="_blank" rel="noopener"><Icon name="download" size={15} />הורדה</a>
+                  {released(r, gate)
+                    ? <a className="btn btn-sm btn-ok" href={`/letters/${r.id}/pdf`} download><Icon name="download" size={15} />הורדה</a>
+                    : <span className="badge b-pending">מוכן · ממתין לתשלום</span>}
                 </li>
               ))}
             </ul>
@@ -163,7 +165,7 @@ export function searchFirmRows(rows: ApptRow[], q: string) {
     (/^\d+$/.test(t) && String(r.case_no) === t));
 }
 
-export function FirmCasesView({ rows: all, filter, q = '', open }: { rows: ApptRow[]; filter: string; q?: string; open?: string }) {
+export function FirmCasesView({ rows: all, filter, q = '', open, gate = true }: { rows: ApptRow[]; filter: string; q?: string; open?: string; gate?: boolean }) {
   const rows = searchFirmRows(all, q);
   const list = filterFirmRows(rows, filter);
   const qs = (f: string) => { const p = new URLSearchParams(); if (f !== 'all') p.set('f', f); if (q.trim()) p.set('q', q.trim()); const x = p.toString(); return x ? `/firm/cases?${x}` : '/firm/cases'; };
@@ -186,7 +188,7 @@ export function FirmCasesView({ rows: all, filter, q = '', open }: { rows: ApptR
         ))}
       </nav>
       <section className="panel flush">
-        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : <FirmCasesBrowser rows={list} all={all} initial={open} />}
+        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : <FirmCasesBrowser rows={list} all={all} initial={open} gate={gate} />}
       </section>
     </>
   );
@@ -335,13 +337,14 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, 
         <div className="callout">
           <div><Icon name="checkCircle" />המכתב של הרופא מוכן{letter.finalizedAt ? ` · ${fmtStamp(letter.finalizedAt)}` : ''}</div>
           <div className="row" style={{ gap: 8 }}>
-            <a className="btn btn-ok" href={`/letters/${c.id}/print`} target="_blank" rel="noopener"><Icon name="download" />צפייה והורדת PDF</a>
+            <a className="btn btn-ok" href={`/letters/${c.id}/pdf`} download><Icon name="download" size={16} />הורדת PDF</a>
+            <a className="btn" href={`/letters/${c.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={16} />צפייה</a>
             {forward}
           </div>
         </div>
       )}
       {letter.awaitingPayment && (
-        <div className="callout warn"><div><Icon name="clock" />המכתב מוכן, והוא יהיה זמין להורדה מיד אחרי השלמת התשלום.</div></div>
+        <div className="callout warn"><div><Icon name="clock" /><b>המסמך מוכן · ממתין לתשלום.</b> הוא ייפתח כאן להורדה וישלח אליכם במייל מיד אחרי שהמרפאה תאשר את התשלום.</div></div>
       )}
       <div className="cols-side">
         <div className="stack">
