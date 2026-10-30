@@ -210,6 +210,15 @@ export function signupStaffEmail(s: Settings, r: { name: string; org: string; ki
   return { subject, html: layout(s, { preheader: `${r.kind} · ${r.org || r.name}`, title: 'הרשמה חדשה', body }), text: textOf([subject, r.email, r.phone, link]) };
 }
 
+export function callbackStaffEmail(s: Settings, r: { name: string; phone: string; kind: string; note: string; source: string }): Rendered {
+  const subject = `בקשה לחזרה טלפונית · ${r.name}`;
+  const tel = r.phone.replace(/[^\d+]/g, '');
+  const body = p('מישהו השאיר פרטים בדף האתר וביקש שיחזרו אליו.') +
+    card([['שם', esc(r.name)], ['טלפון', `<a dir="ltr" href="tel:${esc(tel)}">${esc(r.phone)}</a>`], ['פונה בתור', esc(r.kind)], ...(r.note ? ([['הערה', esc(r.note)]] as [string, string][]) : []), ...(r.source ? ([['הגיע מ־', esc(r.source)]] as [string, string][]) : [])]) +
+    `<div style="margin:6px 0 10px">${button(`tel:${tel}`, 'התקשרות')}</div>`;
+  return { subject, html: layout(s, { preheader: `${r.kind} · ${r.phone}`, title: 'חזרה טלפונית', body }), text: textOf([subject, r.phone, r.kind, r.note, r.source]) };
+}
+
 export function accountApprovedEmail(s: Settings, name: string, email: string): Rendered {
   const link = `${appUrl()}/login`;
   const subject = `החשבון שלך אושר · ${s.lh_name}`;
