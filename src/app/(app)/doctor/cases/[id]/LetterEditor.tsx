@@ -345,6 +345,7 @@ export default function LetterEditor({
         {paper.patient.idNumber && <span><b>ת.ז.:</b> <span className="num">{paper.patient.idNumber}</span></span>}
         {paper.patient.dob && <span><b>תאריך לידה:</b> <span className="num">{fmtDate(paper.patient.dob)}</span>{ag != null ? ` (גיל ${ag})` : ''}</span>}
       </div>
+      {paper.visits && paper.visits.length > 0 && <div className="cl-rv"><b>ביקור חוזר</b> · {paper.visits.length === 1 ? 'ביקור קודם' : 'ביקורים קודמים'} במרפאה: <span className="num">{paper.visits.map((x) => fmtDate(x)).join(' · ')}</span></div>}
       {opinion && (
         <div className="pg-intro">
           <p>הנני מגיש בזאת את חוות דעתי הרפואית{paper.visitDate ? ` לאחר בדיקתי ב־${fmtDate(paper.visitDate)}` : ''}.</p>
