@@ -69,7 +69,17 @@ export default function LetterEditor({
   const [opts, setOpts] = useState<{ instructions: string; length: 'short' | 'normal' | 'long' }>({ instructions: '', length: 'normal' });
   const [undo, setUndo] = useState<{ html: string; recipient: string; subject: string; label: string }[]>([]);
   // on a phone the studio shows one pane at a time
-  const [pane, setPane] = useState<'letter' | 'ai' | 'details' | 'tools'>('letter');
+  const [pane, setPane] = useState<'letter' | 'side'>('letter');
+  const [side, setSide] = useState<'ai' | 'exam' | 'details' | 'tools'>('ai');
+  // writing in full screen: only the letter and its tools
+  const [focus, setFocus] = useState(false);
+  useEffect(() => {
+    document.documentElement.classList.toggle('wm', focus);
+    if (!focus) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.review-wrap')) setFocus(false); };
+    window.addEventListener('keydown', esc);
+    return () => { window.removeEventListener('keydown', esc); document.documentElement.classList.remove('wm'); };
+  }, [focus]);
   const [finalState, setFinalState] = useState<{ armed: boolean; msg: string; ok: boolean }>({ armed: false, msg: '', ok: false });
   const [review, setReview] = useState<number | null>(null);
   const latest = useRef(d);
@@ -287,12 +297,6 @@ export default function LetterEditor({
 
   const placeholders = countPlaceholders(bodyText(d.body));
   const hasBody = !!bodyText(d.body).trim();
-  const steps = [
-    { label: 'ממצאים', done: !!d.exam_notes.trim() },
-    { label: 'טיוטה', done: hasBody },
-    { label: 'השלמות', done: hasBody && placeholders === 0 },
-    { label: 'נשלח', done: !!initial?.is_final },
-  ];
   const titles = paper.lh_titles.split('\n').filter(Boolean);
   const to = d.recipient.split('|').map((x) => x.trim()).filter(Boolean);
   const ag = age(paper.patient.dob);
@@ -352,27 +356,24 @@ export default function LetterEditor({
     </div>
   );
 
+  const SIDE = [['ai', 'AI', 'sparkles'], ['exam', 'ממצאים', 'stethoscope'], ['details', 'פרטים', 'settings'], ['tools', 'כלים', 'template']] as const;
   return (
-    <section className="studio" data-pane={pane} aria-label="המכתב">
+    <section className={`studio${focus ? ' focus' : ''}`} data-pane={pane} aria-label="המכתב">
       <div className="studio-head">
         <div className="studio-title">
           <span className="studio-ic"><Icon name="file" /></span>
-          <div><h2>{typeOf(d.letter_type).label}</h2><span className="hint">{initial?.is_final ? `נשלח למפנה${initial.finalized_at ? ` · ${fmtStamp(initial.finalized_at)}` : ''}` : 'טיוטה · נשמר אוטומטית'}</span></div>
+          <div><h2>{typeOf(d.letter_type).label}</h2><span className="hint">{initial?.is_final ? `נשלח${initial.finalized_at ? ` · ${fmtStamp(initial.finalized_at)}` : ''}` : 'טיוטה'}</span></div>
         </div>
-        <ol className="steps" aria-label="התקדמות">
-          {steps.map((x, i) => <li key={x.label} className={x.done ? 'done' : ''}><span className="num">{x.done ? <Icon name="check" size={12} /> : i + 1}</span>{x.label}</li>)}
-        </ol>
         <span className="save-state" aria-live="polite">{saveState === 'נשמר' && <Icon name="check" />}{saveState}</span>
+        <button type="button" className="btn btn-sm btn-ghost studio-focus" onClick={() => setFocus(!focus)} aria-pressed={focus}><Icon name={focus ? 'x' : 'externalLink'} size={15} />{focus ? 'יציאה ממסך מלא' : 'מסך מלא'}</button>
       </div>
       {initial?.is_final && <div className="callout"><div><Icon name="checkCircle" />נשלחה גרסה סופית. שינויים יגיעו למפנה רק אחרי ״עדכון המכתב הסופי״.</div></div>}
-      {!initial?.is_final && initial?.ai_draft_at && (
-        <div className="callout ai-callout"><div><Icon name="sparkles" />הטיוטה הוכנה אוטומטית מהמסמכים ומהבקשה של המפנה · {fmtStamp(initial.ai_draft_at)}. עברו עליה, השלימו את ממצאי הבדיקה (המקומות המסומנים בצהוב) ושלחו.</div></div>
-      )}
       {cancelled && <div className="callout bad"><div><Icon name="x" />התור בוטל.</div></div>}
 
       <nav className="studio-panes" aria-label="מעבר בין חלקי העורך">
-        {([['letter', 'המכתב', 'file'], ['ai', 'AI', 'sparkles'], ['details', 'פרטים', 'settings'], ['tools', 'כלים', 'template']] as const).map(([k, l, ic]) => (
-          <button key={k} type="button" aria-pressed={pane === k} onClick={() => setPane(k)}><Icon name={ic} size={16} />{l}{k === 'ai' && ai.running && <span className="ais-live" />}</button>
+        <button type="button" aria-pressed={pane === 'letter'} onClick={() => setPane('letter')}><Icon name="file" size={16} />המכתב</button>
+        {SIDE.map(([k, l, ic]) => (
+          <button key={k} type="button" aria-pressed={pane === 'side' && side === k} onClick={() => { setSide(k); setPane('side'); }}><Icon name={ic} size={16} />{l}{k === 'ai' && ai.running && <span className="ais-live" />}</button>
         ))}
       </nav>
 
@@ -395,14 +396,14 @@ export default function LetterEditor({
         </div>
 
         <aside className="studio-side">
-          <div className="card pane-ai pane-details">
-            <div className="card-h between"><span><Icon name="stethoscope" />ממצאי הבדיקה</span><Dictate onText={appendExam} label="הכתבה" /></div>
-            <AutoText id="ltExam" minRows={3} value={d.exam_notes} onChange={(e) => update({ exam_notes: e.target.value })} aria-label="ממצאי הבדיקה"
-              placeholder="לדוגמה: הליכה תקינה. כוח 5/5 בארבע הגפיים. ירידה בתחושה בדרמטום C6 משמאל." />
-            <span className="hint">ה־AI ישלב אותם בטיוטה. אפשר בקיצור.</span>
-          </div>
-
-          <div className={`card ai-card ai-studio pane-ai${ai.bad ? ' bad' : ''}`}>
+          <div className={`sp${side === 'ai' ? ' sp-ai' : ''}${ai.bad && side === 'ai' ? ' bad' : ''}`}>
+            <nav className="sp-tabs" aria-label="כלי העורך">
+              {SIDE.map(([k, l, ic]) => (
+                <button key={k} type="button" aria-pressed={side === k} onClick={() => setSide(k)}><Icon name={ic} size={15} />{l}{k === 'ai' && ai.running && <span className="ais-live" />}{k === 'exam' && d.exam_notes.trim() && <span className="sp-dot" />}</button>
+              ))}
+            </nav>
+            <div className="sp-body">
+            {side === 'ai' && (<>
             <div className="ais-h">
               <span className="ai-badge"><Icon name="sparkles" /></span>
               <div><b>סטודיו AI</b><small>ניסוח ושיפור ברמה של מומחה בכיר</small></div>
@@ -436,10 +437,14 @@ export default function LetterEditor({
               {ai.running && <button type="button" className="btn btn-sm" onClick={() => abort.current?.abort()}><Icon name="x" size={14} />עצירה</button>}
               {!ai.running && undo.length > 0 && <button type="button" className="btn btn-sm btn-ghost" onClick={undoAI}><Icon name="undo" size={14} />ביטול השינוי ({undo[0].label})</button>}
             </div>
-          </div>
-
-          <div className="card pane-details">
-            <div className="card-h"><Icon name="settings" />פרטי המכתב</div>
+            </>)}
+            {side === 'exam' && (<>
+            <div className="sp-h"><b>ממצאי הבדיקה</b><Dictate onText={appendExam} label="הכתבה" /></div>
+            <AutoText id="ltExam" minRows={5} value={d.exam_notes} onChange={(e) => update({ exam_notes: e.target.value })} aria-label="ממצאי הבדיקה"
+              placeholder="לדוגמה: הליכה תקינה. כוח 5/5 בארבע הגפיים. ירידה בתחושה בדרמטום C6 משמאל." />
+            <span className="hint">כותבים בקיצור או מכתיבים. ה־AI ישלב את זה בניסוח מלא.</span>
+            </>)}
+            {side === 'details' && (<>
             <label className="field" htmlFor="ltType"><span>סוג המכתב</span>
               <select id="ltType" value={d.letter_type} onChange={(e) => update({ letter_type: e.target.value as ReferralType })}>
                 {(Object.keys(TYPES) as ReferralType[]).map((k) => <option key={k} value={k}>{typeOf(k).label}</option>)}
@@ -448,10 +453,8 @@ export default function LetterEditor({
             <label className="field" htmlFor="ltTo"><span>לכבוד <small>כמה שורות? הפרידו ב־ |</small></span>
               <input id="ltTo" value={d.recipient} onChange={(e) => update({ recipient: e.target.value })} placeholder="המוסד לביטוח לאומי | סניף חדרה" disabled={ai.running} />
             </label>
-          </div>
-
-          <div className="card pane-tools">
-            <div className="card-h"><Icon name="template" />כלי כתיבה</div>
+            </>)}
+            {side === 'tools' && (<>
             <div className="tool-list">
               <button type="button" className="btn" onClick={() => editor.current?.insertHtml(textToHtml(outlineFor(d.letter_type)))} disabled={ai.running || cancelled}><Icon name="list" />מבנה מוכן לפי סוג המכתב</button>
               <TemplatePicker letterType={d.letter_type} onInsert={(t) => editor.current?.insertHtml(textToHtml(t))} selection={() => editor.current?.selectedText() ?? ''} />
@@ -461,6 +464,8 @@ export default function LetterEditor({
                 )}><Icon name="stethoscope" />הכנסת האבחנות ({diagnoses.length})</button>
               )}
               {placeholders > 0 && <button type="button" className="btn btn-warn" onClick={() => editor.current?.focusNextPlaceholder()}><Icon name="flag" />{placeholders} סימונים להשלמה · מעבר לבא</button>}
+            </div>
+            </>)}
             </div>
           </div>
         </aside>
