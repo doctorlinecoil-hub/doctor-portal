@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { EMAIL_RE, PAYERS, dbError, type Payer, type ReferralType } from '@/lib/constants';
+import { EMAIL_RE, dbError, type Payer, type ReferralType } from '@/lib/constants';
 import type { Service } from '@/lib/services';
 import ServicePicker from '@/components/ServicePicker';
 import { fmtDate, fmtDay, ilParts } from '@/lib/dates';
@@ -39,7 +39,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
   const [f, setF] = useState({ name: c.name, idNumber: c.idNumber, dob: c.dob, phone: c.phone, email: c.email, notes: c.notes, submittedBy: c.submittedBy });
   const [svc, setSvc] = useState<Service | null>(services.find((x) => x.id === c.serviceId) ?? (c.serviceId === null && c.type ? services.find((x) => x.base_type === c.type) ?? null : null));
   const [suggested, setSuggested] = useState<string | null>(null);
-  const [payer, setPayer] = useState<Payer>(c.payer);
+  const payer: Payer = c.payer;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [done, setDone] = useState(false);
@@ -240,13 +240,6 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
               <h3><Icon name="info" />פרטים נוספים</h3>
               <div className="grid-2">
                 <label className="field" htmlFor="by"><span>מי מעלה את התיק <small>שם איש הקשר אצלכם</small></span><input id="by" value={f.submittedBy} onChange={set('submittedBy')} /></label>
-                <div className="field"><span>מי משלם</span>
-                  <div className="payer">
-                    {(['referrer', 'patient'] as Payer[]).map((p) => (
-                      <label key={p}><input type="radio" name="payer" checked={payer === p} onChange={() => setPayer(p)} />{p === 'referrer' ? `אנחנו (${PAYERS.referrer})` : PAYERS.patient}</label>
-                    ))}
-                  </div>
-                </div>
               </div>
               <label className={`field${ai.has('notes') ? ' from-ai' : ''}`} htmlFor="notes"><span>הערות לרופא <small>לא חובה · מה חשוב שהרופא יידע</small> {tag('notes')}</span>
                 <textarea id="notes" rows={4} value={f.notes} onChange={set('notes')} placeholder="לדוגמה: מבקשים להתייחס לקשר הסיבתי לתאונה ולנכות התפקודית." />
