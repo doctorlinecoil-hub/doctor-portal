@@ -8,5 +8,5 @@ export default async function FirmCasesPage({ searchParams }: { searchParams: Pr
   const { f, q, open } = await searchParams;
   const { supabase, settings } = await requireUser(['firm']);
   const rows = await loadAppointments(supabase, { order: 'desc', limit: 1000 });
-  return <FirmCasesView rows={rows} filter={f || 'all'} q={String(q || '').slice(0, 60)} open={open} gate={settings.letter_requires_payment !== false} />;
+  return <FirmCasesView rows={rows} filter={f || 'all'} q={String(q || '').slice(0, 60)} open={open} gate={settings.letter_requires_payment !== false} clinicPhone={settings.lh_phone || ''} />;
 }
