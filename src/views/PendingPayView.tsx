@@ -11,8 +11,9 @@ export type PayLine = { amount: number; method: PayMethod; paid_on: string };
  * Documents that are ready and wait for the doctor's payment approval. The doctor sees what was paid
  * (amount and method), notes a payment if needed, and approves: the document opens and goes out by email.
  */
-export function PendingPayView({ waiting, approved, gate, pays = {}, action }: {
+export function PendingPayView({ waiting, approved, gate, pays = {}, action, remind }: {
   waiting: ApptRow[]; approved: ApptRow[]; gate: boolean; pays?: Record<string, PayLine[]>;
+  remind?: (r: ApptRow) => React.ReactNode;
   action: (r: ApptRow, undo?: boolean) => React.ReactNode;
 }) {
   const to = (r: ApptRow) => (r.firm_kind === 'private' || r.payer === 'patient' ? 'המטופל' : r.firm_name || 'המפנה');
@@ -58,6 +59,7 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, action }: {
                 <a className="btn btn-sm btn-ghost" href={`/letters/${r.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={14} />המסמך</a>
               </header>
               <Paid r={r} />
+              {remind?.(r)}
               <footer>
                 <span className="pp-to"><Icon name="mail" size={14} />יישלח ל{to(r)}</span>
                 {action(r)}
