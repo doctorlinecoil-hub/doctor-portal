@@ -2,6 +2,7 @@ import 'server-only';
 import { ils, payLines, typeOf, type Settings } from './constants';
 import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } from './messages';
 import { appUrl } from './mail';
+import { fmtDate } from './dates';
 
 // Email templates. Table layout and inline styles so they look right in Gmail, Outlook and phones. RTL Hebrew.
 
@@ -284,9 +285,17 @@ export function firmUpdateEmail(s: Settings, a: ApptInfo, what: { notes: number;
 export function letterEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean; attached: boolean; link?: string }): Rendered {
   const label = (a.label || typeOf(a.type).label);
   const subject = `${label} · ${a.patientName} · ${s.lh_name}`;
+  const w = when(a.startsAt);
   const body =
-    p(o.forReferrer ? `${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.` : `שלום ${esc(a.patientName)},<br>${esc(label)} שלך מוכנה.`) +
-    p(o.attached ? 'המסמך מצורף להודעה כקובץ PDF.' : 'אפשר לצפות במסמך ולהוריד אותו מתוך המערכת.') +
+    p(o.forReferrer ? `${esc(label)} עבור <b>${esc(a.patientName)}</b> מוכנה.` : `שלום ${esc(a.patientName)},<br>${esc(label)} שלך מוכנה.`) +
+    card([
+      ['מטופל/ת', esc(a.patientName)],
+      ['סוג המסמך', esc(label)],
+      ['תאריך הביקור', esc(fmtDate(w.date))],
+      ['מספר תיק', String(a.caseNo)],
+      ...(o.forReferrer && a.firmName ? [['מפנה', esc(a.firmName)] as [string, string]] : []),
+    ]) +
+    p(o.attached ? '<b>המסמך מצורף להודעה כקובץ PDF</b>, חתום ומוכן להגשה.' : 'אפשר לצפות במסמך ולהוריד אותו מתוך המערכת.') +
     (o.link ? `<div style="margin:6px 0 10px">${button(o.link, o.attached ? 'צפייה בתיק' : 'צפייה והורדה')}</div>` : '');
   return { subject, html: layout(s, { preheader: `${label} מוכנה`, title: `${label} מוכנה`, body }), text: textOf([subject, o.attached ? 'המסמך מצורף כ־PDF.' : '', o.link]) };
 }
