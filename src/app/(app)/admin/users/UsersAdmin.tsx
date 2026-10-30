@@ -4,10 +4,11 @@ import Icon from '@/components/Icon';
 import ShareLink from '@/components/ShareLink';
 import { KindBadge } from '@/components/Badges';
 import { KIND, type ReferrerKind } from '@/lib/constants';
-import { addUser, createFirm, resetPassword, resetTwoStep, setFirmActive, setUserActive, updateFirm } from '../actions';
+import { addUser, createFirm, resetPassword, resetTwoStep, setFirmActive, setFirmPrices, setUserActive, updateFirm } from '../actions';
 
 export type FirmRow = { id: string; name: string; kind: ReferrerKind; tax_id: string; contact_name: string; phone: string; email: string; active: boolean; book_code?: string | null };
 export type UserRow = { id: string; role: 'admin' | 'doctor' | 'firm'; firm_id: string | null; full_name: string; email: string; must_change_password: boolean; active: boolean };
+export type SvcRow = { id: string; label: string; price: number; active: boolean };
 type R = { ok: boolean; error?: string; email?: string; password?: string; info?: string };
 
 const ROLE = { admin: 'מנהל', doctor: 'רופא', firm: 'מפנה' } as const;
@@ -47,7 +48,42 @@ function FirmFields({ v, set, idp }: { v: typeof EMPTY_FIRM; set: (v: typeof EMP
   function setTax(t: string) { set({ ...v, taxId: t.replace(/[^\d]/g, '') }); }
 }
 
-export default function UsersAdmin({ firms, users, me, preview }: { firms: FirmRow[]; users: UserRow[]; me: string; preview?: boolean }) {
+/** The referrer's own prices. Empty = the regular list price. */
+function PriceList({ firmId, services, initial, run, busy }: { firmId: string; services: SvcRow[]; initial: Record<string, number>; run: (fn: () => Promise<R>) => void; busy: boolean }) {
+  const [v, setV] = useState<Record<string, string>>(() => Object.fromEntries(services.map((x) => [x.id, initial[x.id] != null ? String(initial[x.id]) : ''])));
+  const list = services.filter((x) => x.active || initial[x.id] != null);
+  const changed = list.some((x) => (v[x.id] ?? '') !== (initial[x.id] != null ? String(initial[x.id]) : ''));
+  const custom = list.filter((x) => (v[x.id] ?? '').trim() !== '').length;
+  return (
+    <div className="ua-prices">
+      <div className="ua-prices-h"><b>מחירון אישי</b><span className="hint">{custom ? `${custom} מחירים מיוחדים · השאר לפי המחירון הרגיל` : 'כרגע לפי המחירון הרגיל. כתבו מחיר כדי לסגור מחיר אחר עם המפנה.'}</span></div>
+      <ul>
+        {list.map((x) => {
+          const val = v[x.id] ?? '';
+          const n = Number(val);
+          const diff = val.trim() !== '' && Number.isFinite(n) ? n - x.price : 0;
+          return (
+            <li key={x.id} className={val.trim() ? 'set' : ''}>
+              <span className="ua-svc">{x.label}{!x.active && <small> · לא פעיל</small>}</span>
+              <span className="ua-list num">רגיל {x.price ? `₪${x.price.toLocaleString('he-IL')}` : '—'}</span>
+              <span className="ua-in"><i>₪</i><input inputMode="decimal" dir="ltr" value={val} placeholder={x.price ? String(x.price) : '0'} aria-label={`מחיר ל${x.label}`} onChange={(e) => setV({ ...v, [x.id]: e.target.value.replace(/[^\d.]/g, '') })} /></span>
+              <span className={`ua-diff num${diff < 0 ? ' down' : diff > 0 ? ' up' : ''}`}>{diff ? `${diff > 0 ? '+' : '−'}₪${Math.abs(diff).toLocaleString('he-IL')}` : ''}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="row" style={{ gap: 8 }}>
+        <button type="button" className="btn btn-primary btn-sm" disabled={busy || !changed} onClick={() => run(() => setFirmPrices(firmId, list.map((x) => ({ serviceId: x.id, price: (v[x.id] ?? '').trim() === '' ? null : Number(v[x.id]) }))))}><Icon name="save" size={15} />שמירת המחירון</button>
+        {custom > 0 && <button type="button" className="btn btn-sm btn-ghost" onClick={() => setV(Object.fromEntries(list.map((x) => [x.id, ''])))}>חזרה למחירון הרגיל</button>}
+      </div>
+    </div>
+  );
+}
+
+export default function UsersAdmin({ firms, users, me, preview, services = [], prices = {} }: { firms: FirmRow[]; users: UserRow[]; me: string; preview?: boolean; services?: SvcRow[]; prices?: Record<string, Record<string, number>> }) {
+  const [tab, setTab] = useState<'firms' | 'staff'>('firms');
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState<{ id: string; part: 'prices' | 'users' | 'edit' } | null>(null);
   const [creds, setCreds] = useState<{ email: string; password: string } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -91,11 +127,20 @@ export default function UsersAdmin({ firms, users, me, preview }: { firms: FirmR
       {creds && <Credentials email={creds.email} password={creds.password} onClose={() => setCreds(null)} />}
       {msg && <p className={msg.ok ? 'ok-msg' : 'err'} role="status">{msg.text}</p>}
 
-      <div className="row">
-        <button type="button" className="btn btn-primary" onClick={() => setShowNew(!showNew)}><Icon name="plus" />מפנה חדש</button>
+      <div className="ua-bar">
+        <nav className="ua-tabs" aria-label="מפנים או צוות">
+          <button type="button" aria-pressed={tab === 'firms'} onClick={() => setTab('firms')}><Icon name="briefcase" size={16} />מפנים <span className="num">{firms.length}</span></button>
+          <button type="button" aria-pressed={tab === 'staff'} onClick={() => setTab('staff')}><Icon name="stethoscope" size={16} />צוות ומשתמשים</button>
+        </nav>
+        {tab === 'firms' && (
+          <>
+            <label className="ua-search"><Icon name="search" size={16} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש מפנה" aria-label="חיפוש מפנה" /></label>
+            <button type="button" className="btn btn-primary" onClick={() => setShowNew(!showNew)}><Icon name="plus" />מפנה חדש</button>
+          </>
+        )}
       </div>
 
-      {showNew && (
+      {tab === 'firms' && showNew && (
         <section className="panel">
           <div className="panel-head"><h2><Icon name="briefcase" />מפנה חדש: משרד עורכי דין או מתווך</h2></div>
           <FirmFields v={nf} set={setNf} idp="nf" />
@@ -108,7 +153,8 @@ export default function UsersAdmin({ firms, users, me, preview }: { firms: FirmR
         </section>
       )}
 
-      <div className="cols" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))' }}>
+      {tab === 'staff' && (
+        <div className="cols" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))' }}>
         <section className="panel flush">
           <div className="panel-head"><h2><Icon name="stethoscope" />צוות המרפאה</h2></div>
           <div className="table-wrap"><table className="t"><thead><tr><th>שם</th><th>תפקיד</th><th>פעולות</th></tr></thead><tbody>{staff.map(userRow)}</tbody></table></div>
@@ -136,38 +182,54 @@ export default function UsersAdmin({ firms, users, me, preview }: { firms: FirmR
         </section>
       </div>
 
-      <h2>מפנים ({firms.length})</h2>
-      {firms.map((f) => {
-        const list = users.filter((u) => u.firm_id === f.id);
-        const editing = edit?.id === f.id;
-        return (
-          <section className="panel flush" key={f.id} style={{ opacity: f.active ? 1 : 0.6 }}>
-            <div className="panel-head">
-              <div className="stack-sm" style={{ gap: 4 }}>
-                <div className="row"><h2>{f.name}</h2><KindBadge kind={f.kind} />{!f.active && <span className="badge b-cancelled">מושבת</span>}</div>
-                <span className="hint">{[f.tax_id && `ח.פ ${f.tax_id}`, f.contact_name, f.phone, f.email].filter(Boolean).join(' · ')}</span>
-              </div>
-              <div className="row" style={{ gap: 6 }}>
-                <button type="button" className="btn btn-sm" onClick={() => setEdit(editing ? null : { id: f.id, v: { name: f.name, kind: f.kind, taxId: f.tax_id, contactName: f.contact_name, phone: f.phone, firmEmail: f.email, userName: '', userEmail: '' } })}>{editing ? 'סגירה' : 'עריכה'}</button>
-                <button type="button" className={`btn btn-sm btn-danger${armed === 'firm' + f.id ? ' armed' : ''}`} disabled={busy} onClick={confirmThen('firm' + f.id, () => run(() => setFirmActive(f.id, !f.active)))}>{armed === 'firm' + f.id ? 'לאשר?' : f.active ? 'השבתה' : 'הפעלה'}</button>
-              </div>
-            </div>
-            {f.active && f.book_code && f.kind !== 'private' && (
-              <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--line)' }}>
-                <ShareLink compact path={`/book?r=${f.book_code}`} title="קישור אישי לקביעת תור (המשרד כבר ממולא):" />
-              </div>
-            )}
-            {editing && edit && (
-              <div className="stack" style={{ padding: 20, borderBottom: '1px solid var(--line)' }}>
-                <FirmFields v={edit.v} set={(v) => setEdit({ id: f.id, v })} idp={`e${f.id.slice(0, 4)}`} />
-                <div className="row"><button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => updateFirm(f.id, edit.v), () => setEdit(null))}><Icon name="save" />שמירה</button></div>
-              </div>
-            )}
-            {list.length ? <div className="table-wrap"><table className="t"><thead><tr><th>שם</th><th>תפקיד</th><th>פעולות</th></tr></thead><tbody>{list.map(userRow)}</tbody></table></div>
-              : <p className="muted" style={{ padding: 20 }}>אין משתמשים</p>}
-          </section>
-        );
-      })}
+      )}
+
+      {tab === 'firms' && (
+        <div className="ua-grid">
+          {firms.filter((f) => !q.trim() || [f.name, f.contact_name, f.email, f.phone].join(' ').includes(q.trim())).map((f) => {
+            const list = users.filter((u) => u.firm_id === f.id);
+            const fp = prices[f.id] ?? {};
+            const nPrices = Object.keys(fp).length;
+            const part = open?.id === f.id ? open.part : null;
+            const toggle = (p: 'prices' | 'users' | 'edit') => {
+              if (part === p) return setOpen(null);
+              setOpen({ id: f.id, part: p });
+              if (p === 'edit') setEdit({ id: f.id, v: { name: f.name, kind: f.kind, taxId: f.tax_id, contactName: f.contact_name, phone: f.phone, firmEmail: f.email, userName: '', userEmail: '' } });
+            };
+            return (
+              <article key={f.id} className={`ua-firm${f.active ? '' : ' off'}${part ? ' open' : ''}`}>
+                <header>
+                  <span className="fc-av">{f.name.trim().slice(0, 1)}</span>
+                  <div className="ua-firm-m">
+                    <div className="row" style={{ gap: 6 }}><b>{f.name}</b><KindBadge kind={f.kind} />{!f.active && <span className="badge b-cancelled">מושבת</span>}</div>
+                    <small>{[f.contact_name, f.phone, f.email].filter(Boolean).join(' · ') || 'אין פרטי קשר'}</small>
+                  </div>
+                </header>
+                <div className="ua-chips">
+                  <button type="button" aria-pressed={part === 'prices'} onClick={() => toggle('prices')}><Icon name="receipt" size={14} />מחירון{nPrices > 0 && <span className="ua-n">{nPrices}</span>}</button>
+                  <button type="button" aria-pressed={part === 'users'} onClick={() => toggle('users')}><Icon name="users" size={14} />משתמשים <span className="ua-n">{list.length}</span></button>
+                  <button type="button" aria-pressed={part === 'edit'} onClick={() => toggle('edit')}><Icon name="settings" size={14} />פרטים</button>
+                  <button type="button" className={`danger${armed === 'firm' + f.id ? ' armed' : ''}`} disabled={busy} onClick={confirmThen('firm' + f.id, () => run(() => setFirmActive(f.id, !f.active)))}>{armed === 'firm' + f.id ? 'לאשר?' : f.active ? 'השבתה' : 'הפעלה'}</button>
+                </div>
+                {part === 'prices' && <PriceList firmId={f.id} services={services} initial={fp} run={(fn) => run(fn)} busy={busy} />}
+                {part === 'users' && (
+                  <div className="ua-users">
+                    {f.active && f.book_code && f.kind !== 'private' && <ShareLink compact path={`/book?r=${f.book_code}`} title="קישור אישי לקביעת תור:" />}
+                    {list.length ? <div className="table-wrap"><table className="t"><thead><tr><th>שם</th><th>תפקיד</th><th>פעולות</th></tr></thead><tbody>{list.map(userRow)}</tbody></table></div>
+                      : <p className="muted">אין משתמשים. מוסיפים בלשונית ״צוות ומשתמשים״.</p>}
+                  </div>
+                )}
+                {part === 'edit' && edit?.id === f.id && (
+                  <div className="ua-edit">
+                    <FirmFields v={edit.v} set={(v) => setEdit({ id: f.id, v })} idp={`e${f.id.slice(0, 4)}`} />
+                    <div className="row"><button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => run(() => updateFirm(f.id, edit.v), () => { setEdit(null); setOpen(null); })}><Icon name="save" size={15} />שמירה</button></div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
