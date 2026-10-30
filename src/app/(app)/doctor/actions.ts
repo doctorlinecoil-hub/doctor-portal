@@ -149,8 +149,9 @@ export async function setPaymentOk(id: string, ok: boolean): Promise<Result> {
   if (!c) return { ok: false, error: 'אין הרשאה.' };
   const { error } = await c.supabase.rpc('set_payment_ok', { p_id: id, p_ok: ok });
   if (error) return { ok: false, error: dbError(error) };
-  if (ok) after(() => deliverLetter(id, { onlyIfAwaitingPayment: true }).then(() => undefined).catch(() => undefined));
+  // approved: the document goes out now (to the referrer, and the patient when there is an address), unless it was already sent
+  if (ok) after(() => deliverLetter(id).then(() => undefined).catch(() => undefined));
   done(id);
   revalidatePath('/firm');
-  return { ok: true, info: ok ? 'התשלום אושר. המסמך זמין עכשיו למפנה, ואם חיכה, נשלח אליו במייל.' : 'אישור התשלום בוטל. המסמך שוב ממתין לתשלום.' };
+  return { ok: true, info: ok ? 'התשלום אושר. המסמך פתוח עכשיו לצפייה ונשלח במייל.' : 'אישור התשלום בוטל. המסמך שוב ממתין לתשלום.' };
 }
