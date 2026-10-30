@@ -2610,3 +2610,48 @@ a.dx-next:hover { text-decoration: none; transform: translateY(-2px); border-col
   .rx-quick > div::-webkit-scrollbar { display: none; }
   .rx-quick button { white-space: nowrap; flex: none; }
 }
+
+/* ===== v44 referrers page: tabs, cards, price list ===== */
+.ua-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ua-tabs { display: inline-flex; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.ua-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 0; border-radius: 10px; background: none; font: inherit; font-weight: 600; font-size: 14px; color: var(--fg-2); cursor: pointer; }
+.ua-tabs button[aria-pressed="true"] { background: linear-gradient(135deg, #0D1B2A, #0F3B44); color: #fff; }
+.ua-tabs .num { font-size: 12px; opacity: .75; }
+.ua-search { flex: 1; min-width: 180px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.ua-search input { flex: 1; border: 0 !important; box-shadow: none !important; outline: 0; padding: 10px 0; background: none; }
+.ua-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 14px; align-items: start; }
+.ua-firm { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 18px rgba(16,24,40,.05); transition: border-color .15s, box-shadow .15s; }
+.ua-firm.open { grid-column: 1 / -1; border-color: var(--accent-line); box-shadow: 0 12px 30px rgba(16,24,40,.08); }
+.ua-firm.off { opacity: .6; }
+.ua-firm header { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.ua-firm-m b { font-size: 16px; }
+.ua-firm-m small { display: block; color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ua-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ua-chips button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); font: inherit; font-size: 13px; color: var(--fg-2); cursor: pointer; }
+.ua-chips button:hover { border-color: var(--accent); color: var(--accent); }
+.ua-chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ua-chips button.danger { margin-inline-start: auto; color: var(--bad, #B42318); background: none; }
+.ua-chips button.danger.armed { background: #FEE4E2; border-color: #FDA29B; }
+.ua-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 11.5px; font-weight: 700; background: rgba(11,122,117,.12); color: var(--accent); }
+.ua-chips button[aria-pressed="true"] .ua-n { background: rgba(255,255,255,.25); color: #fff; }
+.ua-prices, .ua-users, .ua-edit { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px dashed var(--line); animation: ppIn .18s ease-out; }
+.ua-prices-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ua-prices ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 8px; }
+.ua-prices li { display: grid; grid-template-columns: minmax(0, 1fr) auto 120px 64px; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.ua-prices li.set { background: #F0FDFA; border-color: #99F6E4; }
+.ua-svc { font-weight: 600; font-size: 14px; }
+.ua-svc small { font-weight: 400; color: var(--muted); }
+.ua-list { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.ua-in { position: relative; display: block; }
+.ua-in i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-weight: 700; color: var(--muted); }
+.ua-in input { padding: 8px 28px 8px 10px; font-weight: 700; text-align: left; }
+.ua-diff { font-size: 12px; font-weight: 700; }
+.ua-diff.down { color: #B45309; }
+.ua-diff.up { color: #15803D; }
+@media (max-width: 560px) {
+  .ua-tabs { width: 100%; }
+  .ua-tabs button { flex: 1; justify-content: center; }
+  .ua-prices li { grid-template-columns: minmax(0, 1fr) 110px; }
+  .ua-list { grid-column: 1; grid-row: 2; }
+  .ua-diff { grid-column: 2; grid-row: 2; text-align: center; }
+}
