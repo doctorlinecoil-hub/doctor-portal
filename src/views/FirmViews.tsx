@@ -4,6 +4,7 @@ import { PageHead, Stat, Empty } from '@/components/ui';
 import { PayBadge, StatusBadge, TypeBadge } from '@/components/Badges';
 import { PAYERS, PAY_METHODS, ils, payState } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
+import FirmCasesBrowser from '@/components/FirmCasesBrowser';
 import { age, fmtDate, fmtDay, fmtStamp, ilParts, todayIL } from '@/lib/dates';
 import type { ApptRow, CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/types';
 
@@ -35,50 +36,85 @@ export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; 
 
 export function FirmDashboardView({ firmName, clinicName, rows }: { firmName: string; clinicName: string; rows: ApptRow[] }) {
   const today = todayIL();
-  const upcoming = rows.filter((r) => r.status !== 'cancelled' && ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const open = rows.filter((r) => r.status === 'pending' || r.status === 'booked' || r.status === 'draft').length;
-  const pending = rows.filter((r) => r.status === 'pending').length;
+  const live = rows.filter((r) => r.status !== 'cancelled');
+  const upcoming = live.filter((r) => ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const pending = rows.filter((r) => r.status === 'pending').sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const active = rows.filter((r) => r.status === 'booked' || r.status === 'draft');
   const ready = rows.filter((r) => r.status === 'done').sort((a, b) => b.starts_at.localeCompare(a.starts_at));
-  const balance = rows.reduce((a, r) => a + owes(r), 0);
+  const patients = new Set(live.map((r) => (r.patient_id_number || r.patient_name || r.id).replace(/\s/g, ''))).size;
+  const hour = Number(ilParts(new Date().toISOString()).time.slice(0, 2));
+  const hello = hour < 12 ? 'בוקר טוב' : hour < 18 ? 'צהריים טובים' : 'ערב טוב';
+  const kpi = (href: string, icon: string, tone: string, label: string, value: number, sub?: string) => (
+    <Link href={href} className="fd-kpi">
+      <span className={`fd-kpi-ic ${tone}`}><Icon name={icon} /></span>
+      <span><b className="num">{value}</b><em>{label}</em>{sub && <small>{sub}</small>}</span>
+    </Link>
+  );
   return (
     <>
-      <PageHead title={`שלום, ${firmName}`} sub={`ניהול תורים ותיקים מול ${clinicName}`}>
-        <Link href="/firm/book" className="btn btn-primary btn-lg"><Icon name="calendarPlus" />קביעת תור חדש</Link>
-      </PageHead>
-      <div className="stats">
-        <Stat icon="calendar" label="תורים קרובים" value={upcoming.length} tone="info" />
-        <Stat icon="folder" label="תיקים בטיפול" value={open} tone="warn" sub={pending ? `${pending} ממתינים לאישור הרופא` : undefined} />
-        <Stat icon="fileCheck" label="מכתבים מוכנים" value={ready.length} tone="ok" />
-        <Stat icon="wallet" label="יתרה לתשלום" value={ils(balance)} tone={balance > 0 ? 'bad' : 'violet'} />
+      <section className="fd-hero">
+        <div>
+          <span className="fd-hello">{hello}</span>
+          <h1>{firmName}</h1>
+          <p>הדשבורד שלכם מול {clinicName}: כל המטופלים שהפניתם, הבקשות הממתינות והמסמכים המוכנים.</p>
+          <form className="fd-search" action="/firm/cases" role="search">
+            <Icon name="search" />
+            <input name="q" placeholder="חיפוש מטופל לפי שם מלא או תעודת זהות" aria-label="חיפוש מטופל" />
+            <button className="btn btn-sm" type="submit">חיפוש</button>
+          </form>
+        </div>
+        <Link href="/firm/book" className="fd-new">
+          <span className="fd-new-ic"><Icon name="calendarPlus" /></span>
+          <b>זימון חדש</b>
+          <small>קביעת תור למטופל בכמה קליקים</small>
+          <span className="fd-new-go">להתחלה<Icon name="arrowLeft" size={16} /></span>
+        </Link>
+      </section>
+
+      <div className="fd-kpis">
+        {kpi('/firm/cases?f=pending', 'clock', 'warn', 'ממתינים לאישור הרופא', pending.length)}
+        {kpi('/firm/cases?f=upcoming', 'calendar', 'info', 'תורים קרובים', upcoming.length)}
+        {kpi('/firm/cases?f=open', 'folder', 'violet', 'תיקים בטיפול', active.length + pending.length)}
+        {kpi('/firm/cases?f=done', 'fileCheck', 'ok', 'מסמכים מוכנים', ready.length, `${patients} מטופלים בסך הכל`)}
       </div>
-      <div className="cols-side">
+
+      <div className="fd-grid">
         <section className="panel flush">
-          <div className="panel-head"><h2><Icon name="calendar" />התורים הקרובים</h2><Link href="/firm/cases" className="btn btn-ghost btn-sm">כל התיקים</Link></div>
-          {upcoming.length === 0 ? <Empty icon="calendar">אין תורים קרובים. <Link href="/firm/book">לקביעת תור</Link></Empty> : (
-            <div className="list">
-              {groupByDay(upcoming.slice(0, 8)).map((g) => (
-                <div key={g.date}>
-                  <div className="list-day">{fmtDay(g.date)} <span>{fmtDate(g.date)}</span></div>
-                  {g.rows.map((r) => <ApptItem key={r.id} r={r} href={`/firm/cases/${r.id}`} />)}
-                </div>
+          <div className="panel-head"><h2><Icon name="fileCheck" />מסמכים מוכנים להורדה</h2><Link href="/firm/cases?f=done" className="btn btn-ghost btn-sm">הכל</Link></div>
+          {ready.length === 0 ? <Empty icon="file">כשהרופא יסיים מסמך, הוא יופיע כאן להורדה.</Empty> : (
+            <ul className="fd-docs">
+              {ready.slice(0, 8).map((r) => (
+                <li key={r.id}>
+                  <span className="fd-pdf">PDF</span>
+                  <Link href={`/firm/cases?open=${r.id}`} className="fd-doc-main"><b>{r.patient_name || 'מטופל'}</b><small className="num">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)} · תיק {r.case_no}</small></Link>
+                  <a className="btn btn-sm btn-ok" href={`/letters/${r.id}/print`} target="_blank" rel="noopener"><Icon name="download" size={15} />הורדה</a>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
-        <section className="panel flush">
-          <div className="panel-head"><h2><Icon name="fileCheck" />מכתבים מוכנים</h2></div>
-          {ready.length === 0 ? <Empty icon="file">כשהרופא יסיים מכתב, הוא יופיע כאן.</Empty> : (
-            <div className="list">
-              {ready.slice(0, 6).map((r) => (
-                <Link key={r.id} href={`/firm/cases/${r.id}`} className="item" style={{ gridTemplateColumns: '40px minmax(0,1fr) auto' }}>
-                  <span className="file-ic" style={{ width: 36, height: 36 }}>PDF</span>
-                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{labelOf(r)} · תיק {r.case_no}</span></span>
-                  <span className="item-side">{r.payer === 'referrer' && <PayBadge state={payState(r.price, r.paid)} />}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+
+        <div className="stack">
+          <section className="panel flush">
+            <div className="panel-head"><h2><Icon name="clock" />ממתינים לאישור</h2>{pending.length > 0 && <span className="badge b-pending">{pending.length}</span>}</div>
+            {pending.length === 0 ? <Empty icon="checkCircle">אין בקשות שממתינות לאישור.</Empty> : (
+              <div className="list">{pending.slice(0, 5).map((r) => <ApptItem key={r.id} r={r} href={`/firm/cases/${r.id}`} />)}</div>
+            )}
+          </section>
+          <section className="panel flush">
+            <div className="panel-head"><h2><Icon name="calendar" />התורים הקרובים</h2><Link href="/firm/cases?f=upcoming" className="btn btn-ghost btn-sm">הכל</Link></div>
+            {upcoming.filter((r) => r.status !== 'pending').length === 0 ? <Empty icon="calendar">אין תורים מאושרים קרובים. <Link href="/firm/book">לזימון חדש</Link></Empty> : (
+              <div className="list">
+                {groupByDay(upcoming.filter((r) => r.status !== 'pending').slice(0, 6)).map((g) => (
+                  <div key={g.date}>
+                    <div className="list-day">{fmtDay(g.date)} <span>{fmtDate(g.date)}</span></div>
+                    {g.rows.map((r) => <ApptItem key={r.id} r={r} href={`/firm/cases/${r.id}`} />)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </>
   );
@@ -97,6 +133,7 @@ export function groupByDay(rows: ApptRow[]) {
 
 const FIRM_FILTERS = [
   { key: 'all', label: 'הכל' },
+  { key: 'pending', label: 'ממתינים לאישור' },
   { key: 'upcoming', label: 'קרובים' },
   { key: 'open', label: 'בטיפול' },
   { key: 'done', label: 'מוכנים' },
@@ -107,6 +144,7 @@ export function filterFirmRows(rows: ApptRow[], f: string) {
   const today = todayIL();
   switch (f) {
     case 'upcoming': return rows.filter((r) => r.status !== 'cancelled' && ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+    case 'pending': return rows.filter((r) => r.status === 'pending');
     case 'open': return rows.filter((r) => r.status === 'pending' || r.status === 'booked' || r.status === 'draft');
     case 'done': return rows.filter((r) => r.status === 'done');
     case 'cancelled': return rows.filter((r) => r.status === 'cancelled');
@@ -125,14 +163,14 @@ export function searchFirmRows(rows: ApptRow[], q: string) {
     (/^\d+$/.test(t) && String(r.case_no) === t));
 }
 
-export function FirmCasesView({ rows: all, filter, q = '' }: { rows: ApptRow[]; filter: string; q?: string }) {
+export function FirmCasesView({ rows: all, filter, q = '', open }: { rows: ApptRow[]; filter: string; q?: string; open?: string }) {
   const rows = searchFirmRows(all, q);
   const list = filterFirmRows(rows, filter);
   const qs = (f: string) => { const p = new URLSearchParams(); if (f !== 'all') p.set('f', f); if (q.trim()) p.set('q', q.trim()); const x = p.toString(); return x ? `/firm/cases?${x}` : '/firm/cases'; };
   return (
     <>
-      <PageHead title="התיקים שלי" sub="כל התורים שקבעתם, הסטטוס של כל תיק והמכתבים המוכנים">
-        <Link href="/firm/book" className="btn btn-primary"><Icon name="plus" />תור חדש</Link>
+      <PageHead title="התיקים שלי" sub="כל המטופלים שהפניתם: תורים, סטטוס, והמסמכים של הרופא. לחיצה על שורה פותחת את התיק.">
+        <Link href="/firm/book" className="btn btn-primary"><Icon name="calendarPlus" />זימון חדש</Link>
       </PageHead>
       <form className="search-big" action="/firm/cases" role="search" style={{ marginBottom: 14 }}>
         <Icon name="search" />
@@ -148,29 +186,7 @@ export function FirmCasesView({ rows: all, filter, q = '' }: { rows: ApptRow[]; 
         ))}
       </nav>
       <section className="panel flush">
-        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : (
-          <div className="table-wrap">
-            <table className="t">
-              <thead><tr><th>תיק</th><th>מטופל</th><th>סוג</th><th>מועד</th><th>סטטוס</th><th>תשלום</th><th /></tr></thead>
-              <tbody>
-                {list.map((r) => {
-                  const p = ilParts(r.starts_at);
-                  return (
-                    <tr key={r.id}>
-                      <td className="num muted">{r.case_no}</td>
-                      <td><Link href={`/firm/cases/${r.id}`} className="row-link"><b style={{ fontWeight: 500 }}>{r.patient_name || 'ממתין לפרטים'}</b></Link>{r.patient_id_number ? <div className="hint num">ת״ז {r.patient_id_number}</div> : null}</td>
-                      <td>{labelOf(r)}</td>
-                      <td className="num">{fmtDate(p.date)} <span className="muted">{p.time}</span></td>
-                      <td><StatusBadge status={r.status} /></td>
-                      <td>{r.payer === 'patient' ? <span className="muted">המטופל משלם</span> : <PayBadge state={payState(r.price, r.paid)} />}</td>
-                      <td><Link href={`/firm/cases/${r.id}`} className="btn btn-ghost btn-sm">לתיק<Icon name="chevron" /></Link></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : <FirmCasesBrowser rows={list} all={all} initial={open} />}
       </section>
     </>
   );
@@ -334,9 +350,13 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, 
           {actions}
         </div>
         <div className="stack">
-          {c.payer === 'referrer' || payments.length ? <PaymentSummary price={c.price} paid={paid} payer={c.payer} payments={payments} /> : (
-            <section className="panel"><div className="panel-head"><h2><Icon name="wallet" />תשלום</h2></div><p className="muted">המטופל משלם ישירות למרפאה.</p></section>
-          )}
+          {payments.length > 0 && <PaymentSummary price={c.price} paid={paid} payer={c.payer} payments={payments} />}
+          <section className="panel">
+            <div className="panel-head"><h2><Icon name="calendarPlus" />זימון נוסף למטופל</h2></div>
+            <p className="muted">צריך ביקור נוסף או מסמך נוסף לאותו מטופל? קובעים תור חדש בכמה קליקים.</p>
+            <a className="btn btn-primary" href="/firm/book"><Icon name="calendarPlus" />זימון חדש</a>
+            <a className="btn btn-ghost" href={`/firm/cases?open=${c.id}`}><Icon name="list" />כל ההפניות של המטופל</a>
+          </section>
         </div>
       </div>
     </>
