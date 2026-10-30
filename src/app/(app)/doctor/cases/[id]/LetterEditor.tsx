@@ -241,7 +241,7 @@ export default function LetterEditor({
         return;
       }
       const r = parseDraft(text);
-      update({ recipient: r.recipient || before.recipient, subject: r.subject || before.subject });
+      update({ recipient: r.recipient || before.recipient });
       onBody(textToHtml(r.body));
       await save();
       setAi({
@@ -317,15 +317,17 @@ export default function LetterEditor({
             </div>
           </header>
         )}
-      <div className="lt-date">תאריך: {fmtDate(todayIL())}</div>
-      <div className="lt-to">{to.length ? <><div>לכבוד</div>{to.map((r) => <div key={r}><b>{r}</b></div>)}</> : <span className="ghost">לכבוד — ממלאים בפרטי המכתב</span>}</div>
-      <h1 className="pg-title">{opinion ? `חוות דעת רפואית${to[0] ? ` עבור ${to[0]}` : ''}` : (paper.title || typeOf(d.letter_type).label)}</h1>
-      <div className="lt-subj">{d.subject ? <>הנדון: <u>{d.subject}</u></> : <span className="ghost">הנדון — ממלאים בפרטי המכתב</span>}</div>
-      <div className="lt-pt">
-        <span><b>שם:</b> {paper.patient.name}</span>
-        <span><b>ת.ז.:</b> {paper.patient.idNumber}</span>
-        {paper.patient.dob && <span><b>תאריך לידה:</b> {fmtDate(paper.patient.dob)}{ag != null ? ` (גיל ${ag})` : ''}</span>}
+      <div className="of-top">
+        <div className="of-title">{opinion ? 'חוות דעת רפואית' : (paper.title || typeOf(d.letter_type).label)}</div>
+        <div className="of-meta"><div><span>תאריך</span><b className="num">{fmtDate(todayIL())}</b></div>{paper.visitDate && paper.visitDate !== todayIL() && <div><span>תאריך הבדיקה</span><b className="num">{fmtDate(paper.visitDate)}</b></div>}</div>
       </div>
+      <div className="of-pt">
+        <div><span>שם המטופל/ת</span><b>{paper.patient.name || '\u00a0'}</b></div>
+        <div><span>מס׳ זהות</span><b className="num">{paper.patient.idNumber || '\u00a0'}</b></div>
+        <div><span>תאריך לידה</span><b className="num">{paper.patient.dob ? fmtDate(paper.patient.dob) : '\u00a0'}</b></div>
+        <div><span>גיל</span><b className="num">{ag ?? '\u00a0'}</b></div>
+      </div>
+      {to.length > 0 ? <div className="of-to"><span>לכבוד:</span> <b>{to.join(' · ')}</b></div> : <div className="of-to ghost">לכבוד — לא חובה, ממלאים בפרטי המכתב</div>}
       {opinion && (
         <div className="pg-intro">
           <p>הנני מגיש בזאת את חוות דעתי הרפואית{paper.visitDate ? ` לאחר בדיקתי ב־${fmtDate(paper.visitDate)}` : ''}.</p>
@@ -342,11 +344,9 @@ export default function LetterEditor({
   const footer = (
     <div className="page-bottom" contentEditable={false}>
       {d.letter_type === 'legal' && <div className="lt-decl">{LEGAL_DECLARATION}</div>}
-      <div className="lt-sign">
-        <div>בכבוד רב,</div>
-        {paper.sign_final !== false
-          ? <div className="pg-sigbox"><Icon name="checkCircle" size={14} />החתימה והחותמת שלך יתווספו לגרסה הסופית</div>
-          : <><div style={{ fontWeight: 700, marginTop: 12 }}>{paper.lh_name}</div>{paper.lh_licenses && <div className="lt-small">{paper.lh_licenses}</div>}</>}
+      <div className="of-sign">
+        <div className="of-doc"><div>בכבוד רב,</div><b>{paper.lh_name}</b>{titles[0] && <div>{titles[0]}</div>}{paper.lh_licenses && <div>{paper.lh_licenses}</div>}</div>
+        <div className="of-stamp">{paper.sign_final !== false ? <div className="pg-sigbox"><Icon name="checkCircle" size={14} />החתימה והחותמת יתווספו בגרסה הסופית</div> : <div className="of-sigspace" />}<div className="of-line">חתימה וחותמת הרופא</div></div>
       </div>
       {footLines.length > 0 && <div className="pg-foot">{footLines.map((l, i) => <div key={i} className={i === 0 ? 'f1' : ''}>{l}</div>)}</div>}
     </div>
@@ -448,9 +448,6 @@ export default function LetterEditor({
             <label className="field" htmlFor="ltTo"><span>לכבוד <small>כמה שורות? הפרידו ב־ |</small></span>
               <input id="ltTo" value={d.recipient} onChange={(e) => update({ recipient: e.target.value })} placeholder="המוסד לביטוח לאומי | סניף חדרה" disabled={ai.running} />
             </label>
-            <label className="field" htmlFor="ltSubj"><span>הנדון</span>
-              <input id="ltSubj" value={d.subject} onChange={(e) => update({ subject: e.target.value })} disabled={ai.running} placeholder="חוות דעת רפואית – נכות מעבודה" />
-            </label>
           </div>
 
           <div className="card pane-tools">
@@ -494,7 +491,6 @@ export default function LetterEditor({
               <ul className="review-checks">
                 <li><Icon name="checkCircle" size={16} /><span>{typeOf(d.letter_type).label}{paper.title ? ` · ${paper.title}` : ''}</span></li>
                 <li><Icon name="checkCircle" size={16} /><span>לכבוד: {d.recipient ? d.recipient.split('|').join(', ') : <em>ללא נמען</em>}</span></li>
-                <li><Icon name="checkCircle" size={16} /><span>הנדון: {d.subject || <em>ללא נושא</em>}</span></li>
                 <li><Icon name="checkCircle" size={16} /><span>{paper.sign_final !== false ? 'עם החתימה והחותמת שלך' : 'בלי חתימה דיגיטלית'}</span></li>
               </ul>
               {!initial?.is_final && (
