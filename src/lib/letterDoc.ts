@@ -49,7 +49,8 @@ export function docHtml(d: DocInput) {
 
   const head = headHtml(s, d.banner);
 
-  const title = opinion ? 'חוות דעת רפואית' : d.title;
+  // a title the doctor typed wins over the default one
+  const title = d.subject?.trim() || (opinion ? 'חוות דעת רפואית' : d.title);
   const intro = opinion
     ? `<p class="doc-intro">הנני מגיש בזאת את חוות דעתי הרפואית${d.visitDate ? ` לאחר בדיקתי ב־${esc(fmtDate(d.visitDate))}` : ''}.</p>${s.cv_in_opinions && s.lh_cv ? `<div class="doc-cv">${cvHtml(s.lh_cv)}</div>` : ''}`
     : '';
@@ -74,7 +75,7 @@ export function docHtml(d: DocInput) {
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
   <div class="of-sign">
-    <div class="of-doc"><div class="of-regards">בכבוד רב,</div><b>${esc(s.lh_name)}</b>${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}</div>
+    <div class="of-doc"><div class="of-regards">בברכה,</div><b>${esc(s.lh_name)}</b>${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}</div>
     <div class="of-stamp">${d.signature ? `<img class="doc-sig" src="${esc(d.signature)}" alt="חתימה">` : '<div class="of-sigspace"></div>'}<div class="of-line">חתימה וחותמת הרופא</div></div>
   </div>
 </td></tr></tbody>

@@ -259,7 +259,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
     return { ok: true, sent: 0, info: 'המסמך ממתין לאישור התשלום. הוא יישלח למפנה לבד ברגע שתאשר תשלום.' };
   }
 
-  const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_subject || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
+  const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_doc_title || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
   const pdf = await renderPdf(letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true }), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
   const attachments = pdf ? [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }] : undefined;
@@ -301,7 +301,7 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
   }
   const ai = info(a);
   ai.type = (l.final_letter_type || l.letter_type) as ReferralType;
-  const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_subject || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
+  const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_doc_title || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
   const pdf = await renderPdf(letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true }), [s.lh_name, s.lh_address].filter(Boolean).join(' · '));
   if (!pdf) return { ok: false, sent: 0, info: 'יצירת קובץ ה־PDF נכשלה. נסו שוב בעוד דקה.' };
