@@ -15,7 +15,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   const { id } = await params;
   const { v, embed } = await searchParams;
   const { supabase, settings, staff } = await requireUser();
-  const { data: a } = await supabase.from('appointments').select('id, patient_name, patient_id_number, patient_dob, starts_at, service_label').eq('id', id).maybeSingle();
+  const { data: a } = await supabase.from('appointments').select('id, patient_name, patient_id_number, patient_dob, starts_at, service_label, referral_type').eq('id', id).maybeSingle();
   if (!a) notFound();
 
   let letter: L | null = null;
@@ -41,7 +41,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
       letter={{ ...letter, letter_date: date }}
       patient={{ name: a.patient_name ?? '', idNumber: a.patient_id_number ?? '', dob: a.patient_dob }}
       backHref={staff ? `/doctor/cases/${id}` : `/firm/cases/${id}`}
-      title={a.service_label || undefined}
+      title={(a.referral_type === letter.letter_type && a.service_label) || undefined}
       visitDate={ilParts(a.starts_at).date}
       signature={!draft && settings.sign_final ? SIGNATURE_DATA_URI : null}
       embed={embed === '1'}
