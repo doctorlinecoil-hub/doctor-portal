@@ -6,6 +6,7 @@ import { useSupabase } from '@/lib/supabase/browser';
 import { dbError } from '@/lib/constants';
 import { ilToUtc } from '@/lib/dates';
 import Icon from '@/components/Icon';
+import QuickBook, { useQuickBook } from './QuickBook';
 
 /** A free slot: book an appointment there, or block it. */
 export function FreeSlot({ iso, label, minutes }: { iso: string; label: string; minutes: number }) {
@@ -13,6 +14,7 @@ export function FreeSlot({ iso, label, minutes }: { iso: string; label: string; 
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, start] = useTransition();
+  const quick = useQuickBook();
   const block = () => start(async () => {
     const end = new Date(new Date(iso).getTime() + minutes * 60000).toISOString();
     const { error } = await supabase.from('time_blocks').insert({ starts_at: iso, ends_at: end, note: '' });
@@ -22,8 +24,9 @@ export function FreeSlot({ iso, label, minutes }: { iso: string; label: string; 
   });
   return (
     <>
-      <button type="button" className="cal-free-btn" onClick={() => setOpen(!open)} aria-label={`משבצת פנויה ${label}`} aria-expanded={open}><Icon name="plus" size={14} /></button>
-      {open && (
+      <button type="button" className="cal-free-btn" onClick={() => setOpen(!open)} aria-label={`קביעת תור · ${label}`} title={`קביעת תור · ${label}`} aria-expanded={open}><Icon name="plus" size={14} /></button>
+      {open && quick && <QuickBook iso={iso} onClose={() => setOpen(false)} onBlock={block} blocking={busy} />}
+      {open && !quick && (
         <div className="cal-pop" role="menu">
           <b>{label}</b>
           <Link className="btn btn-sm btn-primary" href={`/doctor/book?slot=${encodeURIComponent(iso)}`}><Icon name="calendarPlus" />קביעת תור</Link>
