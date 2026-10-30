@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import ShareLink from '@/components/ShareLink';
 import { PendingPayView } from '@/views/PendingPayView';
 import ApprovePay from '@/app/(app)/doctor/payments/ApprovePay';
+import RemindPay from '@/app/(app)/doctor/payments/RemindPay';
 import AppShell from '@/components/AppShell';
 import AuthFrame from '@/components/AuthFrame';
 import LoginForm from '@/app/login/LoginForm';
@@ -121,6 +122,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       const done = fx.rows.map((r, i) => ({ ...r, status: 'done' as const, payment_ok_at: i < 2 ? new Date().toISOString() : null }));
       return staffShell('/doctor/payments', <PendingPayView gate waiting={done.slice(2, 6)} approved={done.slice(0, 2)}
         pays={{ [done[3].id]: [{ amount: 900, method: 'bit', paid_on: todayIL() }], [done[0].id]: [{ amount: 2500, method: 'transfer', paid_on: todayIL() }] }}
+        remind={(r) => <RemindPay preview id={r.id} who={r.payer === 'patient' ? 'מטופל' : 'מפנה'} phone="050-1234567" text="שלום" last={r.id === done[3].id ? '30.10.2026 10:12' : null} />}
         action={(r, undo) => <ApprovePay preview initialOpen={r.id === done[2].id} id={r.id} today={todayIL()} undo={undo} due={Math.max(0, r.price - r.paid)} paidInFull={r.price > 0 && r.paid >= r.price} />} />);
     }
     case 'admin-reports':
