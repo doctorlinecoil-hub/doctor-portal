@@ -163,7 +163,7 @@ export function reminderEmail(s: Settings, a: ApptInfo, forReferrer: boolean | '
 export function payBlock(s: Settings, amount: number, title = 'לתשלום'): string {
   const pl = payLines(s);
   if (!pl.bank.length && !pl.bit) return amount > 0 ? card([[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]]) : '';
-  const rows: [string, string][] = [[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]];
+  const rows: [string, string][] = amount > 0 ? [[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]] : [];
   if (pl.bank.length) rows.push(['העברה בנקאית', pl.bank.map(esc).join('<br>')]);
   if (pl.bit) rows.push(['ביט / פייבוקס', `<span dir="ltr">${esc(pl.bit)}</span>`]);
   return `<h2 style="margin:10px 0 6px;font-size:16px;color:${INK}">פרטי תשלום</h2>` + card(rows) + (pl.note ? p(esc(pl.note).replace(/\n/g, '<br>')) : '');
@@ -171,7 +171,7 @@ export function payBlock(s: Settings, amount: number, title = 'לתשלום'): s
 
 const payText = (s: Settings, amount: number) => {
   const pl = payLines(s);
-  return [`סכום: ${ils(amount)}`, pl.bank.length ? `העברה בנקאית: ${pl.bank.join(', ')}` : '', pl.bit ? `ביט: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
+  return [amount > 0 ? `סכום: ${ils(amount)}` : '', pl.bank.length ? `העברה בנקאית: ${pl.bank.join(', ')}` : '', pl.bit ? `ביט: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
 };
 
 /** To a patient who booked by himself: the slot waits for the deposit. */
@@ -317,10 +317,10 @@ export function paymentReminderEmail(s: Settings, a: ApptInfo, amount: number, l
   const subject = `תזכורת: ${label} מוכנה וממתינה לתשלום · ${a.patientName} · תיק ${a.caseNo}`;
   const body =
     p(`שלום,<br>${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה וממתינה לתשלום.`) +
-    (amount > 0 ? payBlock(s, amount, 'לתשלום') : '') +
+    payBlock(s, amount, 'לתשלום') +
     p('מיד כשהתשלום יתקבל במרפאה, המסמך יישלח אליכם במייל אוטומטית. אם כבר שילמתם, אפשר להשיב למייל הזה עם אישור התשלום.') +
     `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק')}</div>`;
-  return { subject, html: layout(s, { preheader: 'תזכורת: המסמך ממתין לתשלום', title: 'תזכורת לתשלום', body }), text: textOf([subject, amount > 0 ? payText(s, amount) : '', link]) };
+  return { subject, html: layout(s, { preheader: 'תזכורת: המסמך ממתין לתשלום', title: 'תזכורת לתשלום', body }), text: textOf([subject, payText(s, amount), link]) };
 }
 
 export function rxEmail(s: Settings, patientName: string): Rendered {
