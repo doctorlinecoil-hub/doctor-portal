@@ -74,14 +74,19 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
   const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
   // Escape closes; the page behind doesn't scroll
+  const closeRef = useRef(onClose);
+  const busyRef = useRef(busy);
+  closeRef.current = onClose;
+  busyRef.current = busy;
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); };
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busyRef.current) closeRef.current(); };
     document.addEventListener('keydown', key);
     const o = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    setTimeout(() => first.current?.focus(), 60);
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = o; };
-  }, [busy, onClose]);
+    // focus once, without scrolling anything behind the window
+    const t = setTimeout(() => first.current?.focus({ preventScroll: true }), 60);
+    return () => { clearTimeout(t); document.removeEventListener('keydown', key); document.body.style.overflow = o; };
+  }, []);
 
   // existing patient: search by name, ID or phone (recent patients when empty)
   useEffect(() => {
