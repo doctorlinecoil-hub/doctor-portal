@@ -78,6 +78,11 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
           extract: { name: 'ישראל ישראלי', id_number: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', suggested_type: 'legal', request: '', event: '', event_date: '', sure: [], warning: '' } }} />);
     case 'firm-cases':
       return firmShell('/firm/cases', <FirmCasesView rows={fx.firmRows} filter="all" />);
+    case 'firm-cases-open': {
+      const done = fx.firmRows.find((r) => r.status === 'done') ?? fx.firmRows[0];
+      const rows = [...fx.firmRows, { ...done, id: done.id + 'x', case_no: done.case_no + 100, status: 'booked' as const }];
+      return firmShell('/firm/cases', <FirmCasesView rows={rows} filter="all" open={done.id} gate={false} />);
+    }
     case 'firm-case':
       return firmShell('/firm/cases', <FirmCaseView c={c} notes={fx.notes} docs={fx.docs} payments={fx.payments} paid={paid}
         letter={{ ready: false, awaitingPayment: false, finalizedAt: null }} actions={<CaseActions appointmentId={c.id} firmId="f1" canAdd canCancel />} />);
