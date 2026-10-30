@@ -20,6 +20,7 @@ export type LetterRow = {
   letter_type: ReferralType;
   recipient: string;
   subject: string;
+  doc_title?: string;
   body: string;
   exam_notes: string;
   is_final: boolean;
@@ -27,7 +28,7 @@ export type LetterRow = {
   ai_draft_at?: string | null;
 };
 
-type Draft = { letter_type: ReferralType; recipient: string; subject: string; body: string; exam_notes: string };
+type Draft = { letter_type: ReferralType; recipient: string; subject: string; doc_title: string; body: string; exam_notes: string };
 
 const escHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -61,6 +62,7 @@ export default function LetterEditor({
     letter_type: initial?.letter_type ?? defaultType ?? 'summary',
     recipient: initial?.recipient ?? '',
     subject: initial?.subject ?? '',
+    doc_title: initial?.doc_title ?? '',
     body: startHtml ? richBody(startHtml) : '',
     exam_notes: initial?.exam_notes ?? '',
   });
@@ -288,7 +290,7 @@ export default function LetterEditor({
     setReview(null);
     const { error } = await supabase.from('letters').update({
       is_final: true, finalized_at: new Date().toISOString(), letter_date: todayIL(),
-      final_letter_type: cur.letter_type, final_recipient: cur.recipient, final_subject: cur.subject, final_body: cur.body,
+      final_letter_type: cur.letter_type, final_recipient: cur.recipient, final_subject: cur.subject, final_doc_title: cur.doc_title, final_body: cur.body,
     }).eq('appointment_id', appointmentId);
     if (error) return setFinalState({ armed: false, ok: false, msg: 'השליחה נכשלה. נסו שוב.' });
     setFinalState({ armed: false, ok: true, msg: 'המכתב סומן כסופי. שולח…' });
@@ -305,6 +307,7 @@ export default function LetterEditor({
 
   const opinion = d.letter_type === 'legal' || d.letter_type === 'nii';
   const footLines = (paper.lh_footer || '').split('\n').filter(Boolean);
+  const defaultTitle = opinion ? 'חוות דעת רפואית' : ((paper.title && (!paper.titleType || paper.titleType === d.letter_type) ? paper.title : '') || typeOf(d.letter_type).label);
   const header = (
     <div className="page-top" contentEditable={false}>
       {paper.use_banner !== false
@@ -324,7 +327,7 @@ export default function LetterEditor({
           </header>
         )}
       <div className="of-top">
-        <div className="of-title">{opinion ? 'חוות דעת רפואית' : ((paper.title && (!paper.titleType || paper.titleType === d.letter_type) ? paper.title : '') || typeOf(d.letter_type).label)}</div>
+        <div className="of-title">{d.doc_title.trim() || defaultTitle}</div>
         <div className="of-meta"><div><span>תאריך</span><b className="num">{fmtDate(todayIL())}</b></div>{paper.visitDate && paper.visitDate !== todayIL() && <div><span>תאריך הבדיקה</span><b className="num">{fmtDate(paper.visitDate)}</b></div>}</div>
       </div>
       <div className="of-pt">
@@ -351,7 +354,7 @@ export default function LetterEditor({
     <div className="page-bottom" contentEditable={false}>
       {d.letter_type === 'legal' && <div className="lt-decl">{LEGAL_DECLARATION}</div>}
       <div className="of-sign">
-        <div className="of-doc"><div>בכבוד רב,</div><b>{paper.lh_name}</b>{titles[0] && <div>{titles[0]}</div>}{paper.lh_licenses && <div>{paper.lh_licenses}</div>}</div>
+        <div className="of-doc"><div>בברכה,</div><b>{paper.lh_name}</b>{titles[0] && <div>{titles[0]}</div>}{paper.lh_licenses && <div>{paper.lh_licenses}</div>}</div>
         <div className="of-stamp">{paper.sign_final !== false ? <div className="pg-sigbox"><Icon name="checkCircle" size={14} />החתימה והחותמת יתווספו בגרסה הסופית</div> : <div className="of-sigspace" />}<div className="of-line">חתימה וחותמת הרופא</div></div>
       </div>
       {footLines.length > 0 && <div className="pg-foot">{footLines.map((l, i) => <div key={i} className={i === 0 ? 'f1' : ''}>{l}</div>)}</div>}
@@ -450,6 +453,9 @@ export default function LetterEditor({
               <select id="ltType" value={d.letter_type} onChange={(e) => update({ letter_type: e.target.value as ReferralType })}>
                 {(Object.keys(TYPES) as ReferralType[]).map((k) => <option key={k} value={k}>{typeOf(k).label}</option>)}
               </select>
+            </label>
+            <label className="field" htmlFor="ltTitle"><span>כותרת המסמך <small>ריק = כותרת לפי סוג המכתב</small></span>
+              <input id="ltTitle" value={d.doc_title} onChange={(e) => update({ doc_title: e.target.value })} placeholder={defaultTitle} disabled={ai.running} />
             </label>
             <label className="field" htmlFor="ltTo"><span>לכבוד <small>כמה שורות? הפרידו ב־ |</small></span>
               <input id="ltTo" value={d.recipient} onChange={(e) => update({ recipient: e.target.value })} placeholder="המוסד לביטוח לאומי | סניף חדרה" disabled={ai.running} />
