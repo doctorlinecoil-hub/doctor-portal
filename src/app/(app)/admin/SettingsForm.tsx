@@ -77,14 +77,8 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
           </section>
 
           <section className="panel" id="pay-details">
-            <div className="panel-head"><h2><Icon name="card" />מקדמה ופרטי תשלום</h2></div>
-            <p className="hint">מופיעים בזימון, בבקשת המקדמה, בתזכורות ובתיק של המפנה, עם כפתורי העתקה.</p>
-            <div className="grid-2">
-              <label className="field" htmlFor="depAmt"><span>מקדמה ממטופל שקובע בעצמו (₪) <small>0 = בלי מקדמה</small></span>
-                <input id="depAmt" type="number" min={0} step={10} dir="ltr" value={s.deposit_amount} onChange={(e) => setS({ ...s, deposit_amount: Number(e.target.value) })} /></label>
-              <label className="field" htmlFor="depHold"><span>שעות להעברת המקדמה <small>אחר כך הבקשה מתבטלת</small></span>
-                <input id="depHold" type="number" min={1} max={336} dir="ltr" value={s.deposit_hold_hours} onChange={(e) => setS({ ...s, deposit_hold_hours: Number(e.target.value) })} /></label>
-            </div>
+            <div className="panel-head"><h2><Icon name="card" />פרטי תשלום</h2></div>
+            <p className="hint">קביעת התור באתר היא בלי מקדמה ובלי תשלום. הפרטים כאן מופיעים רק בתיק של המפנה, אחרי שרשמת לו חיוב, כדי שיוכל להעביר.</p>
             <label className="field" htmlFor="bank"><span>פרטי חשבון להעברה <small>שורה לכל פרט: בנק, סניף, חשבון, על שם</small></span>
               <textarea id="bank" rows={4} value={s.bank_details} onChange={text('bank_details')} placeholder={'בנק: הפועלים (12)\nסניף: 532\nחשבון: 123456\nעל שם: ד״ר אלרן חנוך'} /></label>
             <label className="field" htmlFor="bit"><span>מספר לביט / פייבוקס <small>לא חובה</small></span>
