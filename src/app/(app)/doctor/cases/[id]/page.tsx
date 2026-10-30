@@ -11,6 +11,7 @@ import RescheduleDecision, { type RescheduleRow } from '../../RescheduleDecision
 import { DAYS, fmtDate, ilParts, weekday } from '@/lib/dates';
 import LetterEditor, { type LetterRow } from './LetterEditor';
 import PaymentPanel from './PaymentPanel';
+import PaymentRelease from './PaymentRelease';
 import DoctorCancel from './DoctorCancel';
 import IntakePanel from './IntakePanel';
 import CommsPanel, { type EmailLogRow } from './CommsPanel';
@@ -98,7 +99,12 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
           <div className="stack"><DiagnosesPanel appointmentId={id} rows={(dx as DxRow[] | null) ?? []} suggestions={intakeDx} readOnly={c.status === 'cancelled'} /></div>
         </div>
       }
-      payment={isAdmin ? <PaymentPanel appointmentId={id} price={c.price} payer={c.payer} paid={paid} payments={payments} morning={morningEnabled()} payerName={payerName(c)} /> : null}
+      payment={<div className="stack">
+        {c.firm.kind !== 'private' && settings.letter_requires_payment && c.status !== 'cancelled' && (
+          <PaymentRelease id={id} ok={!!(a as { payment_ok_at?: string | null }).payment_ok_at} paidInFull={c.price > 0 && paid + 0.001 >= c.price} letterFinal={!!(letter as LetterRow | null)?.is_final} />
+        )}
+        {isAdmin ? <PaymentPanel appointmentId={id} price={c.price} payer={c.payer} paid={paid} payments={payments} morning={morningEnabled()} payerName={payerName(c)} /> : null}
+      </div>}
       letter={<LetterEditor appointmentId={id} sendTo={[c.firm.kind !== 'private' ? `${c.firm.name} (המפנה)` : '', c.patient_email ? `${c.patient_email} (המטופל)` : ''].filter(Boolean)} diagnoses={((dx as DxRow[] | null) ?? []).map((d) => ({ code: d.code, name: d.name, primary: d.is_primary }))} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
         paper={{ lh_name: settings.lh_name, lh_titles: settings.lh_titles, lh_licenses: settings.lh_licenses, lh_address: settings.lh_address, lh_phone: settings.lh_phone, lh_email: settings.lh_email,
           lh_footer: settings.lh_footer, lh_cv: settings.lh_cv, use_banner: settings.use_banner, cv_in_opinions: settings.cv_in_opinions, sign_final: settings.sign_final,
