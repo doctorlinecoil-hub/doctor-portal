@@ -69,12 +69,12 @@ export function docHtml(d: DocInput) {
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
   <div class="of-sign">
-    <div class="of-doc"><div class="of-regards">בברכה,</div><b>${esc(s.lh_name)}</b>${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}</div>
-    <div class="of-stamp">${d.signature ? `<img class="doc-sig" src="${esc(d.signature)}" alt="חתימה">` : '<div class="of-sigspace"></div>'}<div class="of-line">חתימה וחותמת הרופא</div></div>
+    <div class="of-doc"><div class="of-regards">בברכה,</div><b>${esc(s.lh_name)}</b>${d.signature ? '' : `${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}`}</div>
+    ${d.signature ? '<div class="of-signed">חתום דיגיטלית · החתימה והחותמת בתחתית כל עמוד</div>' : '<div class="of-stamp"><div class="of-sigspace"></div><div class="of-line">חתימה וחותמת הרופא</div></div>'}
   </div>
 </td></tr></tbody>
 <tfoot><tr><td><div class="doc-foot-space"></div></td></tr></tfoot></table>
-${footHtml(s)}`;
+${footHtml(s, d.signature)}`;
 }
 
 function headHtml(s: DocInput['settings'], banner: string | null) {
@@ -84,9 +84,11 @@ function headHtml(s: DocInput['settings'], banner: string | null) {
     : `<div class="doc-texthead"><div><div class="th-name">${esc(s.lh_name)}</div>${titles.map((t) => `<div class="th-small">${esc(t)}</div>`).join('')}</div><div class="th-small th-contact">${[s.lh_licenses, s.lh_address, s.lh_phone && `טל׳ ${s.lh_phone}`, s.lh_email].filter(Boolean).map((x) => `<div>${esc(String(x))}</div>`).join('')}</div></div>`;
 }
 
-function footHtml(s: DocInput['settings']) {
+function footHtml(s: DocInput['settings'], signature?: string | null) {
   const footer = (s.lh_footer || [s.lh_name, s.lh_licenses, s.lh_address, s.lh_phone].filter(Boolean).join('\n')).split('\n').filter(Boolean);
-  return `<div class="doc-foot">${footer.map((l, i) => `<div${i === 0 ? ' class="f1"' : ''}>${esc(l)}</div>`).join('')}</div>`;
+  const lines = `<div class="foot-lines">${footer.map((l, i) => `<div${i === 0 ? ' class="f1"' : ''}>${esc(l)}</div>`).join('')}</div>`;
+  // signed documents carry the doctor's signature and stamp on every page
+  return `<div class="doc-foot${signature ? ' signed' : ''}">${lines}${signature ? `<img class="foot-sig" src="${esc(signature)}" alt="חתימה וחותמת">` : ''}</div>`;
 }
 
 export type RxDocItem = { name: string; form?: string; strength?: string; dose: string; frequency: string; duration: string; quantity: string; notes?: string };
@@ -187,8 +189,10 @@ ${p}.doc-sign { margin-top: 8mm; break-inside: avoid; }
 ${p}.doc-sig { display: block; width: 52mm; height: auto; margin-top: 2mm; }
 ${p}.doc-signname { margin-top: 6mm; font-size: 10.5pt; }
 ${p}.doc-signline { margin-top: 10mm; }
-${p}.doc-foot-space { height: 27mm; }
-${p}.doc-foot { font-size: 9pt; line-height: 1.45; color: #1d2433; border-top: 1px solid #C9A43A; padding-top: 2mm; text-align: right; }
+${p}.doc-foot-space { height: 30mm; }
+${p}.doc-foot { font-size: 9pt; line-height: 1.45; color: #1d2433; border-top: 1px solid #C9A43A; padding-top: 2mm; text-align: right; display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; }
+${p}.foot-sig { height: 22mm; width: auto; flex: none; }
+${p}.of-signed { font-size: 8.5pt; color: #6b7385; align-self: flex-end; }
 ${p}.doc-foot .f1 { font-weight: 700; }
 ${p}table.rx { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
 ${p}table.rx th { background: #F1F3F8; font-weight: 700; font-size: 10pt; text-align: right; }
@@ -242,9 +246,9 @@ ${p}.of-pt b { font-size: 11pt; }
 ${p}.of-to { margin: 0 0 4mm; font-size: 10.5pt; }
 ${p}.of-to span { color: #5b6475; }
 ${p}.doc-body h3 { color: #0D1B2A; text-decoration: none !important; font-size: 11.5pt; border-bottom: 1px solid #D5DAE3; padding-bottom: 1mm; margin: 5mm 0 2mm; }
-${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 6mm; break-inside: avoid; }
+${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 5mm; }
 ${p}.of-doc { font-size: 10.5pt; line-height: 1.5; }
-${p}.of-doc b { display: block; font-size: 12pt; margin-top: 2mm; }
+${p}.of-doc b { display: block; font-size: 12pt; margin-top: 1mm; }
 ${p}.of-stamp { text-align: center; min-width: 60mm; }
 ${p}.of-stamp .doc-sig { margin: 0 auto 1mm; width: 38mm; }
 ${p}.of-sigspace { height: 14mm; }
