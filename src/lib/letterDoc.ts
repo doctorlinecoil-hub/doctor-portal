@@ -42,12 +42,11 @@ export function cvHtml(cv: string) {
     .map((l) => (/[:：]$/.test(l) && l.length < 60 ? `<div class="cv-h">${esc(l)}</div>` : `<div class="cv-l">${esc(l)}</div>`)).join('');
 }
 
-/** Formal "ביקור חוזר" lines under the patient details, like a health-fund document (no table). */
-export function visitsHtml(visits: { date: string; label: string }[] | undefined, _today?: string | null) {
-  if (!visits?.length) return '';
-  const last = visits.slice(-5);
-  const more = visits.length - last.length;
-  return `<div class="cl-rv"><div><b>סוג ביקור:</b> ביקור חוזר</div><div><b>${visits.length === 1 ? 'ביקור קודם במרפאה' : 'ביקורים קודמים במרפאה'}:</b> ${last.map((v) => `<span class="cl-rv-i">${esc(fmtDate(v.date))} – ${esc(v.label)}</span>`).join(' <span class="cl-rv-sep">·</span> ')}${more > 0 ? ` <span class="cl-rv-more">(ועוד ${more} מוקדמים יותר)</span>` : ''}</div></div>`;
+/** "ביקור חוזר" line under the patient details, like a health-fund document: just the dates of the previous visits. */
+export function visitsHtml(visits: { date: string; label?: string }[] | undefined) {
+  const dates = [...new Set((visits ?? []).map((v) => v.date))];
+  if (!dates.length) return '';
+  return `<div class="cl-rv"><b>ביקור חוזר</b> ${dates.length === 1 ? 'מתאריך' : '· ביקורים קודמים מתאריכים'} ${dates.map((x) => `<bdi>${esc(fmtDate(x))}</bdi>`).join(', ')}</div>`;
 }
 
 export function docHtml(d: DocInput) {
@@ -72,7 +71,7 @@ export function docHtml(d: DocInput) {
   <div class="cl-date">תאריך: ${esc(fmtDate(d.date))}</div>
   ${to.length ? `<div class="cl-to"><div>לכבוד</div>${to.map((r) => `<div><b>${esc(r)}</b></div>`).join('')}</div>` : ''}
   <h1 class="cl-title">${esc(title)}</h1>
-  <div class="cl-ptw"><div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>${visitsHtml(d.visits, d.visitDate)}</div>
+  <div class="cl-ptw"><div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>${visitsHtml(d.visits)}</div>
   ${intro}
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
@@ -268,11 +267,8 @@ ${p}.cl-to { margin: 0 0 5mm; line-height: 1.5; }
 ${p}.cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 18pt; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; margin: 2mm 0 4mm; }
 ${p}.cl-ptw { padding-bottom: 3mm; margin-bottom: 5mm; border-bottom: 1px solid #C9CFD8; }
 ${p}.cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 11pt; }
-${p}.cl-rv { text-align: center; font-size: 10.5pt; line-height: 1.6; margin-top: 1.5mm; }
+${p}.cl-rv { text-align: center; font-size: 10.5pt; margin-top: 1.5mm; }
 ${p}.cl-rv b { color: #0D1B2A; }
-${p}.cl-rv-i { white-space: nowrap; }
-${p}.cl-rv-sep { margin: 0 1mm; color: #8A94A6; }
-${p}.cl-rv-more { color: #5B6577; font-size: 9.5pt; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }
