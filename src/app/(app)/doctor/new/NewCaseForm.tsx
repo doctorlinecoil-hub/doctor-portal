@@ -80,7 +80,7 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
           {!isRx && (
             <section className="nd-card">
               <div className="nd-h"><span className="nd-step">1</span><h2>סוג המכתב</h2></div>
-              <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact showPrice />
+              <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact />
             </section>
           )}
 
