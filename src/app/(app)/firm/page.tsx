@@ -10,5 +10,5 @@ export default async function FirmHome() {
     supabase.from('firms').select('name').eq('id', profile.firm_id!).single(),
     loadAppointments(supabase, { order: 'desc', limit: 500 }),
   ]);
-  return <FirmDashboardView firmName={firm?.name ?? ''} clinicName={settings.lh_name} rows={rows} />;
+  return <FirmDashboardView firmName={firm?.name ?? ''} clinicName={settings.lh_name} rows={rows} gate={settings.letter_requires_payment !== false} />;
 }
