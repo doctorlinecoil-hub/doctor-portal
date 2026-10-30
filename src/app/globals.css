@@ -2655,3 +2655,33 @@ a.dx-next:hover { text-decoration: none; transform: translateY(-2px); border-col
   .ua-list { grid-column: 1; grid-row: 2; }
   .ua-diff { grid-column: 2; grid-row: 2; text-align: center; }
 }
+
+/* ===== v45 official document layout in the editor (matches the printed letter) ===== */
+.page .of-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #0D1B2A; padding-bottom: 8px; margin: 14px 0 14px; }
+.page .of-title { font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 24px; font-weight: 700; color: #0D1B2A; line-height: 1.15; }
+.page .of-meta { display: flex; gap: 6px; }
+.page .of-meta > div { border: 1px solid #0D1B2A; border-radius: 3px; padding: 3px 10px; text-align: center; min-width: 88px; }
+.page .of-meta span, .page .of-pt span { display: block; font-size: 11px; color: #5b6475; }
+.page .of-meta b { font-size: 14px; }
+.page .of-pt { display: grid; grid-template-columns: 2fr 1.4fr 1.2fr .6fr; border: 1px solid #9AA4B5; border-radius: 3px; margin-bottom: 14px; background: #FAFBFC; }
+.page .of-pt > div { padding: 5px 10px; border-inline-start: 1px solid #D5DAE3; min-width: 0; }
+.page .of-pt > div:first-child { border-inline-start: 0; }
+.page .of-pt b { font-size: 14px; }
+.page .of-to { margin: 0 0 14px; font-size: 14px; }
+.page .of-to span { color: #5b6475; }
+.page .of-to.ghost { color: #9AA4B5; font-style: italic; font-size: 13px; }
+.page .of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 28px; margin-top: 34px; }
+.page .of-doc { font-size: 14px; line-height: 1.5; }
+.page .of-doc b { display: block; font-size: 15.5px; margin-top: 6px; }
+.page .of-stamp { text-align: center; min-width: 210px; }
+.page .of-stamp .pg-sigbox { margin: 0 auto 6px; }
+.page .of-sigspace { height: 60px; }
+.page .of-line { border-top: 1px solid #111; padding-top: 3px; font-size: 12px; color: #333; }
+.page .rich-body h3, .page [contenteditable] h3 { color: #0D1B2A; text-decoration: none; border-bottom: 1px solid #D5DAE3; padding-bottom: 3px; }
+@media (max-width: 760px) {
+  .page .of-top { flex-direction: column; align-items: stretch; }
+  .page .of-pt { grid-template-columns: 1fr 1fr; }
+  .page .of-pt > div:nth-child(3) { border-inline-start: 0; }
+  .page .of-pt > div:nth-child(n+3) { border-top: 1px solid #D5DAE3; }
+  .page .of-sign { flex-direction: column; align-items: stretch; }
+}
