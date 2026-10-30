@@ -2770,3 +2770,15 @@ html.wm .studio.focus .studio-side { top: auto; }
 .review-side { gap: 16px; padding: 20px; }
 .review-actions .btn-lg { padding: 14px; font-size: 16px; }
 @media (max-width: 860px) { .review-wrap { padding: 0; } .review { height: 100%; border-radius: 0; } }
+
+/* v50: AI tab - simple and roomy */
+@media (min-width: 900px) { .sp-top.sp-ai .sp-body { display: flex !important; flex-direction: column; align-items: stretch !important; } }
+.ais-lbl { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.ais-lbl small { font-weight: 400; color: var(--muted); }
+.ais-lbl > :last-child { margin-inline-start: auto; }
+.ais-ins textarea { min-height: 92px !important; font-size: 15px; padding: 12px 14px; }
+.ais-row { display: flex; gap: 10px; align-items: stretch; }
+.ais-row .ais-len { flex: 0 0 260px; }
+.ais-row .ais-go { flex: 1; width: auto; }
+.ais-note { font-size: 13px; }
+@media (max-width: 700px) { .ais-row { flex-direction: column; } .ais-row .ais-len { flex: none; } }
