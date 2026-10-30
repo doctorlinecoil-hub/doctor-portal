@@ -78,7 +78,7 @@ export async function publicBook(input: PublicBookingInput): Promise<R<{ id: str
 
   // limits: 5 bookings an hour from one address, 60 an hour overall
   const who = await clientKey();
-  if (await overLimit(db, 'public_book_try', who, 10, 80, 300)) return { ok: false, error: 'נקבעו הרבה תורים בזמן קצר. נסו שוב בעוד שעה או צרו קשר עם המרפאה.' };
+  if (await overLimit(db, 'public_book_try', who, input.code ? 40 : 10, input.code ? 200 : 80, 300)) return { ok: false, error: 'נקבעו הרבה תורים בזמן קצר. נסו שוב בעוד שעה או צרו קשר עם המרפאה.' };
 
   // the details
   const p = input.patient;

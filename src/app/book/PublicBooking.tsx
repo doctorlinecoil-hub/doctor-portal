@@ -27,7 +27,7 @@ const EMPTY_PT = { name: '', idNumber: '', dob: '', phone: '', email: '' };
  * The public booking page, one step at a time:
  * 1. what is needed  2. date and time  3. documents (read automatically)  4. check the details found, emails, send.
  */
-export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true, preselect }: {
+export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true, preselect, embedded }: {
   open: boolean; clinic: { name: string; address: string; phone: string; needsApproval: boolean };
   services: Service[]; slots: DaySlots[]; code: string; firm: { name: string; kind: string } | null;
   /** the design previews only: open on a given step */
@@ -35,6 +35,8 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   phoneOk?: boolean;
   /** a service chosen before (the landing page's service finder) */
   preselect?: string;
+  /** inside an office's portal: no page header, links back to the portal */
+  embedded?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>('clinic');
   const pre = preselect ? services.find((x) => x.id === preselect) ?? null : null;
@@ -57,7 +59,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   const [ref, setRef] = useState(demo?.ext ? { office: demo.ext.referrer_office || '', contact: demo.ext.referrer_contact || '', phone: demo.ext.referrer_phone || '', email: demo.ext.referrer_email || '' } : { office: '', contact: '', phone: '', email: '' });
   const [pt, setPt] = useState(demo?.ext ? { name: demo.ext.name, idNumber: demo.ext.id_number, dob: demo.ext.dob, phone: demo.ext.phone, email: demo.ext.email } : EMPTY_PT);
   const [extra, setExtra] = useState<string[]>(demo?.ext ? ['secretary@cohen-law.co.il'] : []);
-  const payer = 'patient' as const;
+  const payer: 'patient' | 'referrer' = firm ? 'referrer' : 'patient';
   const [notes, setNotes] = useState('');
   const [website, setWebsite] = useState('');
   const [busy, setBusy] = useState('');
@@ -178,7 +180,12 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
   const tel = clinic.phone.replace(/[^\d+]/g, '');
   const wa = clinic.phone ? `https://wa.me/${(() => { const d = clinic.phone.replace(/\D/g, ''); return d.startsWith('0') ? `972${d.slice(1)}` : d; })()}` : '';
-  const Head = (
+  const Head = embedded ? (
+    <header className="pbx-ehead">
+      <div><span className="pbx-kicker"><Icon name="calendarPlus" size={15} />זימון חדש</span><h1>קביעת תור עבור {firm?.name}</h1><p>ארבעה צעדים קצרים. המסמך של הרופא יופיע אחר כך בתיקים שלכם.</p></div>
+      <a className="btn" href="/firm/cases"><Icon name="folder" />התיקים שלי</a>
+    </header>
+  ) : (
     <header className="pbx-head">
       <div className="pbx-head-in">
         <a href="/" className="pbx-back"><Icon name="arrowLeft" size={15} className="flip" />לאתר</a>
@@ -201,7 +208,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     </header>
   );
 
-  if (!open) return <main className="pb pbx"><div ref={top} />{Head}<section className="pb-card"><p className="muted">קביעת תור מקוונת סגורה כרגע. צרו קשר עם המרפאה{clinic.phone ? ` בטלפון ${clinic.phone}` : ''}.</p></section></main>;
+  if (!open) return <main className={`pb pbx${embedded ? ' pbx-emb' : ''}`}><div ref={top} />{Head}<section className="pb-card"><p className="muted">קביעת תור מקוונת סגורה כרגע. צרו קשר עם המרפאה{clinic.phone ? ` בטלפון ${clinic.phone}` : ''}.</p></section></main>;
 
   if (done) {
     const p = ilParts(slot!);
@@ -212,7 +219,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
     const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${ics(start)}/${ics(end)}&location=${encodeURIComponent(mode === 'phone' ? 'שיחה טלפונית' : clinic.address)}&details=${encodeURIComponent(`תיק ${done.caseNo}`)}`;
     const icsFile = `data:text/calendar;charset=utf-8,${encodeURIComponent(['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//doctorline//he', 'BEGIN:VEVENT', `UID:${done.id}@doctorline`, `DTSTAMP:${ics(new Date())}`, `DTSTART:${ics(start)}`, `DTEND:${ics(end)}`, `SUMMARY:${title}`, `LOCATION:${mode === 'phone' ? 'שיחה טלפונית' : clinic.address}`, `DESCRIPTION:תיק ${done.caseNo}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))}`;
     return (
-      <main className="pb pbx">
+      <main className={`pb pbx${embedded ? ' pbx-emb' : ''}`}>
         <div ref={top} />
         {Head}
         <section className="pb-card pbx-done">
@@ -241,7 +248,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
           </div>
           <div className="pbx-done-foot">
             <button type="button" className="btn btn-primary" onClick={reset}><Icon name="plus" />קביעת תור נוסף</button>
-            <a className="btn btn-ghost" href="/">חזרה לאתר</a>
+            {embedded ? <a className="btn" href={`/firm/cases/${done.id}`}><Icon name="folder" />לתיק</a> : <a className="btn btn-ghost" href="/">חזרה לאתר</a>}
           </div>
         </section>
       </main>
@@ -257,7 +264,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
 
   const pct = Math.round(((step - 1) / (STEPS.length - 1)) * 100);
   return (
-    <main className="pb pbx">
+    <main className={`pb pbx${embedded ? ' pbx-emb' : ''}`}>
       <div ref={top} />
       {Head}
       <div className="pbx-body">
