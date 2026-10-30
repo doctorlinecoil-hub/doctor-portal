@@ -12,7 +12,7 @@ const escT = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').repla
 /** The official A4 document on Dr. Hanoch's letterhead, printed by the browser (or saved as PDF). */
 export default function LetterPaper({ settings: s, letter, patient, backHref, draft, printButton, title, visitDate, signature, embed, visits }: {
   settings: Settings; letter: Letter; patient: { name: string; idNumber: string; dob: string | null };
-  backHref: string; draft?: boolean; printButton: React.ReactNode; title?: string; visitDate?: string | null; signature?: string | null; embed?: boolean; visits?: string[];
+  backHref: string; draft?: boolean; printButton: React.ReactNode; title?: string; visitDate?: string | null; signature?: string | null; embed?: boolean; visits?: { date: string; label: string }[];
 }) {
   const body = isRich(letter.body)
     ? sanitizeHtml(stripMarker(letter.body))
