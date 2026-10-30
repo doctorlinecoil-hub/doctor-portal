@@ -194,7 +194,6 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
           </div>
         </div>
         <ul className="pbx-perks">
-          <li><Icon name="checkCircle" size={16} />בלי תשלום מראש</li>
           <li><Icon name="clock" size={16} />פחות משתי דקות</li>
           <li><Icon name="mail" size={16} />אישור ותזכורות במייל</li>
         </ul>
@@ -449,7 +448,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
             <li className={chosen ? 'ok' : ''}><span><Icon name={mode === 'phone' ? 'phone' : 'calendar'} size={16} /></span><div><small>מועד</small><b>{chosen ? `${fmtDay(chosen.date)} · ${chosen.time}` : 'עוד לא נבחר'}</b>{chosen && <small>{mode === 'phone' ? 'שיחה טלפונית' : 'במרפאה'}</small>}</div></li>
             <li className={files.length ? 'ok' : ''}><span><Icon name="file" size={16} /></span><div><small>מסמכים</small><b>{files.length ? `${files.length} קבצים` : 'לא חובה'}</b></div></li>
           </ul>
-          <p className="pbx-aside-note"><Icon name="checkCircle" size={15} />בלי מקדמה ובלי תשלום באתר. פרטי העלות נשלחים במייל מהמרפאה.</p>
+          <p className="pbx-aside-note"><Icon name="checkCircle" size={15} />אחרי השליחה יגיע אליכם אישור במייל.</p>
         </div>
         {(clinic.phone || wa) && (
           <div className="pbx-help">
