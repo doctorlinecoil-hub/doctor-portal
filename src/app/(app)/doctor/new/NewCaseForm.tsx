@@ -215,6 +215,12 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
               </div>
             ))}
 
+            {mode === 'new' && known && (
+              <div className="nd-exists" role="status">
+                <Icon name="checkCircle" size={18} />
+                <div><b>המטופל כבר קיים במערכת</b><small>{known.patient_name} · {known.visits === 1 ? 'ביקור אחד' : `${known.visits} ביקורים`} · אחרון {fmtDate(ilParts(known.starts_at).date)}. המסמך יישמר בהיסטוריה שלו ויסומן כביקור חוזר.</small></div>
+              </div>
+            )}
             {mode === 'new' && (
               <div className="grid-2">
               <label className="field nd-name"><span>שם מלא</span>
