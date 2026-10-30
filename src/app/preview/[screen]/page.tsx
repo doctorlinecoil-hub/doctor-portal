@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import ShareLink from '@/components/ShareLink';
 import AppShell from '@/components/AppShell';
 import AuthFrame from '@/components/AuthFrame';
 import LoginForm from '@/app/login/LoginForm';
@@ -87,7 +88,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       return firmShell('/firm/cases', <FirmCaseView c={c} notes={fx.notes} docs={fx.docs} payments={fx.payments} paid={paid}
         letter={{ ready: false, awaitingPayment: false, finalizedAt: null }} actions={<CaseActions appointmentId={c.id} firmId="f1" canAdd canCancel />} />);
     case 'doctor-home':
-      return staffShell('/doctor', <DoctorAgendaView rows={fx.rows} past={false} isAdmin name="ד״ר חנוך" openRequests={1}
+      return staffShell('/doctor', <DoctorAgendaView rows={fx.rows} past={false} isAdmin name="ד״ר חנוך" openRequests={1} share={<ShareLink path="/book" compact title="קישור לקביעת תור למפנים ולמטופלים" />}
         intake={Object.fromEntries(fx.rows.map((r, i) => [r.id, { status: i % 5 === 4 ? 'running' : 'done', readiness: [92, 72, 45, 88][i % 4], flags: i % 3, missing: i % 4 }]))}
         approvals={(id) => <ApprovalButtons id={id} compact preview />} />);
     case 'doctor-case':
