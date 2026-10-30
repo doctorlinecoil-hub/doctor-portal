@@ -36,6 +36,7 @@ export function PaperFrame({ backHref, printButton, hint, html, embed }: { backH
         ${embed ? '.letter-view { padding: 0 0 16px; } .paper { margin-top: 12px !important; }' : ''}
         .paper { width: 210mm; min-height: 297mm; margin: 16px auto 0; background: #fff; padding: 10mm 14mm; box-shadow: 0 2px 14px rgba(0,0,0,.18); display: flex; flex-direction: column; }
         .paper table.ldoc { flex: 1; }
+        .paper table.ldoc > tbody > tr { height: 100%; } .paper table.ldoc > thead > tr, .paper table.ldoc > tfoot > tr { height: 1px; } .paper table.ldoc td { vertical-align: top; }
         .paper .doc-foot-space { height: 4mm; }
         .toolbar { max-width: 210mm; margin: 0 auto; padding: 16px 16px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
         @media print {
