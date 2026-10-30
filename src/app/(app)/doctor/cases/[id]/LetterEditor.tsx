@@ -111,6 +111,19 @@ export default function LetterEditor({
     update({ exam_notes: cur ? `${cur}${cur.endsWith('\n') ? '' : ' '}${text}` : text });
   };
 
+  // opened from "new document" with a few words for the AI: write the draft right away
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current || preview) return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('ai') !== '1') return;
+    autoRan.current = true;
+    sp.delete('ai');
+    window.history.replaceState(null, '', window.location.pathname + (sp.toString() ? `?${sp}` : '') + window.location.hash);
+    if (!bodyText(latest.current.body).trim() && latest.current.exam_notes.trim()) void runAI();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function runAI() {
     if (ai.running) return;
     if (bodyText(latest.current.body).trim() && !window.confirm('הטיוטה החדשה תחליף את המכתב הנוכחי. להמשיך?')) return;
