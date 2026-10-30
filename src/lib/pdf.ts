@@ -34,15 +34,26 @@ export function letterFileName(l: LetterDoc, pt: PatientDoc) {
   return `${typeOf(l.letter_type).label} - ${pt.name}.pdf`.replace(/[\\/:*?"<>|]+/g, ' ');
 }
 
-export async function renderPdf(html: string, footer: string): Promise<Buffer | null> {
+// One PDF at a time per server instance: two renders at once both unpack the browser and fail ("spawn ETXTBSY").
+let queue: Promise<unknown> = Promise.resolve();
+let exe: Promise<string> | null = null;
+
+export function renderPdf(html: string, footer: string): Promise<Buffer | null> {
+  const run = queue.then(() => renderOnce(html, footer).then(async (r) => r ?? (await new Promise((ok) => setTimeout(ok, 900)), renderOnce(html, footer))));
+  queue = run.catch(() => null);
+  return run;
+}
+
+async function renderOnce(html: string, footer: string): Promise<Buffer | null> {
   let browser: { close: () => Promise<void> } | null = null;
   try {
     const chromium = (await import('@sparticuz/chromium')).default;
     const puppeteer = await import('puppeteer-core');
     const local = process.env.CHROME_PATH; // for local development
+    if (!local) exe ??= chromium.executablePath();
     const b = await puppeteer.launch({
       args: local ? [] : chromium.args,
-      executablePath: local || (await chromium.executablePath()),
+      executablePath: local || (await exe!),
       headless: true,
     });
     browser = b;
@@ -62,6 +73,7 @@ export async function renderPdf(html: string, footer: string): Promise<Buffer | 
     return Buffer.from(pdf);
   } catch (e) {
     console.error('pdf failed', (e as Error).message);
+    if (/ETXTBSY|ENOENT/.test((e as Error).message)) exe = null;
     return null;
   } finally {
     await browser?.close().catch(() => {});

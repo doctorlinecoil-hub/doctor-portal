@@ -255,7 +255,8 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   if (!released) {
     if (!(await alreadySent(db, id, 'letter_awaiting_payment'))) {
       const m = awaitingPaymentEmail(s, ai, '', caseLink(id, false));
-      await sendMail(db, id, 'letter_awaiting_payment', { to: firmTo, ...m });
+      const payTo = (a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient') && a.patient_email ? [a.patient_email] : firmTo;
+      await sendMail(db, id, 'letter_awaiting_payment', { to: payTo, ...m });
     }
     return { ok: true, sent: 0, info: 'המסמך ממתין לאישור התשלום. הוא יישלח למפנה לבד ברגע שתאשר תשלום.' };
   }
@@ -264,7 +265,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
   const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: await priorVisits(db, a) });
   // the PDF goes in the same email; one more try if the first render fails
-  const pdf = (await renderPdf(html, '')) ?? (await renderPdf(html, ''));
+  const pdf = await renderPdf(html, '');
   const attachments = pdf ? [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }] : undefined;
 
   let sent = 0;
@@ -308,7 +309,7 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
   const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: await priorVisits(db, a) });
   // the PDF goes in the same email; one more try if the first render fails
-  const pdf = (await renderPdf(html, '')) ?? (await renderPdf(html, ''));
+  const pdf = await renderPdf(html, '');
   if (!pdf) return { ok: false, sent: 0, info: 'יצירת קובץ ה־PDF נכשלה. נסו שוב בעוד דקה.' };
   const r = await sendMail(db, id, 'letter_extra', {
     to,
