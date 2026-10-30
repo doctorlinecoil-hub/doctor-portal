@@ -2805,3 +2805,7 @@ html.wm .studio.focus .studio-side { top: auto; }
 .nd-exists { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: #F0FDF4; border: 1.5px solid #86EFAC; color: #166534; animation: ppIn .2s ease-out; }
 .nd-exists b { display: block; }
 .nd-exists small { color: #166534; opacity: .85; }
+.ais-hist { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1px solid #99F6E4; background: #F0FDFA; cursor: pointer; }
+.ais-hist input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+.ais-hist b { display: block; font-size: 14px; }
+.ais-hist small { color: var(--muted); font-size: 12.5px; }
