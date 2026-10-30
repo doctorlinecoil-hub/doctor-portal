@@ -27,10 +27,12 @@ function AiChip({ i }: { i?: IntakeChip }) {
   );
 }
 
-export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup, share, calendar, mode = past ? 'past' : 'list' }: {
+export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup, share, calendar, awaitingPay = 0, mode = past ? 'past' : 'list' }: {
   rows: ApptRow[]; past: boolean;
   /** the visual calendar (day / week / month), shown in the main card */
   calendar?: React.ReactNode;
+  /** ready documents that wait for the doctor's payment approval */
+  awaitingPay?: number;
   mode?: 'day' | 'week' | 'month' | 'list' | 'past'; isAdmin: boolean; name: string; now?: Date; intake?: Record<string, IntakeChip>; openRequests?: number;
   approvals?: (id: string) => React.ReactNode;
   reschedules?: React.ReactNode[];
@@ -65,6 +67,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
     { k: 'week', v: week.length, l: 'השבוע', href: '/doctor?view=week#cal' },
     { k: 'asks', v: asks, l: 'לאישורך', href: '#approvals', tone: asks ? 'warn' : '' },
     { k: 'wait', v: waiting.length, l: 'ממתינים למכתב', href: '#waiting', tone: waiting.length ? 'hot' : '' },
+    { k: 'pay', v: awaitingPay, l: 'ממתינים לתשלום', href: '/doctor/payments', tone: awaitingPay ? 'warn' : '' },
   ];
   return (
     <div className="dx">

@@ -165,7 +165,7 @@ export function searchFirmRows(rows: ApptRow[], q: string) {
     (/^\d+$/.test(t) && String(r.case_no) === t));
 }
 
-export function FirmCasesView({ rows: all, filter, q = '', open, gate = true }: { rows: ApptRow[]; filter: string; q?: string; open?: string; gate?: boolean }) {
+export function FirmCasesView({ rows: all, filter, q = '', open, gate = true, clinicPhone = '' }: { rows: ApptRow[]; filter: string; q?: string; open?: string; gate?: boolean; clinicPhone?: string }) {
   const rows = searchFirmRows(all, q);
   const list = filterFirmRows(rows, filter);
   const qs = (f: string) => { const p = new URLSearchParams(); if (f !== 'all') p.set('f', f); if (q.trim()) p.set('q', q.trim()); const x = p.toString(); return x ? `/firm/cases?${x}` : '/firm/cases'; };
@@ -188,7 +188,7 @@ export function FirmCasesView({ rows: all, filter, q = '', open, gate = true }: 
         ))}
       </nav>
       <section className="panel flush">
-        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : <FirmCasesBrowser rows={list} all={all} initial={open} gate={gate} />}
+        {list.length === 0 ? <Empty>{q.trim().length >= 2 ? `לא נמצאו מטופלים עבור ״${q.trim()}״` : 'אין תיקים להצגה'}</Empty> : <FirmCasesBrowser rows={list} all={all} initial={open} gate={gate} clinicPhone={clinicPhone} />}
       </section>
     </>
   );
