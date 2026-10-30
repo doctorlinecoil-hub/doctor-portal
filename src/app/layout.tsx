@@ -3,6 +3,7 @@ import './globals.css';
 import { supabaseConfig } from '@/lib/env';
 import { SupabaseProvider } from '@/lib/supabase/browser';
 import { appUrl } from '@/lib/mail';
+import A11yMenu from '@/components/A11yMenu';
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl()),
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" href="/brand/fonts/discovery-demibold.woff" as="font" type="font/woff" crossOrigin="" />
       </head>
       <body>
+        <a className="skip-link" href="#main">דילוג לתוכן הראשי</a>
         {url && anonKey ? (
           <SupabaseProvider url={url} anonKey={anonKey}>{children}</SupabaseProvider>
         ) : (
@@ -38,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div></div>
           </main>
         )}
+        <A11yMenu />
       </body>
     </html>
   );
