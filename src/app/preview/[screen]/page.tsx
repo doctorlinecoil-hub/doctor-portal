@@ -128,6 +128,10 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
       return staffShell('/doctor', <TemplatePicker letterType="legal" onInsert={() => undefined} selection={() => ''} demo={fx.templates.map((t) => ({ id: t.id, title: t.title, body: t.body, letter_type: t.letter_type ?? null }))} />);
     case 'landing':
       return <Landing s={fx.settings} services={SVC} />;
+    case 'landing-lawyers':
+      return <Landing s={fx.settings} services={SVC} audience="lawyers" />;
+    case 'landing-patients':
+      return <Landing s={fx.settings} services={SVC} audience="patients" />;
     case 'register':
       return <AuthFrame><div className="panel"><div><h1>הרשמה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>משרדי עורכי דין, מתווכים, חברות ומטופלים. החשבון נפתח אחרי אישור המרפאה.</p></div><RegisterForm /></div></AuthFrame>;
     case 'deposit':
