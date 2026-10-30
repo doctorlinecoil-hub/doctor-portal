@@ -23,7 +23,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   // how the final document will look, before the doctor confirms it (signature included, nothing is sent)
   const review = staff && v === 'preview';
   if (draft || review) {
-    const { data } = await supabase.from('letters').select('letter_type, recipient, subject, body, letter_date').eq('appointment_id', id).maybeSingle();
+    const { data } = await supabase.from('letters').select('letter_type, recipient, subject:doc_title, body, letter_date').eq('appointment_id', id).maybeSingle();
     letter = data as L | null;
   } else {
     const { data } = await supabase.rpc('final_letter', { p_id: id });
