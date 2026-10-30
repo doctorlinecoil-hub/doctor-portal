@@ -1937,3 +1937,143 @@ html { scroll-behavior: smooth; }
 /* the new rounded-square mark everywhere (it was a round seal before) */
 .logo.logo-img, .auth-brand .logo img, .lp-brand img { border-radius: 11px !important; }
 .logo.logo-img { box-shadow: 0 4px 14px rgba(20,184,166,.28) !important; }
+
+/* =====================================================================
+   v28 · booking (public): a wide, calm two-column layout
+   ===================================================================== */
+.pbx { padding: 0 0 64px; gap: 0; background: #F3F6F9; align-items: stretch; }
+.pbx-head { background: radial-gradient(800px 380px at 90% -20%, #0F5A55, transparent 60%), linear-gradient(180deg, #0B1724, #0D1E2D); color: #DCE6EF; padding: 22px 20px 64px; }
+.pbx-head-in { width: min(1180px, 100%); margin: 0 auto; display: grid; grid-template-columns: 1fr auto; grid-template-areas: "back back" "id perks"; gap: 14px 24px; align-items: end; }
+.pbx-back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 6px; color: #A9B8C8; font-size: 14px; text-decoration: none; }
+.pbx-back:hover { color: #fff; text-decoration: none; }
+.pbx-id { grid-area: id; display: flex; gap: 18px; align-items: center; }
+.pbx-avatar { width: 76px; height: 76px; border-radius: 50%; overflow: hidden; flex: none; background: radial-gradient(circle at 50% 30%, #2BB3A8, #0B5F5B); box-shadow: 0 0 0 3px rgba(233,207,122,.55), 0 12px 30px rgba(0,0,0,.35); }
+.pbx-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%; transform: scale(1.35); transform-origin: 50% 20%; }
+.pbx-kicker { display: inline-flex; align-items: center; gap: 7px; color: #5EEAD4; font-size: 13.5px; font-weight: 600; }
+.pbx-kicker img { border-radius: 5px; }
+.pbx-name { color: #fff; font-size: clamp(26px, 3.2vw, 36px); line-height: 1.15; margin: 2px 0 8px; }
+.pbx-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pbx-chips span, .pbx-chips a { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #DCE6EF; text-decoration: none; }
+.pbx-perks { grid-area: perks; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pbx-perks li { display: flex; align-items: center; gap: 8px; font-size: 14.5px; color: #DCE6EF; }
+.pbx-perks svg { color: #5EEAD4; }
+
+.pbx-body { width: min(1180px, calc(100% - 32px)); margin: -40px auto 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; position: relative; z-index: 1; }
+.pbx-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pbx .pbw-steps, .pbx .pb-card, .pbx .pbw-sum { width: 100%; }
+.pbx-progress { height: 6px; border-radius: 99px; background: rgba(255,255,255,.25); overflow: hidden; }
+.pbx-progress i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #5EEAD4, #0B7A75); transition: width .5s var(--ease, ease); }
+.pbx .pbw-steps { gap: 8px; }
+.pbx .pbw-step { padding: 13px 10px; border-radius: 14px; font-size: 15px; box-shadow: 0 2px 10px rgba(16,24,40,.06); }
+.pbx .pbw-dot { width: 30px; height: 30px; font-size: 14px; }
+.pbx .pb-card { border-radius: 22px; padding: 30px 32px 28px; border: 1px solid #E3E8EF; box-shadow: 0 18px 50px rgba(16,24,40,.08); }
+.pbx .pbw-pane { animation: lp-rise .35s var(--ease, ease) both; display: flex; flex-direction: column; gap: 14px; }
+.pbx .pbw-h { font-size: 24px; margin: 0; }
+.pbx .pbw-lead { font-size: 15.5px; color: var(--fg-2); margin: -6px 0 4px; }
+.pbx-sum-m { display: none; }
+
+/* step 1: who + services */
+.pbx-who { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pbx-who button { font: inherit; text-align: start; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 2px; align-items: center; padding: 16px; border-radius: 16px; border: 1.5px solid #DCE3EC; background: #fff; color: var(--fg); cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s, transform .15s; }
+.pbx-who button:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.pbx-who button.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); }
+.pbx-who-ic { grid-row: span 2; width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: #EEF3F7; color: var(--accent); }
+.pbx-who button.on .pbx-who-ic { background: var(--accent); color: #fff; }
+.pbx-who b { font-size: 16px; }
+.pbx-who small { font-size: 13px; color: var(--muted); }
+.pbx .options { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.pbx .opt { padding: 16px; border-radius: 16px; border: 1.5px solid #DCE3EC; transition: border-color .15s, background .15s, transform .15s, box-shadow .15s; }
+.pbx .opt:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.pbx .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); }
+.pbx .opt b { font-size: 16px; font-weight: 600; }
+.pbx .opt-ic { width: 42px; height: 42px; border-radius: 12px; }
+
+/* step 2: dates as a tidy grid, times by part of day */
+.pbx .dates { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 10px; overflow: visible; }
+.pbx .date { width: auto; padding: 12px 6px; border-radius: 14px; border: 1.5px solid #DCE3EC; transition: border-color .15s, background .15s, transform .15s; }
+.pbx .date:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.pbx .date b { font-size: 24px; }
+.pbx .date[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 30%, transparent); }
+.pbx .date[aria-pressed="true"] small, .pbx .date[aria-pressed="true"] em { color: rgba(255,255,255,.85); }
+.pbx .pbw-dayname { display: flex; align-items: center; gap: 8px; font-family: var(--f-head); font-size: 18px; font-weight: 600; margin-top: 8px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.pbx .pbw-dayname svg { color: var(--accent); }
+.pbx-times { display: grid; gap: 8px; }
+.pbx-times-l { font-size: 13.5px; color: var(--muted); font-weight: 600; }
+.pbx .times { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+.pbx .time { height: 48px; border-radius: 12px; font-size: 16px; border: 1.5px solid #DCE3EC; transition: border-color .15s, background .15s, transform .15s; }
+.pbx .time:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
+.pbx .time[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* step 3–4 */
+.pbx .pbw-drop { border-radius: 18px; padding: 34px 20px; border-width: 2px; background: linear-gradient(180deg, #FAFCFD, #F2F7F9); transition: border-color .15s, background .15s; }
+.pbx .pbw-drop:hover, .pbx .pbw-drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.pbx .pbw-group { border-radius: 16px; padding: 18px; border: 1px solid #E3E8EF; background: #FBFCFD; }
+.pbx .pbw-group legend { font-weight: 600; font-size: 15.5px; padding: 0 6px; display: inline-flex; gap: 7px; align-items: center; }
+.pbx .pbw-nav { padding-top: 16px; border-top: 1px solid var(--line); margin-top: 6px; }
+
+/* summary aside */
+.pbx-aside { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+.pbx-aside-card { background: #fff; border: 1px solid #E3E8EF; border-radius: 20px; padding: 20px; box-shadow: 0 18px 50px rgba(16,24,40,.08); }
+.pbx-aside-h { display: block; font-family: var(--f-head); font-size: 17px; margin-bottom: 12px; }
+.pbx-steps-sum { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pbx-steps-sum li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.pbx-steps-sum li:last-child { border-bottom: 0; }
+.pbx-steps-sum li > span { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #EEF3F7; color: var(--muted); flex: none; transition: background .2s, color .2s; }
+.pbx-steps-sum li.ok > span { background: var(--accent-soft); color: var(--accent); }
+.pbx-steps-sum small { display: block; font-size: 12.5px; color: var(--muted); }
+.pbx-steps-sum b { display: block; font-size: 14.5px; font-weight: 600; }
+.pbx-steps-sum li:not(.ok) b { color: var(--muted); font-weight: 500; }
+.pbx-aside-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--ok-soft); color: var(--ok); font-size: 13.5px; line-height: 1.5; }
+.pbx-aside-note svg { flex: none; margin-top: 2px; }
+.pbx-help { background: linear-gradient(160deg, #0D1B2A, #123B44); color: #DCE6EF; border-radius: 20px; padding: 18px 20px; display: grid; gap: 4px; }
+.pbx-help b { color: #fff; font-size: 16px; }
+.pbx-help > span { font-size: 13.5px; color: #A9B8C8; }
+.pbx-help div { display: flex; gap: 8px; margin-top: 10px; }
+.pbx-help .btn { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.2); }
+.pbx-safe { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 12.5px; color: var(--muted); }
+
+/* done */
+.pbx > .pbx-done { width: min(760px, calc(100% - 32px)); margin: -40px auto 0; position: relative; z-index: 1; align-items: center; text-align: center; gap: 14px; padding: 34px 32px; }
+.pbx-done-ic svg { width: 84px; height: 84px; }
+.pbx-done-ic circle { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 2; stroke-dasharray: 160; stroke-dashoffset: 160; animation: pbx-draw .6s ease forwards; }
+.pbx-done-ic path { fill: none; stroke: var(--ok); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: pbx-draw .4s .45s ease forwards; }
+@keyframes pbx-draw { to { stroke-dashoffset: 0; } }
+.pbx-done h2 { font-size: 28px; }
+.pbx-ticket { width: 100%; text-align: start; border: 1px solid #E3E8EF; border-radius: 18px; overflow: hidden; margin-top: 6px; }
+.pbx-ticket-top { display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: linear-gradient(135deg, #0B7A75, #0D4F55); color: #fff; }
+.pbx-ticket-top b { display: block; font-size: 17px; }
+.pbx-ticket-top span { font-size: 14px; opacity: .9; }
+.pbx-ticket-date { width: 58px; height: 58px; border-radius: 14px; background: rgba(255,255,255,.14); display: grid; place-items: center; text-align: center; line-height: 1.05; }
+.pbx-ticket-date b { font-size: 24px; }
+.pbx-ticket-date small { font-size: 11.5px; }
+.pbx-case { margin-inline-start: auto; font-size: 13px; background: rgba(255,255,255,.14); padding: 6px 12px; border-radius: 999px; }
+.pbx-case b { display: inline !important; font-size: 15px !important; }
+.pbx-ticket dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; margin: 0; padding: 16px 18px; font-size: 15px; }
+.pbx-ticket dt { color: var(--muted); }
+.pbx-ticket dd { margin: 0; font-weight: 500; }
+.pbx-done-act { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.pbx-done-foot { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+
+@media (max-width: 960px) {
+  .pbx-head { padding: 16px 16px 56px; }
+  .pbx-head-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "back" "id" "perks"; }
+  .pbx-perks { flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
+  .pbx-perks li { font-size: 13px; }
+  .pbx-avatar { width: 60px; height: 60px; }
+  .pbx-body { grid-template-columns: minmax(0, 1fr); width: calc(100% - 24px); }
+  .pbx-aside { position: static; margin-top: 0; }
+  .pbx-sum-m { display: flex; }
+  .pbx .pb-card { padding: 22px 16px; border-radius: 18px; }
+  .pbx .pbw-label { display: none; }
+  .pbx .pbw-step.on .pbw-label { display: inline; }
+  .pbx-who { grid-template-columns: minmax(0, 1fr); }
+  .pbx .dates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pbx .times { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pbx-done-act { grid-template-columns: minmax(0, 1fr); }
+  .pbx > .pbx-done { padding: 26px 18px; width: calc(100% - 24px); }
+}
+.pbx .pbw-step:disabled { opacity: 1; color: #98A2B3; }
+.pbx .opt-ic { background: #EEF3F7; color: var(--accent); }
+.pbx .opt[aria-pressed="true"] .opt-ic { background: var(--accent); color: #fff; }
+.pbx-change { font: inherit; font-size: 13px; font-weight: 500; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0 6px; text-decoration: underline; }
+.pbx .pbw-group legend { background: #FBFCFD; }
