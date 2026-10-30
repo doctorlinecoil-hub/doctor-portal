@@ -46,6 +46,8 @@ export async function sendMail(db: SupabaseClient, appointmentId: string | null,
         html: m.html,
         text: m.text,
         reply_to: m.replyTo || process.env.MAIL_REPLY_TO || undefined,
+        // a unique id per email: Gmail and Outlook don't fold different cases into one conversation
+        headers: { 'X-Entity-Ref-ID': crypto.randomUUID() },
         attachments: m.attachments?.map((a) => ({
           filename: a.filename,
           content: typeof a.content === 'string' ? Buffer.from(a.content, 'utf8').toString('base64') : a.content.toString('base64'),

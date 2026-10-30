@@ -284,7 +284,7 @@ export function firmUpdateEmail(s: Settings, a: ApptInfo, what: { notes: number;
 
 export function letterEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean; attached: boolean; link?: string }): Rendered {
   const label = (a.label || typeOf(a.type).label);
-  const subject = `${label} · ${a.patientName} · ${s.lh_name}`;
+  const subject = `${label} · ${a.patientName} · תיק ${a.caseNo}`;
   const w = when(a.startsAt);
   const body =
     p(o.forReferrer ? `${esc(label)} עבור <b>${esc(a.patientName)}</b> מוכנה.` : `שלום ${esc(a.patientName)},<br>${esc(label)} שלך מוכנה.`) +
@@ -302,7 +302,7 @@ export function letterEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean;
 
 export function awaitingPaymentEmail(s: Settings, a: ApptInfo, balance: string, link: string): Rendered {
   const label = (a.label || typeOf(a.type).label);
-  const subject = `${label} מוכנה וממתינה לתשלום · ${a.patientName}`;
+  const subject = `${label} מוכנה וממתינה לתשלום · ${a.patientName} · תיק ${a.caseNo}`;
   const body =
     p(`${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.`) +
     (balance ? card([['יתרה לתשלום', esc(balance)]]) : '') +
