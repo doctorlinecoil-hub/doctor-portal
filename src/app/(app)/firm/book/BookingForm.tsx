@@ -4,7 +4,7 @@ import ModePicker, { type Mode } from '@/components/ModePicker';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { EMAIL_RE, PAYERS, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import { EMAIL_RE, PAYERS, dbError, type Payer, type ReferralType } from '@/lib/constants';
 import type { Service } from '@/lib/services';
 import ServicePicker from '@/components/ServicePicker';
 import { afterBooking } from '../actions';
@@ -50,7 +50,6 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, servi
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const dayTimes = visible.find((d) => d.date === day)?.times ?? [];
   const chosen = slot ? ilParts(slot) : null;
-  const price = svc ? Number(svc.price || 0) : 0;
   const emailOk = !f.email.trim() || EMAIL_RE.test(f.email.trim());
   const patientOk = f.name.trim().length >= 2 && f.id.trim().length >= 5 && f.phone.trim().length >= 7 && emailOk;
 
@@ -201,7 +200,6 @@ export default function BookingForm({ firmId: defaultFirm, slots, horizon, servi
             <div className="sum-row"><span>מטופל</span><b>{f.name.trim() || '—'}</b></div>
             <div className="sum-row"><span>מסמכים</span><b>{files.length ? `${files.length} קבצים` : 'ללא'}</b></div>
             <div className="sum-row"><span>זימון במייל</span><b>{staff ? (f.email.trim() && emailOk ? 'למטופל' : 'בוואטסאפ מתוך התיק') : f.email.trim() && emailOk ? 'למטופל ולכם' : 'אליכם'}</b></div>
-            {price > 0 && <div className="sum-row"><span>מחיר (כולל מע״מ)</span><b className="money">{ils(price)}</b></div>}
           </div>
           <div className="stack-sm">
             <span className="hint">מי משלם על התיק?</span>
