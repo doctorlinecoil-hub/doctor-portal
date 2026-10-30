@@ -57,6 +57,16 @@ const TOOL: Anthropic.Tool = {
 const digits = (s: string) => String(s || '').replace(/\D/g, '');
 const isoDate = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) ? s : '');
 
+/** Israeli ID number check digit (9 digits, short numbers padded with zeros). */
+export function israeliIdOk(raw: string) {
+  const d = raw.replace(/\D/g, '');
+  if (d.length < 5 || d.length > 9) return false;
+  const p = d.padStart(9, '0');
+  let sum = 0;
+  for (let i = 0; i < 9; i++) { let n = Number(p[i]) * ((i % 2) + 1); if (n > 9) n -= 9; sum += n; }
+  return sum % 10 === 0 && !/^0+$/.test(p);
+}
+
 /** Keeps only known fields, checked and bounded (also used on what a browser sends back). */
 export function cleanExtract(x: Partial<Extracted>): Extracted {
   const id = digits(x.id_number || '');
@@ -64,7 +74,8 @@ export function cleanExtract(x: Partial<Extracted>): Extracted {
   const email = String(x.email || '').trim().toLowerCase();
   return {
     name: String(x.name || '').trim().slice(0, 120),
-    id_number: id.length >= 5 && id.length <= 10 ? id : '',
+    // a misread digit fails the check digit: better empty than wrong
+    id_number: israeliIdOk(id) ? id : '',
     dob: isoDate(String(x.dob || '')),
     phone: digits(phone).length >= 9 ? phone.slice(0, 30) : '',
     email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email.slice(0, 200) : '',
@@ -88,6 +99,9 @@ const PROMPT = [
   'מצא את פרטי המטופל (שם, ת.ז., תאריך לידה, טלפון, מייל), מה המפנה צריך מהרופא, ומי המפנה (שם המשרד, איש הקשר, מייל וטלפון של המשרד).',
   'העתק פרטים בדיוק כפי שהם כתובים, ספרה אחר ספרה. אל תמציא ואל תנחש: מה שלא כתוב בבירור נשאר ריק, ולא מסומן ב-sure.',
   'המטופל הוא מי שהמסמכים הרפואיים עוסקים בו (לא עורך הדין, לא הרופא ולא קרוב משפחה).',
+  'חפש את שם המטופל בכל המקומות האפשריים: שדות כמו ״שם המטופל״, ״שם החולה״, ״שם המבוטח״, ״שם התובע״, ״שם:״, ״פרטי המטופל״, ״בעניין:״, ״הנדון:״, ״לכבוד״ (רק אם הוא המטופל), כותרת המסמך, מדבקות וברקודים, שורת ת.ז., חותמות של קופת חולים או בית חולים, וגם בשולי הדף.',
+  'שם באנגלית בלבד: כתוב אותו בעברית כפי שנהגה בישראל (למשל Cohen → כהן). שם פרטי ושם משפחה הפוכים בטופס: סדר כ״שם פרטי שם משפחה״.',
+  'מספר תעודת זהות הוא בדרך כלל 9 ספרות, ליד השם או בשורה ״ת.ז.״ / ״מס׳ זהות״ / ״ID״. העתק אותו בדיוק, כולל אפסים מובילים.',
   'הצלב בין המסמכים: אם יש מסמכים של יותר מאדם אחד, או שם / ת.ז. / תאריך לידה שונים בין המסמכים, אל תבחר לבד. השאר את השדה הסותר ריק וכתוב ב-warning בדיוק מה סותר ובאיזה מסמך.',
 ].join('\n');
 
