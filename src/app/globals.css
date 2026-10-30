@@ -2947,3 +2947,13 @@ html.wm .studio.focus .studio-side { top: auto; }
   .cal-dots { display: flex; }
   .cal-ag-s { display: none; }
 }
+
+/* ── payment approval: reminder to whoever pays ── */
+.ok-t { color: var(--ok); font-weight: 500; }
+.pp-remind { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pp-remind-l { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--fg-2, var(--fg)); margin-inline-end: auto; }
+.pp-remind-l svg { color: #B7791F; }
+.pp-remind .btn { height: 32px; }
+.pp-wa { color: #128C4A; border-color: #BDE5CC; background: #F1FBF4; }
+.pp-wa:hover { background: #E3F6E9; }
+.pp-remind small { flex-basis: 100%; font-size: 12px; }
