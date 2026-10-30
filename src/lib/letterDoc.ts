@@ -54,23 +54,15 @@ export function docHtml(d: DocInput) {
   const intro = opinion
     ? `<p class="doc-intro">הנני מגיש בזאת את חוות דעתי הרפואית${d.visitDate ? ` לאחר בדיקתי ב־${esc(fmtDate(d.visitDate))}` : ''}.</p>${s.cv_in_opinions && s.lh_cv ? `<div class="doc-cv">${cvHtml(s.lh_cv)}</div>` : ''}`
     : '';
-  const visit = d.visitDate && d.visitDate !== d.date ? d.visitDate : null;
 
   return `
 <table class="ldoc"><thead><tr><td><div class="doc-head">${head}</div></td></tr></thead>
 <tbody><tr><td class="doc-main">
   ${d.draft ? '<div class="doc-draft">טיוטה</div>' : ''}
-  <div class="of-top">
-    <div class="of-title">${esc(title)}</div>
-    <div class="of-meta"><div><span>תאריך</span><b>${esc(fmtDate(d.date))}</b></div>${visit ? `<div><span>תאריך הבדיקה</span><b>${esc(fmtDate(visit))}</b></div>` : ''}</div>
-  </div>
-  <div class="of-pt">
-    <div><span>שם המטופל/ת</span><b>${esc(d.patient.name) || '&nbsp;'}</b></div>
-    <div><span>מס׳ זהות</span><b>${esc(d.patient.idNumber) || '&nbsp;'}</b></div>
-    <div><span>תאריך לידה</span><b>${d.patient.dob ? esc(fmtDate(d.patient.dob)) : '&nbsp;'}</b></div>
-    <div><span>גיל</span><b>${ag != null ? ag : '&nbsp;'}</b></div>
-  </div>
-  ${to.length ? `<div class="of-to"><span>לכבוד:</span> <b>${to.map(esc).join(' · ')}</b></div>` : ''}
+  <div class="cl-date">תאריך: ${esc(fmtDate(d.date))}</div>
+  ${to.length ? `<div class="cl-to"><div>לכבוד</div>${to.map((r) => `<div><b>${esc(r)}</b></div>`).join('')}</div>` : ''}
+  <h1 class="cl-title">${esc(title)}</h1>
+  <div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>
   ${intro}
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
@@ -255,6 +247,10 @@ ${p}.of-stamp { text-align: center; min-width: 60mm; }
 ${p}.of-stamp .doc-sig { margin: 0 auto 1mm; width: 48mm; }
 ${p}.of-sigspace { height: 18mm; }
 ${p}.of-line { border-top: 1px solid #111; padding-top: 1mm; font-size: 9.5pt; color: #333; }
+${p}.cl-date { text-align: left; font-size: 11pt; margin: 1mm 0 5mm; }
+${p}.cl-to { margin: 0 0 5mm; line-height: 1.5; }
+${p}.cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 18pt; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; margin: 2mm 0 4mm; }
+${p}.cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 11pt; padding-bottom: 3mm; margin-bottom: 5mm; border-bottom: 1px solid #C9CFD8; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }
