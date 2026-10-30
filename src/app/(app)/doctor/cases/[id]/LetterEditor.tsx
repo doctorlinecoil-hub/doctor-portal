@@ -5,7 +5,7 @@ import { useSupabase } from '@/lib/supabase/browser';
 import { typeOf, TYPES, type ReferralType } from '@/lib/constants';
 import { age, fmtDate, fmtStamp, todayIL } from '@/lib/dates';
 import { LEGAL_DECLARATION, PLACEHOLDER_RE, outlineFor, parseDraft } from '@/lib/letter';
-import { bodyText, bodyToHtml, richBody, textToHtml } from '@/lib/richtext';
+import { bodyDraftText, bodyText, bodyToHtml, richBody, textToHtml } from '@/lib/richtext';
 import { countPlaceholders } from '@/lib/sections';
 import type { PaperInfo } from '@/components/PaperPreview';
 import RichEditor, { type RichHandle } from '@/components/RichEditor';
@@ -65,7 +65,11 @@ export default function LetterEditor({
   });
   const [html, setHtml] = useState(startHtml);
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
-  const [ai, setAi] = useState<{ running: boolean; text: string; note: string; bad?: boolean }>({ running: false, text: '', note: '' });
+  const [ai, setAi] = useState<{ running: boolean; text: string; note: string; bad?: boolean; label?: string }>({ running: false, text: '', note: '' });
+  const [opts, setOpts] = useState<{ instructions: string; length: 'short' | 'normal' | 'long' }>({ instructions: '', length: 'normal' });
+  const [undo, setUndo] = useState<{ html: string; recipient: string; subject: string; label: string }[]>([]);
+  // on a phone the studio shows one pane at a time
+  const [pane, setPane] = useState<'letter' | 'ai' | 'details' | 'tools'>('letter');
   const [finalState, setFinalState] = useState<{ armed: boolean; msg: string; ok: boolean }>({ armed: false, msg: '', ok: false });
   const [review, setReview] = useState<number | null>(null);
   const latest = useRef(d);
@@ -111,6 +115,82 @@ export default function LetterEditor({
     update({ exam_notes: cur ? `${cur}${cur.endsWith('\n') ? '' : ' '}${text}` : text });
   };
 
+  /** keeps the letter as it is, so an AI change can be undone */
+  function snapshot(label: string) {
+    if (!label) return;
+    setUndo((u) => [{ html, recipient: latest.current.recipient, subject: latest.current.subject, label }, ...u].slice(0, 6));
+  }
+  function undoAI() {
+    const [last, ...rest] = undo;
+    if (!last) return;
+    setUndo(rest);
+    update({ recipient: last.recipient, subject: last.subject });
+    onBody(last.html);
+    editor.current?.setHtml(last.html);
+    setAi({ running: false, text: '', note: 'הוחזרה הגרסה הקודמת.' });
+  }
+
+  const REFINES: { key: 'polish' | 'shorten' | 'expand' | 'proof' | 'simple'; label: string; icon: string; busy: string }[] = [
+    { key: 'polish', label: 'שדרוג ניסוח', icon: 'sparkles', busy: 'משדרג את הניסוח' },
+    { key: 'proof', label: 'הגהה ותיקון', icon: 'check', busy: 'מגיה ומתקן' },
+    { key: 'shorten', label: 'קיצור', icon: 'minus', busy: 'מקצר' },
+    { key: 'expand', label: 'הרחבה ונימוק', icon: 'plus', busy: 'מרחיב ומנמק' },
+    { key: 'simple', label: 'שפה פשוטה למטופל', icon: 'user', busy: 'מפשט את השפה' },
+  ];
+
+  /** Improves the letter that is already written, without starting over. */
+  async function refine(action: 'polish' | 'shorten' | 'expand' | 'proof' | 'simple' | 'custom') {
+    if (ai.running) return;
+    const bodyNow = bodyDraftText(latest.current.body).trim();
+    if (!bodyNow) return setAi({ running: false, text: '', note: 'אין עדיין טקסט לשפר. התחילו ב״ניסוח טיוטה״.', bad: true });
+    if (action === 'custom' && !opts.instructions.trim()) return setAi({ running: false, text: '', note: 'כתבו בתיבה מה לשנות.', bad: true });
+    await save();
+    const label = action === 'custom' ? 'מבצע את ההנחיות' : REFINES.find((r) => r.key === action)?.busy || 'משפר';
+    snapshot('לפני ' + (action === 'custom' ? 'ההנחיות' : REFINES.find((r) => r.key === action)?.label || 'השיפור'));
+    setPane('letter');
+    const ctl = new AbortController();
+    abort.current = ctl;
+    setAi({ running: true, label, text: '', note: `${label}…` });
+    let text = '';
+    try {
+      const res = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId, action, letterType: latest.current.letter_type, body: bodyNow, instructions: action === 'custom' || action === 'polish' ? opts.instructions : '' }),
+        signal: ctl.signal,
+      });
+      if (!res.ok || !res.body) {
+        const j = await res.json().catch(() => ({}));
+        setUndo((u) => u.slice(1));
+        return setAi({ running: false, text: '', note: j.error || 'השיפור נכשל. נסו שוב.', bad: true });
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        text += dec.decode(value, { stream: true });
+        setAi((s) => ({ ...s, text: text.split('\u0000ERR:')[0], note: 'כותב…' }));
+      }
+      const [good, err] = text.split('\u0000ERR:');
+      if (err !== undefined) {
+        setUndo((u) => u.slice(1));
+        return setAi({ running: false, text: '', note: err, bad: true });
+      }
+      const next = textToHtml(parseDraft(good).body);
+      onBody(next);
+      editor.current?.setHtml(next);
+      await save();
+      setAi({ running: false, text: '', note: 'עודכן. לא אהבתם? ״ביטול השינוי״ מחזיר את הגרסה הקודמת.' });
+    } catch (e) {
+      const aborted = (e as Error).name === 'AbortError';
+      setUndo((u) => u.slice(1));
+      setAi({ running: false, text: '', note: aborted ? 'נעצר. המכתב לא שונה.' : 'השיפור נכשל. בדקו את החיבור ונסו שוב.', bad: !aborted });
+    } finally {
+      abort.current = null;
+    }
+  }
+
   // opened from "new document" with a few words for the AI: write the draft right away
   const autoRan = useRef(false);
   useEffect(() => {
@@ -126,18 +206,19 @@ export default function LetterEditor({
 
   async function runAI() {
     if (ai.running) return;
-    if (bodyText(latest.current.body).trim() && !window.confirm('הטיוטה החדשה תחליף את המכתב הנוכחי. להמשיך?')) return;
     await save();
+    snapshot(bodyText(latest.current.body).trim() ? 'הטיוטה הקודמת' : '');
+    setPane('letter');
     const ctl = new AbortController();
     abort.current = ctl;
     const before = latest.current;
-    setAi({ running: true, text: '', note: docCount ? `קורא ${docCount} מסמכים ומנסח… בדרך כלל דקה עד שתיים` : 'מנסח…' });
+    setAi({ running: true, label: 'מנסח טיוטה מלאה', text: '', note: docCount ? `קורא ${docCount} מסמכים ומנסח… בדרך כלל דקה עד שתיים` : 'מנסח…' });
     let text = '';
     try {
       const res = await fetch('/api/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId, letterType: before.letter_type, exam: before.exam_notes }),
+        body: JSON.stringify({ appointmentId, letterType: before.letter_type, exam: before.exam_notes, instructions: opts.instructions, length: opts.length }),
         signal: ctl.signal,
       });
       if (!res.ok || !res.body) {
@@ -272,7 +353,7 @@ export default function LetterEditor({
   );
 
   return (
-    <section className="studio" aria-label="המכתב">
+    <section className="studio" data-pane={pane} aria-label="המכתב">
       <div className="studio-head">
         <div className="studio-title">
           <span className="studio-ic"><Icon name="file" /></span>
@@ -289,17 +370,23 @@ export default function LetterEditor({
       )}
       {cancelled && <div className="callout bad"><div><Icon name="x" />התור בוטל.</div></div>}
 
+      <nav className="studio-panes" aria-label="מעבר בין חלקי העורך">
+        {([['letter', 'המכתב', 'file'], ['ai', 'AI', 'sparkles'], ['details', 'פרטים', 'settings'], ['tools', 'כלים', 'template']] as const).map(([k, l, ic]) => (
+          <button key={k} type="button" aria-pressed={pane === k} onClick={() => setPane(k)}><Icon name={ic} size={16} />{l}{k === 'ai' && ai.running && <span className="ais-live" />}</button>
+        ))}
+      </nav>
+
       <div className="studio-grid2">
         <div className="studio-main">
           {ai.running ? (
-            <div className="rich"><div className="desk"><div className="page">{header}<pre className="ai-stream" aria-live="polite">{ai.text || 'מתחיל לכתוב…'}</pre>{footer}</div></div></div>
+            <div className="rich"><div className="desk"><div className="page">{header}<div className="ai-live-tag"><span className="ais-dots"><i /><i /><i /></span>{ai.label || 'כותב'}…</div><pre className="ai-stream" aria-live="polite">{ai.text || 'מתחיל לכתוב…'}</pre>{footer}</div></div></div>
           ) : (
             <RichEditor
               ref={editor}
               html={html}
               onChange={onBody}
               readOnly={cancelled}
-              placeholder="כתבו כאן את המכתב, או השתמשו ב״ניסוח עם AI״ / ״מבנה מוכן״ שבצד…"
+              placeholder="כתבו כאן את המכתב, או תנו ל״סטודיו AI״ לנסח אותו…"
               header={header}
               footer={footer}
               extraTools={<Dictate onText={(t) => editor.current?.insertText(t + ' ')} label="הכתבה" />}
@@ -308,7 +395,50 @@ export default function LetterEditor({
         </div>
 
         <aside className="studio-side">
-          <div className="card">
+          <div className="card pane-ai pane-details">
+            <div className="card-h between"><span><Icon name="stethoscope" />ממצאי הבדיקה</span><Dictate onText={appendExam} label="הכתבה" /></div>
+            <AutoText id="ltExam" minRows={3} value={d.exam_notes} onChange={(e) => update({ exam_notes: e.target.value })} aria-label="ממצאי הבדיקה"
+              placeholder="לדוגמה: הליכה תקינה. כוח 5/5 בארבע הגפיים. ירידה בתחושה בדרמטום C6 משמאל." />
+            <span className="hint">ה־AI ישלב אותם בטיוטה. אפשר בקיצור.</span>
+          </div>
+
+          <div className={`card ai-card ai-studio pane-ai${ai.bad ? ' bad' : ''}`}>
+            <div className="ais-h">
+              <span className="ai-badge"><Icon name="sparkles" /></span>
+              <div><b>סטודיו AI</b><small>ניסוח ושיפור ברמה של מומחה בכיר</small></div>
+            </div>
+            <label className="ais-ins" htmlFor="aiIns">
+              <span>מה חשוב לך? <small>לא חובה</small></span>
+              <AutoText id="aiIns" minRows={2} value={opts.instructions} onChange={(e) => setOpts({ ...opts, instructions: e.target.value })} disabled={ai.running}
+                placeholder="למשל: להדגיש קשר סיבתי לתאונה, נכות 10% לפי סעיף 37(7)(ב), לסיים בהמלצה לפיזיותרפיה" />
+            </label>
+            <div className="ais-len" role="radiogroup" aria-label="אורך">
+              {([['short', 'תמציתי'], ['normal', 'רגיל'], ['long', 'מפורט']] as const).map(([k, l]) => (
+                <button key={k} type="button" role="radio" aria-checked={opts.length === k} className={opts.length === k ? 'on' : ''} onClick={() => setOpts({ ...opts, length: k })} disabled={ai.running}>{l}</button>
+              ))}
+            </div>
+            <button type="button" className="btn btn-primary ais-go" onClick={preview ? undefined : runAI} disabled={ai.running || cancelled}>
+              <Icon name="sparkles" />{ai.running && ai.label === 'מנסח טיוטה מלאה' ? 'מנסח…' : hasBody ? 'ניסוח מחדש מהתיק' : 'ניסוח טיוטה מלאה'}
+            </button>
+            {hasBody && (
+              <div className="ais-refine">
+                <span className="ais-sub">שיפור הטיוטה הקיימת</span>
+                <div className="ais-chips">
+                  {REFINES.map((r) => (
+                    <button key={r.key} type="button" onClick={preview ? undefined : () => refine(r.key)} disabled={ai.running || cancelled}><Icon name={r.icon} size={14} />{r.label}</button>
+                  ))}
+                  {opts.instructions.trim() && <button type="button" className="hot" onClick={preview ? undefined : () => refine('custom')} disabled={ai.running || cancelled}><Icon name="send" size={14} />ביצוע ההנחיות שכתבתי</button>}
+                </div>
+              </div>
+            )}
+            <p className={`ais-note ${ai.bad ? 'err' : 'hint'}`} aria-live="polite">{ai.running && <span className="ais-dots"><i /><i /><i /></span>}{ai.note || `ה־AI קורא ${docCount ? `${docCount} מסמכים` : 'את התיק'}, את הבקשה ואת הממצאים, וכותב מסמך מלא לפי סוג המכתב.`}</p>
+            <div className="row" style={{ gap: 8 }}>
+              {ai.running && <button type="button" className="btn btn-sm" onClick={() => abort.current?.abort()}><Icon name="x" size={14} />עצירה</button>}
+              {!ai.running && undo.length > 0 && <button type="button" className="btn btn-sm btn-ghost" onClick={undoAI}><Icon name="undo" size={14} />ביטול השינוי ({undo[0].label})</button>}
+            </div>
+          </div>
+
+          <div className="card pane-details">
             <div className="card-h"><Icon name="settings" />פרטי המכתב</div>
             <label className="field" htmlFor="ltType"><span>סוג המכתב</span>
               <select id="ltType" value={d.letter_type} onChange={(e) => update({ letter_type: e.target.value as ReferralType })}>
@@ -323,23 +453,7 @@ export default function LetterEditor({
             </label>
           </div>
 
-          <div className="card">
-            <div className="card-h between"><span><Icon name="stethoscope" />ממצאי הבדיקה</span><Dictate onText={appendExam} label="הכתבה" /></div>
-            <AutoText id="ltExam" minRows={3} value={d.exam_notes} onChange={(e) => update({ exam_notes: e.target.value })} aria-label="ממצאי הבדיקה"
-              placeholder="לדוגמה: הליכה תקינה. כוח 5/5 בארבע הגפיים. ירידה בתחושה בדרמטום C6 משמאל." />
-            <span className="hint">ה־AI ישלב אותם בטיוטה. אפשר בקיצור.</span>
-          </div>
-
-          <div className={`card ai-card${ai.bad ? ' bad' : ''}`}>
-            <div className="card-h"><span className="ai-badge"><Icon name="sparkles" /></span>ניסוח עם AI</div>
-            <p className={ai.bad ? 'err' : 'hint'} aria-live="polite">{ai.note || `קורא ${docCount ? `${docCount} מסמכים` : 'את התיק'}, את הבקשה ואת הממצאים, ומנסח טיוטה מלאה לפי סוג המכתב.`}</p>
-            <div className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn btn-primary" onClick={preview ? undefined : runAI} disabled={ai.running || cancelled}><Icon name="sparkles" />{ai.running ? 'מנסח…' : hasBody ? 'ניסוח מחדש' : 'ניסוח טיוטה'}</button>
-              {ai.running && <button type="button" className="btn" onClick={() => abort.current?.abort()}>עצירה</button>}
-            </div>
-          </div>
-
-          <div className="card">
+          <div className="card pane-tools">
             <div className="card-h"><Icon name="template" />כלי כתיבה</div>
             <div className="tool-list">
               <button type="button" className="btn" onClick={() => editor.current?.insertHtml(textToHtml(outlineFor(d.letter_type)))} disabled={ai.running || cancelled}><Icon name="list" />מבנה מוכן לפי סוג המכתב</button>
