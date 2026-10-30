@@ -10,16 +10,16 @@ type Letter = { letter_type: ReferralType; recipient: string; subject: string; b
 const escT = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** The official A4 document on Dr. Hanoch's letterhead, printed by the browser (or saved as PDF). */
-export default function LetterPaper({ settings: s, letter, patient, backHref, draft, printButton, title, visitDate, signature, embed }: {
+export default function LetterPaper({ settings: s, letter, patient, backHref, draft, printButton, title, visitDate, signature, embed, visits }: {
   settings: Settings; letter: Letter; patient: { name: string; idNumber: string; dob: string | null };
-  backHref: string; draft?: boolean; printButton: React.ReactNode; title?: string; visitDate?: string | null; signature?: string | null; embed?: boolean;
+  backHref: string; draft?: boolean; printButton: React.ReactNode; title?: string; visitDate?: string | null; signature?: string | null; embed?: boolean; visits?: string[];
 }) {
   const body = isRich(letter.body)
     ? sanitizeHtml(stripMarker(letter.body))
     : bodyBlocks(letter.body).map((b) => (b.kind === 'h' ? `<h3>${escT(b.text)}</h3>` : b.kind === 'li' ? `<ul><li>${escT(b.text)}</li></ul>` : `<p>${escT(b.text)}</p>`)).join('');
   const html = docHtml({
     settings: s, title: title || typeOf(letter.letter_type).label, baseType: letter.letter_type, date: letter.letter_date, visitDate,
-    recipient: letter.recipient, subject: letter.subject, patient, bodyHtml: body, banner: '/brand/letterhead.jpg', signature, draft,
+    recipient: letter.recipient, subject: letter.subject, patient, bodyHtml: body, banner: '/brand/letterhead.jpg', signature, draft, visits,
   });
   return <PaperFrame backHref={backHref} printButton={printButton} hint={draft ? 'זו טיוטה' : ''} html={html} embed={embed} />;
 }
