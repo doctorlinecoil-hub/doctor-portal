@@ -2809,3 +2809,4 @@ html.wm .studio.focus .studio-side { top: auto; }
 .ais-hist input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); flex: none; }
 .ais-hist b { display: block; font-size: 14px; }
 .ais-hist small { color: var(--muted); font-size: 12.5px; }
+.rv-pay-ch button.wide { grid-column: 1 / -1; }
