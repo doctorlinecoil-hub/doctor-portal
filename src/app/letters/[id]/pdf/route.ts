@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import { priorVisits } from '@/lib/visits';
 import type { ReferralType } from '@/lib/constants';
 import { ilParts, todayIL } from '@/lib/dates';
 import { letterFileName, letterHtml, renderPdf } from '@/lib/pdf';
@@ -27,9 +28,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return new Response('המסמך עוד לא זמין להורדה (הוא ייפתח אחרי אישור התשלום במרפאה).', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
   const doc = { ...letter, letter_date: letter.letter_date || todayIL() };
+  const visits = await priorVisits(supabase, a);
   const pt = { name: a.patient_name ?? '', idNumber: a.patient_id_number ?? '', dob: a.patient_dob };
   const pdf = await renderPdf(
-    letterHtml(settings, doc, pt, { title: (a.referral_type === doc.letter_type && a.service_label) || undefined, visitDate: ilParts(a.starts_at).date, signed: settings.sign_final }),
+    letterHtml(settings, doc, pt, { title: (a.referral_type === doc.letter_type && a.service_label) || undefined, visitDate: ilParts(a.starts_at).date, signed: settings.sign_final, visits }),
     [settings.lh_name, settings.lh_address].filter(Boolean).join(' · '),
   );
   if (!pdf) return Response.redirect(new URL(`/letters/${id}/print`, _req.url), 302);
