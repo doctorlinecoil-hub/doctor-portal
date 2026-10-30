@@ -326,17 +326,14 @@ export default function LetterEditor({
             </div>
           </header>
         )}
-      <div className="of-top">
-        <div className="of-title">{d.doc_title.trim() || defaultTitle}</div>
-        <div className="of-meta"><div><span>תאריך</span><b className="num">{fmtDate(todayIL())}</b></div>{paper.visitDate && paper.visitDate !== todayIL() && <div><span>תאריך הבדיקה</span><b className="num">{fmtDate(paper.visitDate)}</b></div>}</div>
+      <div className="cl-date">תאריך: <span className="num">{fmtDate(todayIL())}</span></div>
+      {to.length > 0 ? <div className="cl-to"><div>לכבוד</div>{to.map((r) => <div key={r}><b>{r}</b></div>)}</div> : <div className="cl-to ghost">לכבוד — לא חובה, ממלאים ב״פרטים״</div>}
+      <div className="cl-title">{d.doc_title.trim() || defaultTitle}</div>
+      <div className="cl-pt">
+        <span><b>שם מלא:</b> {paper.patient.name}</span>
+        {paper.patient.idNumber && <span><b>ת.ז.:</b> <span className="num">{paper.patient.idNumber}</span></span>}
+        {paper.patient.dob && <span><b>תאריך לידה:</b> <span className="num">{fmtDate(paper.patient.dob)}</span>{ag != null ? ` (גיל ${ag})` : ''}</span>}
       </div>
-      <div className="of-pt">
-        <div><span>שם המטופל/ת</span><b>{paper.patient.name || '\u00a0'}</b></div>
-        <div><span>מס׳ זהות</span><b className="num">{paper.patient.idNumber || '\u00a0'}</b></div>
-        <div><span>תאריך לידה</span><b className="num">{paper.patient.dob ? fmtDate(paper.patient.dob) : '\u00a0'}</b></div>
-        <div><span>גיל</span><b className="num">{ag ?? '\u00a0'}</b></div>
-      </div>
-      {to.length > 0 ? <div className="of-to"><span>לכבוד:</span> <b>{to.join(' · ')}</b></div> : <div className="of-to ghost">לכבוד — לא חובה, ממלאים בפרטי המכתב</div>}
       {opinion && (
         <div className="pg-intro">
           <p>הנני מגיש בזאת את חוות דעתי הרפואית{paper.visitDate ? ` לאחר בדיקתי ב־${fmtDate(paper.visitDate)}` : ''}.</p>
