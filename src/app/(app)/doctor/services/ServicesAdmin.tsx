@@ -7,7 +7,9 @@ import { SERVICE_ICONS, type Service } from '@/lib/services';
 import Icon from '@/components/Icon';
 
 type Draft = Omit<Service, 'id'> & { id?: string };
-const NEW: Draft = { label: '', description: '', icon: 'file', base_type: 'summary', price: 0, active: true, sort: 0 };
+const DURATIONS = [15, 20, 30, 45, 60, 75, 90, 120, 150, 180];
+const durLabel = (m: number) => (m < 60 ? `${m} דקות` : m % 60 ? `${Math.floor(m / 60)} שע׳ ו־${m % 60} דק׳` : m === 60 ? 'שעה' : m === 120 ? 'שעתיים' : `${m / 60} שעות`);
+const NEW: Draft = { label: '', description: '', icon: 'file', base_type: 'summary', price: 0, active: true, sort: 0, duration_minutes: null };
 
 /** Add, edit, reorder and hide referral types. Changes apply to new bookings; existing cases keep their name and price. */
 export default function ServicesAdmin({ initial, preview }: { initial: Service[]; preview?: boolean }) {
@@ -23,7 +25,7 @@ export default function ServicesAdmin({ initial, preview }: { initial: Service[]
     const label = edit.label.trim();
     if (label.length < 2) return setMsg({ ok: false, text: 'כתבו שם לשירות.' });
     setBusy(true);
-    const row = { label: label.slice(0, 80), description: edit.description.trim().slice(0, 200), icon: edit.icon, base_type: edit.base_type, price: Math.max(0, Number(edit.price) || 0), active: edit.active };
+    const row = { label: label.slice(0, 80), description: edit.description.trim().slice(0, 200), icon: edit.icon, base_type: edit.base_type, price: Math.max(0, Number(edit.price) || 0), active: edit.active, duration_minutes: edit.duration_minutes || null };
     const q = edit.id
       ? supabase.from('services').update(row).eq('id', edit.id).select('*').single()
       : supabase.from('services').insert({ ...row, sort: (list.at(-1)?.sort ?? 0) + 1 }).select('*').single();
@@ -71,7 +73,7 @@ export default function ServicesAdmin({ initial, preview }: { initial: Service[]
               <span className="svc-main">
                 <b>{s.label}{!s.active && <span className="badge b-cancelled">מוסתר</span>}</b>
                 <span>{s.description || '—'}</span>
-                <small>סוג מסמך: {TYPES[s.base_type].label}</small>
+                <small>סוג מסמך: {TYPES[s.base_type].label} · משך: {s.duration_minutes ? durLabel(s.duration_minutes) : 'ברירת מחדל'}</small>
               </span>
               <span className="svc-price">{s.price > 0 ? ils(s.price) : 'ללא מחיר'}</span>
               <span className="svc-act">
@@ -92,6 +94,12 @@ export default function ServicesAdmin({ initial, preview }: { initial: Service[]
           <div className="panel-head"><h2><Icon name={edit.id ? 'settings' : 'plus'} />{edit.id ? 'עריכת שירות' : 'שירות חדש'}</h2></div>
           <div className="grid-2">
             <label className="field"><span>שם השירות</span><input value={edit.label} onChange={(e) => setEdit({ ...edit, label: e.target.value })} placeholder="למשל: חוות דעת לחברת ביטוח" autoFocus /></label>
+            <label className="field"><span>משך הטיפול ביומן <small>כמה זמן התור תופס</small></span>
+              <select value={edit.duration_minutes ?? ''} onChange={(e) => setEdit({ ...edit, duration_minutes: e.target.value ? +e.target.value : null })}>
+                <option value="">ברירת מחדל (אורך תור בהגדרות)</option>
+                {DURATIONS.map((m) => <option key={m} value={m}>{durLabel(m)}</option>)}
+              </select>
+            </label>
             <label className="field"><span>מחיר כולל מע״מ ₪</span><input inputMode="decimal" dir="ltr" value={String(edit.price)} onChange={(e) => setEdit({ ...edit, price: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} /></label>
           </div>
           <label className="field"><span>תיאור קצר <small>מופיע מתחת לשם</small></span><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="למה זה מתאים, מה כולל" /></label>
