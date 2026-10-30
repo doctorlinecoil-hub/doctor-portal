@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import ShareLink from '@/components/ShareLink';
 import { PendingPayView } from '@/views/PendingPayView';
+import ApprovePay from '@/app/(app)/doctor/payments/ApprovePay';
 import AppShell from '@/components/AppShell';
 import AuthFrame from '@/components/AuthFrame';
 import LoginForm from '@/app/login/LoginForm';
@@ -118,8 +119,9 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     }
     case 'admin-money': {
       const done = fx.rows.map((r, i) => ({ ...r, status: 'done' as const, payment_ok_at: i < 2 ? new Date().toISOString() : null }));
-      return staffShell('/admin/reports', <><nav className="pp-tabs"><a href="#" aria-current="true">ממתינים לתשלום<span className="pp-n">4</span></a><a href="#">גבייה ותשלומים</a><a href="#">דוחות</a></nav>
-        <PendingPayView gate waiting={done.slice(2, 6)} approved={done.slice(0, 2)} action={(id, undo) => undo ? <button type="button" className="btn btn-sm btn-ghost">ביטול</button> : <button type="button" className="btn btn-sm btn-ok">אישור תשלום ושליחה</button>} /></>);
+      return staffShell('/doctor/payments', <PendingPayView gate waiting={done.slice(2, 6)} approved={done.slice(0, 2)}
+        pays={{ [done[3].id]: [{ amount: 900, method: 'bit', paid_on: todayIL() }], [done[0].id]: [{ amount: 2500, method: 'transfer', paid_on: todayIL() }] }}
+        action={(r, undo) => <ApprovePay preview initialOpen={r.id === done[2].id} id={r.id} today={todayIL()} undo={undo} due={Math.max(0, r.price - r.paid)} paidInFull={r.price > 0 && r.paid >= r.price} />} />);
     }
     case 'admin-reports':
       return staffShell('/admin/reports', <ReportsView report={buildReport(fx.rows.map((r) => ({ id: r.id, case_no: r.case_no, starts_at: r.starts_at, status: r.status, referral_type: r.referral_type, price: r.price, payer: r.payer, firm_id: r.firm_name ?? '', firm_name: r.firm_name ?? '', patient_name: r.patient_name })),
