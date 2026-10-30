@@ -71,6 +71,7 @@ export default function LetterEditor({
   // on a phone the studio shows one pane at a time
   const [pane, setPane] = useState<'letter' | 'side'>('letter');
   const [side, setSide] = useState<'ai' | 'exam' | 'details' | 'tools'>('ai');
+  const [toolsOpen, setToolsOpen] = useState(true);
   // writing in full screen: only the letter and its tools
   const [focus, setFocus] = useState(false);
   useEffect(() => {
@@ -396,13 +397,14 @@ export default function LetterEditor({
         </div>
 
         <aside className="studio-side">
-          <div className={`sp${side === 'ai' ? ' sp-ai' : ''}${ai.bad && side === 'ai' ? ' bad' : ''}`}>
+          <div className={`sp sp-top${side === 'ai' ? ' sp-ai' : ''}${ai.bad && side === 'ai' ? ' bad' : ''}`}>
             <nav className="sp-tabs" aria-label="כלי העורך">
               {SIDE.map(([k, l, ic]) => (
-                <button key={k} type="button" aria-pressed={side === k} onClick={() => setSide(k)}><Icon name={ic} size={15} />{l}{k === 'ai' && ai.running && <span className="ais-live" />}{k === 'exam' && d.exam_notes.trim() && <span className="sp-dot" />}</button>
+                <button key={k} type="button" aria-pressed={toolsOpen && side === k} onClick={() => { if (toolsOpen && side === k) setToolsOpen(false); else { setSide(k); setToolsOpen(true); } }}><Icon name={ic} size={15} />{l}{k === 'ai' && ai.running && <span className="ais-live" />}{k === 'exam' && d.exam_notes.trim() && <span className="sp-dot" />}</button>
               ))}
+              <button type="button" className="sp-fold" onClick={() => setToolsOpen(!toolsOpen)} aria-expanded={toolsOpen}><Icon name="chevron" size={15} className={toolsOpen ? 'up' : 'down'} />{toolsOpen ? 'הסתרה' : 'הצגה'}</button>
             </nav>
-            <div className="sp-body">
+            <div className={`sp-body${toolsOpen ? '' : ' folded'}`}>
             {side === 'ai' && (<>
             <div className="ais-h">
               <span className="ai-badge"><Icon name="sparkles" /></span>
