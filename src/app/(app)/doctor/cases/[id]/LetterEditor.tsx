@@ -323,7 +323,7 @@ export default function LetterEditor({
           </header>
         )}
       <div className="of-top">
-        <div className="of-title">{opinion ? 'חוות דעת רפואית' : (paper.title || typeOf(d.letter_type).label)}</div>
+        <div className="of-title">{opinion ? 'חוות דעת רפואית' : ((paper.title && (!paper.titleType || paper.titleType === d.letter_type) ? paper.title : '') || typeOf(d.letter_type).label)}</div>
         <div className="of-meta"><div><span>תאריך</span><b className="num">{fmtDate(todayIL())}</b></div>{paper.visitDate && paper.visitDate !== todayIL() && <div><span>תאריך הבדיקה</span><b className="num">{fmtDate(paper.visitDate)}</b></div>}</div>
       </div>
       <div className="of-pt">
