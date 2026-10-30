@@ -1,12 +1,10 @@
 import Link from 'next/link';
 import Icon from '@/components/Icon';
 import Tabs from '@/components/Tabs';
-import { Empty, PageHead, Stat } from '@/components/ui';
+import { Empty, PageHead } from '@/components/ui';
 import { KindBadge, StatusBadge } from '@/components/Badges';
-import { ils } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
 import { DAYS, dayNum, fmtDate, fmtDay, fromDayNum, ilParts, todayIL, weekday } from '@/lib/dates';
-import { Spark } from '@/components/charts';
 import type { ApptRow, CaseDetail, DocRow, NoteRow } from '@/lib/types';
 import { ApptItem, CaseHero, DocsPanel, NotesPanel, groupByDay } from './FirmViews';
 
@@ -52,118 +50,150 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
     ? confirmed.filter((r) => day(r) < 0).sort((a, b) => b.starts_at.localeCompare(a.starts_at))
     : confirmed.filter((r) => day(r) >= 0).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const np = next ? ilParts(next.starts_at) : null;
+  const mins = next ? Math.round((new Date(next.starts_at).getTime() - now.getTime()) / 60000) : 0;
+  const until = !next || !np ? '' : np.date === today
+    ? (mins < 60 ? `בעוד ${Math.max(1, mins)} דקות` : `בעוד ${Math.floor(mins / 60)} שע׳${mins % 60 >= 10 ? ` ו־${mins % 60} דק׳` : ''}`)
+    : day(next) === 1 ? 'מחר' : `בעוד ${day(next)} ימים`;
+  const asks = pending.length + reschedules.length;
+  const load = Array.from({ length: 14 }, (_, i) => active.filter((r) => day(r) === i).length);
+  const peak = Math.max(1, ...load);
+  const metrics: { k: string; v: number; l: string; href: string; tone?: string }[] = [
+    { k: 'today', v: todays.length, l: 'תורים היום', href: '/doctor/calendar?view=day' },
+    { k: 'week', v: week.length, l: 'השבוע', href: '/doctor/calendar' },
+    { k: 'asks', v: asks, l: 'לאישורך', href: '#approvals', tone: asks ? 'warn' : '' },
+    { k: 'wait', v: waiting.length, l: 'ממתינים למכתב', href: '#waiting', tone: waiting.length ? 'hot' : '' },
+  ];
   return (
-    <>
-      <section className="hero">
-        <div>
-          <span className="hero-date">יום {DAYS[weekday(today)]} · {fmtDate(today)}</span>
+    <div className="dx">
+      <section className="dx-hero">
+        <div className="dx-hero-main">
+          <span className="dx-date"><Icon name="calendar" size={14} />יום {DAYS[weekday(today)]} · {fmtDate(today)}</span>
           <h1>{greeting(now)}, {name}</h1>
           <p>
-            {todays.length ? `היום ${todays.length === 1 ? 'תור אחד' : `${todays.length} תורים`}` : 'אין תורים היום'}
-            {pending.length ? ` · ${pending.length === 1 ? 'בקשה חדשה ממתינה' : `${pending.length} בקשות חדשות ממתינות`} לאישורך` : ''}
-            {waiting.length ? ` · ${waiting.length} ממתינים למכתב` : ''}
+            {todays.length ? `היום ${todays.length === 1 ? 'תור אחד' : `${todays.length} תורים`} ביומן` : 'היום היומן פנוי'}
+            {asks ? ` · ${asks === 1 ? 'בקשה אחת מחכה' : `${asks} בקשות מחכות`} לאישורך` : ' · אין בקשות פתוחות'}
           </p>
+          <div className="dx-metrics">
+            {metrics.map((m) => (
+              <Link key={m.k} href={m.href} className={`dx-m ${m.tone || ''}`}>
+                <b className="num">{m.v}</b><span>{m.l}</span>
+              </Link>
+            ))}
+          </div>
+          {share && <div className="dx-share">{share}</div>}
         </div>
-        {next && np && (
-          <Link href={`/doctor/cases/${next.id}`} className="hero-next">
-            <span className="hint">התור הבא</span>
+        {next && np ? (
+          <Link href={`/doctor/cases/${next.id}`} className="dx-next">
+            <span className="dx-next-k"><span className="dx-pulse" />התור הבא · {until}</span>
+            <span className="dx-next-t num">{np.time}</span>
             <b>{next.patient_name || 'ממתין לפרטים'}</b>
-            <span>{fmtDay(np.date)} · <span className="num">{np.time}</span> · {labelOf(next)}</span>
-            <AiChip i={intake[next.id]} />
+            <span className="dx-next-s">{fmtDay(np.date)} · {labelOf(next)}{next.mode === 'phone' ? ' · טלפוני' : ''}</span>
+            <span className="dx-next-f"><AiChip i={intake[next.id]} /><span className="dx-go">לתיק<Icon name="chevron" size={15} /></span></span>
           </Link>
+        ) : (
+          <div className="dx-next dx-next-empty">
+            <span className="dx-next-k">התור הבא</span>
+            <b>אין תורים קרובים</b>
+            <span className="dx-next-s">שלחו את קישור קביעת התור למפנים, והבקשות יגיעו לכאן.</span>
+          </div>
         )}
       </section>
+
       {setup}
-      {share}
-      <div className="stats">
-        <Stat icon="inbox" label="בקשות לאישור" value={pending.length + reschedules.length} tone={pending.length ? 'warn' : 'violet'} href="#approvals" />
-        <Stat icon="calendar" label="תורים השבוע" value={week.length} tone="info" sub={todays.length ? `${todays.length} היום` : undefined} />
-        <Stat icon="file" label="ממתינים למכתב" value={waiting.length} tone={waiting.length ? 'bad' : 'ok'} sub={openRequests ? `${openRequests} בקשות מסמכים פתוחות` : undefined} />
-        {isAdmin ? <Stat icon="wallet" label="יתרה לגבייה" value={ils(outstanding)} tone="bad" href="/admin/payments" />
-          : <Stat icon="fileCheck" label="מכתבים שנשלחו" value={active.filter((r) => r.status === 'done').length} tone="ok" />}
-      </div>
 
-      <section className="panel load-panel">
-        <div className="panel-head">
-          <h2><Icon name="chart" />העומס בשבועיים הקרובים</h2>
-          <div className="row" style={{ gap: 6 }}>
-            <Link className="btn btn-sm btn-ghost" href="/doctor/calendar"><Icon name="calendar" size={15} />ליומן</Link>
-            <Link className="btn btn-sm btn-ghost" href="/admin/reports"><Icon name="chart" size={15} />לדוחות</Link>
-          </div>
-        </div>
-        <Spark
-          values={Array.from({ length: 14 }, (_, i) => active.filter((r) => day(r) === i).length)}
-          labels={Array.from({ length: 14 }, (_, i) => { const d = fromDayNum(dayNum(today) + i); return i === 0 ? 'היום' : `${'אבגדהוש'[weekday(d)]}׳ ${+d.slice(8, 10)}`; })}
-          today={0}
-        />
-      </section>
-
-      {pending.length > 0 && (
-        <section className="panel flush approvals" id="approvals">
-          <div className="panel-head"><h2><Icon name="inbox" />בקשות חדשות לאישור</h2><span className="badge b-pending">{pending.length}</span></div>
-          <div className="req-list">
-            {pending.map((r) => {
-              const p = ilParts(r.starts_at);
-              return (
-                <div className="req" key={r.id}>
-                  <Link href={`/doctor/cases/${r.id}`} className="req-main">
-                    <span className="req-when"><b className="num">{p.time}</b><small>{fmtDay(p.date)}</small></span>
-                    <span className="item-main">
-                      <b>{r.patient_name || 'ממתין לפרטים'}</b>
-                      <span className="item-meta"><span>{labelOf(r)}</span><span>·</span><span>{r.firm_name}</span><span>·</span><span className="num">תיק {r.case_no}</span></span>
-                      {new Date(r.starts_at) < now ? <span className="badge b-cancelled">המועד עבר · כדאי לדחות ולבקש מועד חדש</span> : <AiChip i={intake[r.id]} />}
-                    </span>
-                  </Link>
-                  <div className="req-actions">{approvals?.(r.id)}</div>
-                </div>
-              );
-            })}
-          </div>
+      {asks > 0 && (
+        <section className="dx-card dx-asks" id="approvals">
+          <div className="dx-h"><span className="dx-ic warn"><Icon name="inbox" size={18} /></span><h2>מחכה לאישורך</h2><span className="dx-count">{asks}</span></div>
+          {pending.length > 0 && (
+            <div className="req-list">
+              {pending.map((r) => {
+                const p = ilParts(r.starts_at);
+                return (
+                  <div className="req" key={r.id}>
+                    <Link href={`/doctor/cases/${r.id}`} className="req-main">
+                      <span className="req-when"><b className="num">{p.time}</b><small>{fmtDay(p.date)}</small></span>
+                      <span className="item-main">
+                        <b>{r.patient_name || 'ממתין לפרטים'}</b>
+                        <span className="item-meta"><span>{labelOf(r)}</span><span>·</span><span>{r.firm_name}</span></span>
+                        {new Date(r.starts_at) < now ? <span className="badge b-cancelled">המועד עבר · כדאי לדחות ולבקש מועד חדש</span> : <AiChip i={intake[r.id]} />}
+                      </span>
+                    </Link>
+                    <div className="req-actions">{approvals?.(r.id)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {reschedules.length > 0 && <div className="stack-sm dx-resched"><span className="hint">בקשות לשינוי מועד</span>{reschedules}</div>}
         </section>
       )}
 
-      {reschedules.length > 0 && (
-        <section className="panel approvals">
-          <div className="panel-head"><h2><Icon name="calendar" />בקשות לשינוי מועד</h2><span className="badge b-pending">{reschedules.length}</span></div>
-          <div className="stack-sm">{reschedules}</div>
-        </section>
-      )}
-
-      <div className="cols-side">
-        <section className="panel flush">
-          <div className="panel-head">
-            <h2><Icon name="calendar" />{past ? 'ביקורים קודמים' : 'יומן תורים'}</h2>
-            <nav className="tabs" aria-label="תצוגה" style={{ boxShadow: 'none' }}>
+      <div className="dx-grid">
+        <section className="dx-card flush">
+          <div className="dx-h">
+            <span className="dx-ic"><Icon name="calendar" size={18} /></span>
+            <h2>{past ? 'ביקורים קודמים' : 'היומן שלי'}</h2>
+            <nav className="dx-seg" aria-label="תצוגה">
               <Link href="/doctor" aria-current={!past}>קרובים</Link>
               <Link href="/doctor?view=past" aria-current={past}>עבר</Link>
             </nav>
           </div>
           {list.length === 0 ? <Empty icon="calendar">{past ? 'אין ביקורים קודמים.' : 'אין תורים קרובים. כשמפנה יקבע תור, הוא יופיע כאן.'}</Empty> : (
-            <div className="list">
-              {groupByDay(list.slice(0, 120)).map((g) => (
+            <div className="list dx-list">
+              {groupByDay(list.slice(0, 60)).map((g) => (
                 <div key={g.date}>
-                  <div className="list-day">{fmtDay(g.date)} <span>{fmtDate(g.date)} · {g.rows.length} תורים</span></div>
+                  <div className="list-day">{g.date === today ? 'היום' : fmtDay(g.date)} <span>{fmtDate(g.date)} · {g.rows.length === 1 ? 'תור אחד' : `${g.rows.length} תורים`}</span></div>
                   {g.rows.map((r) => <ApptItem key={r.id} r={r} href={`/doctor/cases/${r.id}`} staff extra={<AiChip i={intake[r.id]} />} />)}
                 </div>
               ))}
             </div>
           )}
+          <Link className="dx-more" href="/doctor/calendar">לתצוגת היומן המלאה<Icon name="chevron" size={15} /></Link>
         </section>
-        <section className="panel flush">
-          <div className="panel-head"><h2><Icon name="file" />ממתינים למכתב</h2><span className="hint">{waiting.length}</span></div>
-          {waiting.length === 0 ? <Empty icon="checkCircle">אין ביקורים שממתינים למכתב</Empty> : (
-            <div className="list">
-              {waiting.slice(0, 12).map((r) => (
-                <Link key={r.id} href={`/doctor/cases/${r.id}`} className="item" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
-                  <span className="item-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span className="item-meta">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)}</span></span>
-                  <StatusBadge status={r.status} staff />
-                </Link>
-              ))}
+
+        <aside className="dx-side">
+          <section className="dx-card flush" id="waiting">
+            <div className="dx-h"><span className={`dx-ic ${waiting.length ? 'hot' : 'ok'}`}><Icon name="file" size={18} /></span><h2>ממתינים למכתב</h2><span className="dx-count">{waiting.length}</span></div>
+            {waiting.length === 0 ? <div className="dx-zero"><Icon name="checkCircle" />הכול כתוב. אין ביקורים שממתינים למכתב.</div> : (
+              <div className="dx-wait">
+                {waiting.slice(0, 8).map((r) => {
+                  const d = -day(r);
+                  return (
+                    <Link key={r.id} href={`/doctor/cases/${r.id}`}>
+                      <span className="fc-av">{(r.patient_name || '?').trim().slice(0, 1)}</span>
+                      <span className="dx-wait-m"><b>{r.patient_name || 'ממתין לפרטים'}</b><small>{labelOf(r)}</small></span>
+                      <span className={`dx-age ${d > 7 ? 'old' : ''}`}>{d <= 0 ? 'היום' : d === 1 ? 'אתמול' : `לפני ${d} ימים`}</span>
+                    </Link>
+                  );
+                })}
+                {waiting.length > 8 && <span className="hint dx-wait-more">ועוד {waiting.length - 8}</span>}
+              </div>
+            )}
+            {openRequests > 0 && <div className="dx-note"><Icon name="mail" size={15} />{openRequests === 1 ? 'בקשת מסמכים אחת פתוחה' : `${openRequests} בקשות מסמכים פתוחות`}</div>}
+          </section>
+
+          <section className="dx-card">
+            <div className="dx-h"><span className="dx-ic"><Icon name="chart" size={18} /></span><h2>השבועיים הקרובים</h2><span className="dx-count">{load.reduce((a, b) => a + b, 0)}</span></div>
+            <div className="dx-bars" role="img" aria-label="מספר התורים בכל יום בשבועיים הקרובים">
+              {load.map((v, i) => {
+                const d = fromDayNum(dayNum(today) + i);
+                return (
+                  <span key={i} className={`dx-bar${i === 0 ? ' now' : ''}${weekday(d) === 6 ? ' off' : ''}`} title={`${i === 0 ? 'היום' : fmtDay(d)}: ${v}`}>
+                    <i style={{ height: `${v ? Math.max(10, (v / peak) * 100) : 4}%` }}>{v > 0 && <em className="num">{v}</em>}</i>
+                    <small>{'אבגדהוש'[weekday(d)]}</small>
+                  </span>
+                );
+              })}
             </div>
-          )}
-        </section>
+            <div className="dx-links">
+              <Link href="/doctor/calendar"><Icon name="calendar" size={15} />יומן</Link>
+              <Link href="/admin/reports"><Icon name="chart" size={15} />דוחות</Link>
+              {isAdmin && outstanding > 0 && <Link href="/admin/payments"><Icon name="wallet" size={15} />גבייה</Link>}
+            </div>
+          </section>
+        </aside>
       </div>
-    </>
+    </div>
   );
 }
 
