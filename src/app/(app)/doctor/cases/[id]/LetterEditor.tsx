@@ -88,9 +88,9 @@ export default function LetterEditor({
   const [finalState, setFinalState] = useState<{ armed: boolean; msg: string; ok: boolean }>({ armed: false, msg: '', ok: false });
   const [review, setReview] = useState<number | null>(null);
   // before sending: the doctor must say whether it was paid (and how much and how) or is free
-  const [pay, setPay] = useState<{ choice: '' | 'paid' | 'free'; amount: string; method: PayMethod }>({ choice: '', amount: payment?.due ? String(payment.due) : '', method: 'transfer' });
+  const [pay, setPay] = useState<{ choice: '' | 'paid' | 'free' | 'request'; amount: string; method: PayMethod }>({ choice: '', amount: payment?.due ? String(payment.due) : '', method: 'transfer' });
   const payNeeded = !!payment?.needed && !initial?.is_final;
-  const payReady = !payNeeded || pay.choice === 'free' || (pay.choice === 'paid' && (payment?.paidInFull || Number(pay.amount) > 0));
+  const payReady = !payNeeded || pay.choice === 'free' || pay.choice === 'request' || (pay.choice === 'paid' && (payment?.paidInFull || Number(pay.amount) > 0));
   const latest = useRef(d);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -292,10 +292,10 @@ export default function LetterEditor({
     if (PLACEHOLDER_RE.test(txt)) return setFinalState({ armed: false, ok: false, msg: 'יש במכתב סימונים להשלמה (מסומנים בצהוב). השלימו ומחקו אותם לפני השליחה.' });
     // first: the exact document, as it will be sent, in a preview window
     if (!confirmed) { await save(); setReview(Date.now()); return; }
-    if (payNeeded) {
+    if (payNeeded && pay.choice !== 'request') {
       if (!payReady) return;
       const amount = Number(pay.amount);
-      const r = await approvePayment(appointmentId, pay.choice === 'paid' && !payment?.paidInFull && amount > 0 ? { amount, method: pay.method, paidOn: todayIL() } : null);
+      const r = await approvePayment(appointmentId, pay.choice === 'paid' && !payment?.paidInFull && amount > 0 ? { amount, method: pay.method, paidOn: todayIL() } : null, { deliver: false });
       if (!r.ok) return setFinalState({ armed: false, ok: false, msg: r.error || 'אישור התשלום נכשל.' });
     }
     setReview(null);
@@ -536,6 +536,7 @@ export default function LetterEditor({
                   <div className="rv-pay-ch" role="radiogroup" aria-label="תשלום">
                     <button type="button" role="radio" aria-checked={pay.choice === 'paid'} className={pay.choice === 'paid' ? 'on' : ''} onClick={() => setPay({ ...pay, choice: 'paid' })}><Icon name="wallet" size={16} />שולם</button>
                     <button type="button" role="radio" aria-checked={pay.choice === 'free'} className={pay.choice === 'free' ? 'on' : ''} onClick={() => setPay({ ...pay, choice: 'free' })}><Icon name="check" size={16} />ללא תשלום</button>
+                    <button type="button" role="radio" aria-checked={pay.choice === 'request'} className={`wide${pay.choice === 'request' ? ' on' : ''}`} onClick={() => setPay({ ...pay, choice: 'request' })}><Icon name="clock" size={16} />בקשת תשלום · שליחה אחרי אישור</button>
                   </div>
                   {pay.choice === 'paid' && (payment?.paidInFull
                     ? <p className="hint">התשלום כבר נרשם במלואו בתיק.</p>
@@ -548,10 +549,11 @@ export default function LetterEditor({
                       </div>
                     </>)}
                   {pay.choice === 'free' && <p className="hint">המסמך יישלח בלי חיוב.</p>}
+                  {pay.choice === 'request' && <p className="hint">המסמך נחתם ונשמר. נשלחת בקשת תשלום, והמסמך יישלח אוטומטית ברגע שתאשר את התשלום ב״אישור תשלומים״.</p>}
                 </div>
               )}
               <div className="review-actions">
-                <button type="button" className="btn btn-ok btn-lg" disabled={!payReady} onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : !payReady ? 'בחרו קודם: שולם או ללא תשלום' : 'אישור, חתימה ושליחה'}</button>
+                <button type="button" className="btn btn-ok btn-lg" disabled={!payReady} onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : !payReady ? 'בחרו קודם: שולם, ללא תשלום או בקשת תשלום' : pay.choice === 'request' && payNeeded ? 'חתימה ושליחת בקשת תשלום' : 'אישור, חתימה ושליחה'}</button>
                 <a className="btn" href={`/letters/${appointmentId}/print?v=preview`} target="_blank" rel="noopener"><Icon name="printer" />פתיחה להדפסה</a>
                 <button type="button" className="btn btn-ghost" onClick={() => setReview(null)}>חזרה לעריכה</button>
               </div>
