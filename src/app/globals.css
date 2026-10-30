@@ -2789,3 +2789,12 @@ html.wm .studio.focus .studio-side { top: auto; }
 .page .cl-to.ghost { color: #9AA4B5; font-style: italic; font-size: 13px; }
 .page .cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 23px; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 7px; margin: 6px 0 14px; }
 .page .cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 14px; padding-bottom: 10px; margin-bottom: 16px; border-bottom: 1px solid #C9CFD8; }
+
+/* v56: payment choice before sending */
+.rv-pay { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; border: 1.5px solid #FCD34D; background: #FFFBEB; }
+.rv-pay.ok { border-color: #86EFAC; background: #F0FDF4; }
+.rv-pay .eyebrow { color: #B45309; }
+.rv-pay.ok .eyebrow { color: #15803D; }
+.rv-pay-ch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rv-pay-ch button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; padding: 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font: inherit; font-weight: 700; cursor: pointer; color: var(--fg-2); }
+.rv-pay-ch button.on { border-color: var(--accent); background: var(--accent); color: #fff; }
