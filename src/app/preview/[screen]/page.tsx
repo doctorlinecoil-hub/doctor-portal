@@ -142,10 +142,11 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         { id: 'p2', name: 'ישראל ישראלי', kind: 'patient', contact_name: 'ישראל ישראלי', phone: '050-1234567', email: 'israel@gmail.com', active: false, signup_note: 'ת.ז. 012345678', created_at: new Date().toISOString() },
       ]} /></>);
     case 'public-book':
+    case 'public-book-2':
     case 'public-book-3':
     case 'public-book-scan':
     case 'public-book-4': {
-      const demo = screen === 'public-book-3' ? { step: 3 } : screen === 'public-book-scan' ? { step: 3, scanning: true } : screen === 'public-book-4' ? { step: 4, ext: {
+      const demo = screen === 'public-book-2' ? { step: 2 } : screen === 'public-book-3' ? { step: 3 } : screen === 'public-book-scan' ? { step: 3, scanning: true } : screen === 'public-book-4' ? { step: 4, ext: {
         name: 'ישראל ישראלי', id_number: '012345678', dob: '1980-05-12', phone: '050-1234567', email: '', suggested_type: 'legal' as const,
         request: 'חוות דעת לבית משפט לגבי נכות בעמוד שדרה צווארי לאחר תאונת עבודה.', event: 'תאונת עבודה', event_date: '2025-03', sure: ['name', 'id_number', 'dob', 'phone'], warning: '',
         referrer_kind: 'law' as const, referrer_office: 'כהן ושות׳ משרד עורכי דין', referrer_contact: 'עו״ד דנה כהן', referrer_email: 'dana@cohen-law.co.il', referrer_phone: '03-5551234',
