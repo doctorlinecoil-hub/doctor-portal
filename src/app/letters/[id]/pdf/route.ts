@@ -19,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!UUID.test(id)) return new Response('לא נמצא', { status: 404 });
   const { supabase, settings } = await requireUser();
   const [{ data: a }, { data: rows }] = await Promise.all([
-    supabase.from('appointments').select('id, patient_name, patient_id_number, patient_dob, starts_at, service_label').eq('id', id).maybeSingle(),
+    supabase.from('appointments').select('id, patient_name, patient_id_number, patient_dob, starts_at, service_label, referral_type').eq('id', id).maybeSingle(),
     supabase.rpc('final_letter', { p_id: id }),
   ]);
   const letter = Array.isArray(rows) && rows.length ? (rows[0] as L) : null;
@@ -29,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const doc = { ...letter, letter_date: letter.letter_date || todayIL() };
   const pt = { name: a.patient_name ?? '', idNumber: a.patient_id_number ?? '', dob: a.patient_dob };
   const pdf = await renderPdf(
-    letterHtml(settings, doc, pt, { title: a.service_label || undefined, visitDate: ilParts(a.starts_at).date, signed: settings.sign_final }),
+    letterHtml(settings, doc, pt, { title: (a.referral_type === doc.letter_type && a.service_label) || undefined, visitDate: ilParts(a.starts_at).date, signed: settings.sign_final }),
     [settings.lh_name, settings.lh_address].filter(Boolean).join(' · '),
   );
   if (!pdf) return Response.redirect(new URL(`/letters/${id}/print`, _req.url), 302);
