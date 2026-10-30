@@ -75,10 +75,9 @@ async function audience(db: SupabaseClient, a: Appt) {
   return { patient, referrer, pk };
 }
 
-async function dueOf(db: SupabaseClient, a: Appt) {
-  const { data: pays } = await db.from('payments').select('amount').eq('appointment_id', a.id);
-  const paid = (pays ?? []).reduce((x, p) => x + Number(p.amount), 0);
-  return Math.max(0, Math.round((Number(a.price) - paid) * 100) / 100);
+/** Summons and reminders carry no amounts or payment details: the doctor sends the cost himself. */
+async function dueOf(_db: SupabaseClient, _a: Appt): Promise<number> {
+  return 0;
 }
 
 const caseLink = (id: string, staff: boolean) => `${appUrl()}/${staff ? 'doctor' : 'firm'}/cases/${id}`;

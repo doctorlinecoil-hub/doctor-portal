@@ -142,7 +142,7 @@ export const SETTINGS_DEFAULTS = {
   sign_final: true,
   cv_in_opinions: true,
   public_booking: true,
-  deposit_amount: 300,
+  deposit_amount: 0,
   deposit_hold_hours: 48,
   bank_details: '',
   bit_phone: '',
