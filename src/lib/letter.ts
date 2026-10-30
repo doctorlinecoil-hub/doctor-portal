@@ -65,6 +65,16 @@ export type PromptInput = {
   attached: string[];
   skipped: string[];
   intake?: string;
+  /** the doctor's own instructions for this draft (what to stress, tone, conclusions) */
+  instructions?: string;
+  length?: DraftLength;
+};
+
+export type DraftLength = 'short' | 'normal' | 'long';
+const LENGTH: Record<DraftLength, string> = {
+  short: 'אורך: תמציתי וממוקד. רק מה שחיוני, בלי לוותר על דיוק ועל נימוק המסקנות.',
+  normal: '',
+  long: 'אורך: מפורט ומעמיק. הרחב בדיון, בנימוק המסקנות ובסיכום הממצאים, בלי חזרות.',
 };
 
 export function buildPrompt(p: PromptInput) {
@@ -88,6 +98,8 @@ export function buildPrompt(p: PromptInput) {
     `בקשת המפנה והערותיו:\n"""\n${p.notes.filter(Boolean).join('\n') || '(אין הערות)'}\n"""`,
     `ממצאי הרופא מהבדיקה:\n"""\n${p.exam.trim() || '(הרופא עוד לא רשם ממצאים)'}\n"""`,
     docs + skipped,
+    p.instructions?.trim() ? `הנחיות הרופא לניסוח הזה (חשובות מאוד; כשיש סתירה הן גוברות על המבנה):\n"""\n${p.instructions.trim()}\n"""` : '',
+    p.length && LENGTH[p.length] ? LENGTH[p.length] : '',
     p.intake ? `סיכום מקדים של התיק שהוכן בסריקה אוטומטית (עזר בלבד – המקור הקובע הוא המסמכים עצמם):\n"""\n${p.intake}\n"""` : '',
     `כללים:
 1. דיוק מוחלט: השתמש רק במידע מהמסמכים, מבקשת המפנה וממצאי הרופא. אל תמציא ממצאים, תוצאות, תאריכים, אבחנות, מינונים או אחוזי נכות.
@@ -153,4 +165,30 @@ export function outlineFor(type: ReferralType, education = ''): string {
     if (h.startsWith('פרטי המומחה')) return `${h}\n${education || '[להשלמת הרופא: השכלה וניסיון]'}`;
     return `${h}\n`;
   }).join('\n');
+}
+
+export type RefineAction = 'polish' | 'shorten' | 'expand' | 'proof' | 'simple' | 'custom';
+const REFINE: Record<RefineAction, string> = {
+  polish: 'שדרג את הניסוח לרמה הגבוהה ביותר של מומחה בכיר: עברית רפואית־משפטית רהוטה, מדויקת ומרשימה, פסקאות קוהרנטיות, מעברים חלקים, טיעון מנומק ומינוח מקצועי מדויק. שמור על כל העובדות, התאריכים, המספרים והמסקנות בדיוק כפי שהם.',
+  shorten: 'קצר את המסמך בכשליש: השמט חזרות ופרטים שוליים, ושמור על כל הממצאים המהותיים, התאריכים, האבחנות והמסקנות.',
+  expand: 'הרחב והעמק את המסמך: נמק את המסקנות בצורה מלאה יותר, קשר בין הממצאים למסקנות, והוסף הסברים מקצועיים. השתמש רק במידע שכבר מופיע במסמך; אל תמציא ממצאים חדשים.',
+  proof: 'בצע הגהה בלבד: תקן שגיאות כתיב, דקדוק, פיסוק ועקביות במינוח ובפורמט התאריכים. אל תשנה את הסגנון ואת התוכן.',
+  simple: 'נסח מחדש בשפה ברורה ופשוטה שמטופל יבין, עדיין מכובדת ומקצועית. הסבר מונחים רפואיים בקצרה בסוגריים. שמור על כל העובדות והמסקנות.',
+  custom: 'בצע את ההנחיות של הרופא שלמטה.',
+};
+
+/** Rewrite an existing letter body by the doctor's request. Returns only the new body. */
+export function buildRefinePrompt(p: { action: RefineAction; body: string; instructions?: string; letterType: ReferralType; doctor: string }) {
+  return [
+    `אתה עורך מסמכים רפואיים בכיר. לפניך גוף של ${typeOf(p.letterType).label} שכתב ${p.doctor}. המשימה:`,
+    REFINE[p.action],
+    p.instructions?.trim() ? `הנחיות הרופא (חשובות מאוד):\n"""\n${p.instructions.trim()}\n"""` : '',
+    `כללים:
+1. אל תמציא עובדות, ממצאים, תאריכים, מינונים, אבחנות או אחוזי נכות שלא מופיעים במסמך או בהנחיות.
+2. שמור על גוף ראשון בשם הרופא ועל מבנה הסעיפים, אלא אם ההנחיות אומרות אחרת.
+3. טקסט רגיל בלבד: בלי Markdown, בלי כוכביות ובלי #. כותרת סעיף = שורה קצרה שמסתיימת בנקודתיים. פריט ברשימה = שורה שמתחילה ב-"- ". סעיף ממוספר = "1. ".
+4. סימונים להשלמה בסוגריים מרובעים: השאר אותם כמו שהם, אלא אם ההנחיות ממלאות אותם.
+5. החזר רק את גוף המסמך המעודכן, בלי הקדמה, בלי הסבר ובלי שורות "לכבוד" או "הנדון".`,
+    `גוף המסמך:\n"""\n${p.body}\n"""`,
+  ].filter(Boolean).join('\n\n');
 }

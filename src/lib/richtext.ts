@@ -92,3 +92,7 @@ export function sanitizeHtml(html: string) {
   });
   return s;
 }
+
+/** HTML → the plain format the AI reads and writes ("Heading:" lines, "- " list items). */
+export const htmlToDraftText = (html: string) => htmlToText(String(html || '').replace(/<li[^>]*>/gi, '- ').replace(/<\/h[1-6]>/gi, '\n</h3>'));
+export const bodyDraftText = (body: string | null | undefined) => (isRich(body) ? htmlToDraftText(stripMarker(String(body))) : String(body ?? ''));
