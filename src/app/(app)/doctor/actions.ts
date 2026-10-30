@@ -145,13 +145,13 @@ export async function sendPrescription(rxId: string, caseId: string, emails: str
 }
 
 /** Approve (or take back) the payment of a case: the document is released to the referrer, and goes out by email if it waited. */
-export async function setPaymentOk(id: string, ok: boolean): Promise<Result> {
+export async function setPaymentOk(id: string, ok: boolean, deliver = true): Promise<Result> {
   const c = await staffCase(id);
   if (!c) return { ok: false, error: 'אין הרשאה.' };
   const { error } = await c.supabase.rpc('set_payment_ok', { p_id: id, p_ok: ok });
   if (error) return { ok: false, error: dbError(error) };
   // approved: the document goes out now (to the referrer, and the patient when there is an address), unless it was already sent
-  if (ok) after(() => deliverLetter(id).then(() => undefined).catch(() => undefined));
+  if (ok && deliver) after(() => deliverLetter(id).then(() => undefined).catch(() => undefined));
   done(id);
   revalidatePath('/firm');
   return { ok: true, info: ok ? 'התשלום אושר. המסמך פתוח עכשיו לצפייה ונשלח במייל.' : 'אישור התשלום בוטל. המסמך שוב ממתין לתשלום.' };
@@ -161,12 +161,12 @@ export async function setPaymentOk(id: string, ok: boolean): Promise<Result> {
  * Approve the payment of a ready document: optionally record what was received (amount, method, date),
  * then release the document, which opens to the referrer and goes out by email.
  */
-export async function approvePayment(id: string, pay: { amount: number; method: PayMethod; paidOn: string } | null): Promise<Result> {
+export async function approvePayment(id: string, pay: { amount: number; method: PayMethod; paidOn: string } | null, opts: { deliver?: boolean } = {}): Promise<Result> {
   if (pay && pay.amount > 0) {
     const r = await recordPayment({ appointmentId: id, amount: pay.amount, method: pay.method, paidOn: pay.paidOn, receiptNo: '', receiptUrl: '', note: '', issueInvoice: false, sendEmail: false });
     if (!r.ok) return r;
   }
-  const r = await setPaymentOk(id, true);
+  const r = await setPaymentOk(id, true, opts.deliver !== false);
   revalidatePath('/doctor/payments');
   return r.ok ? { ok: true, info: pay && pay.amount > 0 ? 'התשלום נרשם ואושר. המסמך נפתח ונשלח במייל.' : 'התשלום אושר. המסמך נפתח ונשלח במייל.' } : r;
 }
