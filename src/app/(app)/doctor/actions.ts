@@ -142,3 +142,15 @@ export async function sendPrescription(rxId: string, caseId: string, emails: str
   done(caseId);
   return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
+
+/** Approve (or take back) the payment of a case: the document is released to the referrer, and goes out by email if it waited. */
+export async function setPaymentOk(id: string, ok: boolean): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const { error } = await c.supabase.rpc('set_payment_ok', { p_id: id, p_ok: ok });
+  if (error) return { ok: false, error: dbError(error) };
+  if (ok) after(() => deliverLetter(id, { onlyIfAwaitingPayment: true }).then(() => undefined).catch(() => undefined));
+  done(id);
+  revalidatePath('/firm');
+  return { ok: true, info: ok ? 'התשלום אושר. המסמך זמין עכשיו למפנה, ואם חיכה, נשלח אליו במייל.' : 'אישור התשלום בוטל. המסמך שוב ממתין לתשלום.' };
+}
