@@ -185,7 +185,7 @@ ${p}.doc-sign { margin-top: 8mm; break-inside: avoid; }
 ${p}.doc-sig { display: block; width: 52mm; height: auto; margin-top: 2mm; }
 ${p}.doc-signname { margin-top: 6mm; font-size: 10.5pt; }
 ${p}.doc-signline { margin-top: 10mm; }
-${p}.doc-foot-space { height: 30mm; }
+${p}.doc-foot-space { height: 27mm; }
 ${p}.doc-foot { font-size: 9pt; line-height: 1.45; color: #1d2433; border-top: 1px solid #C9A43A; padding-top: 2mm; text-align: right; }
 ${p}.doc-foot .f1 { font-weight: 700; }
 ${p}table.rx { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
@@ -240,12 +240,12 @@ ${p}.of-pt b { font-size: 11pt; }
 ${p}.of-to { margin: 0 0 4mm; font-size: 10.5pt; }
 ${p}.of-to span { color: #5b6475; }
 ${p}.doc-body h3 { color: #0D1B2A; text-decoration: none !important; font-size: 11.5pt; border-bottom: 1px solid #D5DAE3; padding-bottom: 1mm; margin: 5mm 0 2mm; }
-${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 10mm; break-inside: avoid; }
+${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 6mm; break-inside: avoid; }
 ${p}.of-doc { font-size: 10.5pt; line-height: 1.5; }
 ${p}.of-doc b { display: block; font-size: 12pt; margin-top: 2mm; }
 ${p}.of-stamp { text-align: center; min-width: 60mm; }
-${p}.of-stamp .doc-sig { margin: 0 auto 1mm; width: 48mm; }
-${p}.of-sigspace { height: 18mm; }
+${p}.of-stamp .doc-sig { margin: 0 auto 1mm; width: 38mm; }
+${p}.of-sigspace { height: 14mm; }
 ${p}.of-line { border-top: 1px solid #111; padding-top: 1mm; font-size: 9.5pt; color: #333; }
 ${p}.cl-date { text-align: left; font-size: 11pt; margin: 1mm 0 5mm; }
 ${p}.cl-to { margin: 0 0 5mm; line-height: 1.5; }
