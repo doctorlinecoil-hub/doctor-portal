@@ -12,6 +12,8 @@ import RescheduleDecision, { type RescheduleRow } from './RescheduleDecision';
 import { DAYS, dayNum, fmtDate, fromDayNum, ilParts, ilToUtc, todayIL, weekday } from '@/lib/dates';
 import { CalendarView, monthGridStart, weekStart, type BlockRow } from '@/views/CalendarView';
 import { BlockForm, FreeSlot, RemoveBlock } from './calendar/CalendarTools';
+import { QuickBookProvider } from './calendar/QuickBook';
+import { SERVICE_COLS, type Service } from '@/lib/services';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -76,15 +78,21 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
     const ce = fromDayNum(dayNum(cs) + (mode === 'day' ? 1 : mode === 'week' ? 7 : 42));
     const from = ilToUtc(cs, '00:00').toISOString();
     const to = ilToUtc(ce, '00:00').toISOString();
-    const [calRows, { data: blocks }] = await Promise.all([
+    const [calRows, { data: blocks }, { data: firms }, { data: services }] = await Promise.all([
       loadAppointments(supabase, { from, to, order: 'asc', slotsOnly: true }),
       supabase.from('time_blocks').select('id, starts_at, ends_at, note').lt('starts_at', to).gt('ends_at', from).order('starts_at'),
+      supabase.from('firms').select('id, name, kind').eq('active', true).order('name'),
+      supabase.from('services').select(SERVICE_COLS).eq('active', true).order('sort').order('label'),
     ]);
+    const fl = (firms as { id: string; name: string; kind: string }[] | null) ?? [];
     calendar = (
+      <QuickBookProvider firms={[...fl.filter((x) => x.kind === 'private'), ...fl.filter((x) => x.kind !== 'private')]} services={(services as Service[] | null) ?? []}
+        minutes={settings.slot_minutes || 30} phoneOk={settings.phone_appointments !== false}>
       <CalendarView embedded base="/doctor" view={mode} date={date} rows={calRows} blocks={(blocks as BlockRow[] | null) ?? []} settings={settings}
         tools={<BlockForm today={todayIL()} />}
         slotAction={(iso, lbl) => <FreeSlot iso={iso} label={lbl} minutes={settings.slot_minutes} />}
         blockAction={(b) => <RemoveBlock id={b.id} />} />
+      </QuickBookProvider>
     );
   }
   const { data: depRows } = await supabase.from('appointments').select('id, deposit_amount, deposit_paid_at, deposit_proof_at').eq('status', 'pending').gt('deposit_amount', 0);
