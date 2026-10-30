@@ -2967,6 +2967,9 @@ html.wm .studio.focus .studio-side { top: auto; }
 /* booking window keeps one size: no jumping while the patient list loads or while typing */
 .qb { height: min(700px, calc(100vh - 40px)); }
 .qb-body { flex: 1; min-height: 0; }
-.qb-list { min-height: 262px; }
+.qb-list { min-height: 214px; }
 .qb-layer { align-items: center; }
 @media (max-width: 640px) { .qb { height: 92vh; } .qb-list { min-height: 0; } }
+.qb-dur { font-size: 11px; opacity: .65; margin-inline-start: 2px; }
+.qb-layer { overscroll-behavior: contain; }
+.qb-body { overscroll-behavior: contain; }
