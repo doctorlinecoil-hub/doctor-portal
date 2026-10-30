@@ -27,9 +27,10 @@ export type LetterRow = {
   is_final: boolean;
   finalized_at: string | null;
   ai_draft_at?: string | null;
+  letter_date?: string | null;
 };
 
-type Draft = { letter_type: ReferralType; recipient: string; subject: string; doc_title: string; body: string; exam_notes: string };
+type Draft = { letter_type: ReferralType; recipient: string; subject: string; doc_title: string; body: string; exam_notes: string; letter_date: string };
 
 const escHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -66,6 +67,8 @@ export default function LetterEditor({
     doc_title: initial?.doc_title ?? '',
     body: startHtml ? richBody(startHtml) : '',
     exam_notes: initial?.exam_notes ?? '',
+    // the document keeps the date it was written on; editing it later doesn't change it (only the doctor, in "פרטים")
+    letter_date: initial?.letter_date || todayIL(),
   });
   const [html, setHtml] = useState(startHtml);
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
@@ -300,7 +303,7 @@ export default function LetterEditor({
     }
     setReview(null);
     const { error } = await supabase.from('letters').update({
-      is_final: true, finalized_at: new Date().toISOString(), letter_date: todayIL(),
+      is_final: true, finalized_at: new Date().toISOString(), letter_date: cur.letter_date || todayIL(),
       final_letter_type: cur.letter_type, final_recipient: cur.recipient, final_subject: cur.subject, final_doc_title: cur.doc_title, final_body: cur.body,
     }).eq('appointment_id', appointmentId);
     if (error) return setFinalState({ armed: false, ok: false, msg: 'השליחה נכשלה. נסו שוב.' });
@@ -337,7 +340,7 @@ export default function LetterEditor({
             </div>
           </header>
         )}
-      <div className="cl-date">תאריך: <span className="num">{fmtDate(todayIL())}</span></div>
+      <div className="cl-date">תאריך: <span className="num">{fmtDate(d.letter_date)}</span></div>
       {to.length > 0 ? <div className="cl-to"><div>לכבוד</div>{to.map((r) => <div key={r}><b>{r}</b></div>)}</div> : <div className="cl-to ghost">לכבוד — לא חובה, ממלאים ב״פרטים״</div>}
       <div className="cl-title">{d.doc_title.trim() || defaultTitle}</div>
       <div className="cl-pt">
@@ -346,14 +349,7 @@ export default function LetterEditor({
         {paper.patient.dob && <span><b>תאריך לידה:</b> <span className="num">{fmtDate(paper.patient.dob)}</span>{ag != null ? ` (גיל ${ag})` : ''}</span>}
       </div>
       {paper.visits && paper.visits.length > 0 && (
-        <div className="cl-rv">
-          <div><b>סוג ביקור:</b> ביקור חוזר</div>
-          <div>
-            <b>{paper.visits.length === 1 ? 'ביקור קודם במרפאה' : 'ביקורים קודמים במרפאה'}:</b>{' '}
-            {paper.visits.slice(-5).map((v, i) => <span key={v.date + v.label}>{i > 0 && <> <span className="cl-rv-sep">·</span> </>}<span className="cl-rv-i"><span className="num">{fmtDate(v.date)}</span> – {v.label}</span></span>)}
-            {paper.visits.length > 5 && <span className="cl-rv-more"> (ועוד {paper.visits.length - 5} מוקדמים יותר)</span>}
-          </div>
-        </div>
+        <div className="cl-rv"><b>ביקור חוזר</b> {new Set(paper.visits.map((v) => v.date)).size === 1 ? 'מתאריך' : '· ביקורים קודמים מתאריכים'} {[...new Set(paper.visits.map((v) => v.date))].map((x, i) => <span key={x}>{i > 0 && ', '}<bdi className="num">{fmtDate(x)}</bdi></span>)}</div>
       )}
       {opinion && (
         <div className="pg-intro">
@@ -480,6 +476,12 @@ export default function LetterEditor({
             </label>
             <label className="field" htmlFor="ltTitle"><span>כותרת המסמך <small>ריק = כותרת לפי סוג המכתב</small></span>
               <input id="ltTitle" value={d.doc_title} onChange={(e) => update({ doc_title: e.target.value })} placeholder={defaultTitle} disabled={ai.running} />
+            </label>
+            <label className="field" htmlFor="ltDate"><span>תאריך המסמך <small>נשאר קבוע גם כשעורכים את המסמך שוב</small></span>
+              <span className="lt-date">
+                <input id="ltDate" type="date" value={d.letter_date} max={todayIL()} onChange={(e) => e.target.value && update({ letter_date: e.target.value })} disabled={ai.running} />
+                {d.letter_date !== todayIL() && <button type="button" className="btn btn-sm" onClick={() => update({ letter_date: todayIL() })} disabled={ai.running}>עדכון להיום</button>}
+              </span>
             </label>
             <label className="field" htmlFor="ltTo"><span>לכבוד <small>כמה שורות? הפרידו ב־ |</small></span>
               <input id="ltTo" value={d.recipient} onChange={(e) => update({ recipient: e.target.value })} placeholder="המוסד לביטוח לאומי | סניף חדרה" disabled={ai.running} />
