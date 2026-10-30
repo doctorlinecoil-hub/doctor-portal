@@ -2963,3 +2963,10 @@ html.wm .studio.focus .studio-side { top: auto; }
   color: color-mix(in srgb, var(--accent) 55%, transparent); border: 1px dashed color-mix(in srgb, var(--accent) 28%, transparent); background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
 .cal-free-btn:hover, .cal-free-btn:focus-visible, .cal-free-btn[aria-expanded="true"] { color: #fff; background: var(--accent); border: 1px solid var(--accent); box-shadow: 0 4px 14px rgba(11,122,117,.3); }
 @media (max-width: 640px) { .cal-free-btn span { display: none; } }
+
+/* booking window keeps one size: no jumping while the patient list loads or while typing */
+.qb { height: min(700px, calc(100vh - 40px)); }
+.qb-body { flex: 1; min-height: 0; }
+.qb-list { min-height: 262px; }
+.qb-layer { align-items: center; }
+@media (max-width: 640px) { .qb { height: 92vh; } .qb-list { min-height: 0; } }
