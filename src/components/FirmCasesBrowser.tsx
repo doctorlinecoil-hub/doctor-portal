@@ -15,7 +15,7 @@ import { released, type ApptRow } from '@/lib/types';
 
 const idKey = (r: ApptRow) => (r.patient_id_number || '').replace(/\D/g, '').replace(/^0+/, '') || `name:${(r.patient_name || '').trim()}`;
 
-export default function FirmCasesBrowser({ rows, all, initial, gate = true }: { rows: ApptRow[]; all: ApptRow[]; initial?: string; gate?: boolean }) {
+export default function FirmCasesBrowser({ rows, all, initial, gate = true, clinicPhone = '' }: { rows: ApptRow[]; all: ApptRow[]; initial?: string; gate?: boolean; clinicPhone?: string }) {
   const [openId, setOpenId] = useState<string | null>(initial && all.some((r) => r.id === initial) ? initial : null);
   const [view, setView] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -137,7 +137,13 @@ export default function FirmCasesBrowser({ rows, all, initial, gate = true }: { 
                 <section className="fc-empty">
                   <span className="fc-empty-ic"><Icon name={open.status === 'done' ? 'clock' : 'file'} /></span>
                   <b>{open.status === 'done' ? 'המסמך מוכן · ממתין לתשלום' : open.status === 'cancelled' ? 'התור בוטל' : 'המסמך של הרופא עוד בהכנה'}</b>
-                  <p>{open.status === 'done' ? 'הוא ייפתח כאן להורדה מיד אחרי שהמרפאה תאשר את התשלום.' : open.status === 'cancelled' ? 'אפשר לקבוע תור חדש בכל רגע.' : 'ברגע שהרופא יסיים, המסמך יופיע כאן ויישלח אליכם גם במייל.'}</p>
+                  <p>{open.status === 'done' ? 'הוא ייפתח כאן להורדה וישלח אליכם במייל מיד אחרי שהמרפאה תאשר את התשלום.' : open.status === 'cancelled' ? 'אפשר לקבוע תור חדש בכל רגע.' : 'ברגע שהרופא יסיים, המסמך יופיע כאן ויישלח אליכם גם במייל.'}</p>
+                  {open.status === 'done' && clinicPhone && (
+                    <div className="fc-paycta">
+                      <a className="btn btn-ok" href={`https://wa.me/972${clinicPhone.replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`שלום, לגבי התשלום על המסמך של ${open.patient_name} (תיק ${open.case_no})`)}`} target="_blank" rel="noopener"><Icon name="message" size={16} />תיאום תשלום בוואטסאפ</a>
+                      <a className="btn" href={`tel:${clinicPhone.replace(/[^\d+]/g, '')}`}><Icon name="phone" size={16} />{clinicPhone}</a>
+                    </div>
+                  )}
                 </section>
               )}
               </div>
