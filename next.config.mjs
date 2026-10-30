@@ -35,6 +35,7 @@ const nextConfig = {
     '/doctor/**': ['./node_modules/@sparticuz/chromium/bin/**'],
     '/admin/**': ['./node_modules/@sparticuz/chromium/bin/**'],
     '/firm/**': ['./node_modules/@sparticuz/chromium/bin/**'],
+    '/letters/**': ['./node_modules/@sparticuz/chromium/bin/**'],
   },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
