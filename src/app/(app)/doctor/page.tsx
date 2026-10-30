@@ -8,13 +8,17 @@ import { SetupStatus, type SetupItem } from '@/views/SetupStatus';
 import { mailEnabled } from '@/lib/mail';
 import { isAuthError } from '@/lib/aiErrors';
 import RescheduleDecision, { type RescheduleRow } from './RescheduleDecision';
-import { DAYS, fmtDate, ilParts, ilToUtc, todayIL, weekday } from '@/lib/dates';
+import { DAYS, dayNum, fmtDate, fromDayNum, ilParts, ilToUtc, todayIL, weekday } from '@/lib/dates';
+import { CalendarView, monthGridStart, weekStart, type BlockRow } from '@/views/CalendarView';
+import { BlockForm, FreeSlot, RemoveBlock } from './calendar/CalendarTools';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view } = await searchParams;
+export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ view?: string; d?: string }> }) {
+  const { view, d } = await searchParams;
+  // the dashboard and the calendar are one page: day / week / month grid, or the list
+  const mode = view === 'day' || view === 'month' || view === 'list' || view === 'past' ? view : 'week';
   const { supabase, profile, settings } = await requireUser(['doctor', 'admin']);
   const start = ilToUtc(todayIL(), '00:00').getTime();
   const rows = await loadAppointments(supabase, { from: new Date(start - 365 * 86400000).toISOString(), order: 'asc', limit: 2000 });
@@ -63,13 +67,34 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       missing: i.data?.missing?.length ?? 0,
     };
   }
+  let calendar: React.ReactNode = null;
+  if (mode === 'day' || mode === 'week' || mode === 'month') {
+    // on Friday/Saturday the default week is the coming one
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d! : mode === 'week' && weekday(todayIL()) >= 5 ? fromDayNum(dayNum(todayIL()) + 2) : todayIL();
+    const cs = mode === 'day' ? date : mode === 'week' ? weekStart(date) : monthGridStart(date);
+    const ce = fromDayNum(dayNum(cs) + (mode === 'day' ? 1 : mode === 'week' ? 7 : 42));
+    const from = ilToUtc(cs, '00:00').toISOString();
+    const to = ilToUtc(ce, '00:00').toISOString();
+    const [calRows, { data: blocks }] = await Promise.all([
+      loadAppointments(supabase, { from, to, order: 'asc', slotsOnly: true }),
+      supabase.from('time_blocks').select('id, starts_at, ends_at, note').lt('starts_at', to).gt('ends_at', from).order('starts_at'),
+    ]);
+    calendar = (
+      <CalendarView embedded base="/doctor" view={mode} date={date} rows={calRows} blocks={(blocks as BlockRow[] | null) ?? []} settings={settings}
+        tools={<BlockForm today={todayIL()} />}
+        slotAction={(iso, lbl) => <FreeSlot iso={iso} label={lbl} minutes={settings.slot_minutes} />}
+        blockAction={(b) => <RemoveBlock id={b.id} />} />
+    );
+  }
   const { data: depRows } = await supabase.from('appointments').select('id, deposit_amount, deposit_paid_at, deposit_proof_at').eq('status', 'pending').gt('deposit_amount', 0);
   const deposits: Record<string, DepositState> = Object.fromEntries((depRows ?? []).map((d) => [d.id, { amount: Number(d.deposit_amount), paid: !!d.deposit_paid_at, proof: !!d.deposit_proof_at }]));
   return (
     <DoctorAgendaView
       share={<ShareLink path="/book" compact title="קישור לקביעת תור למפנים ולמטופלים" />}
       rows={rows}
-      past={view === 'past'}
+      past={mode === 'past'}
+      mode={mode}
+      calendar={calendar}
       isAdmin={profile.role === 'admin'}
       name={profile.full_name || ''}
       intake={chips}
