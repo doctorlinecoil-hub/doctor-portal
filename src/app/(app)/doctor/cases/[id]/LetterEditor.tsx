@@ -12,7 +12,8 @@ import type { PaperInfo } from '@/components/PaperPreview';
 import RichEditor, { type RichHandle } from '@/components/RichEditor';
 import Icon from '@/components/Icon';
 import Dictate from '@/components/Dictate';
-import { sendLetter } from '../../actions';
+import { approvePayment, sendLetter } from '../../actions';
+import { PAY_METHODS, type PayMethod } from '@/lib/constants';
 import TemplatePicker from './TemplatePicker';
 
 export type LetterRow = {
@@ -53,8 +54,8 @@ function AutoText(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { m
  * Side panel: letter details, the doctor's findings, the AI draft and writing aids.
  */
 export default function LetterEditor({
-  appointmentId, defaultType, initial, docCount, cancelled, preview, paper, diagnoses = [], sendTo = [],
-}: { sendTo?: string[]; diagnoses?: { code: string; name: string; primary: boolean }[]; appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
+  appointmentId, defaultType, initial, docCount, cancelled, preview, paper, diagnoses = [], sendTo = [], payment,
+}: { payment?: { needed: boolean; due: number; paidInFull: boolean }; sendTo?: string[]; diagnoses?: { code: string; name: string; primary: boolean }[]; appointmentId: string; defaultType: ReferralType | null; initial: LetterRow | null; docCount: number; cancelled: boolean; preview?: boolean; paper: PaperInfo }) {
   const supabase = useSupabase();
   const router = useRouter();
   const [startHtml] = useState(() => bodyToHtml(cleanBody(initial?.body)));
@@ -86,6 +87,10 @@ export default function LetterEditor({
   }, [focus]);
   const [finalState, setFinalState] = useState<{ armed: boolean; msg: string; ok: boolean }>({ armed: false, msg: '', ok: false });
   const [review, setReview] = useState<number | null>(null);
+  // before sending: the doctor must say whether it was paid (and how much and how) or is free
+  const [pay, setPay] = useState<{ choice: '' | 'paid' | 'free'; amount: string; method: PayMethod }>({ choice: '', amount: payment?.due ? String(payment.due) : '', method: 'transfer' });
+  const payNeeded = !!payment?.needed && !initial?.is_final;
+  const payReady = !payNeeded || pay.choice === 'free' || (pay.choice === 'paid' && (payment?.paidInFull || Number(pay.amount) > 0));
   const latest = useRef(d);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,6 +292,12 @@ export default function LetterEditor({
     if (PLACEHOLDER_RE.test(txt)) return setFinalState({ armed: false, ok: false, msg: 'יש במכתב סימונים להשלמה (מסומנים בצהוב). השלימו ומחקו אותם לפני השליחה.' });
     // first: the exact document, as it will be sent, in a preview window
     if (!confirmed) { await save(); setReview(Date.now()); return; }
+    if (payNeeded) {
+      if (!payReady) return;
+      const amount = Number(pay.amount);
+      const r = await approvePayment(appointmentId, pay.choice === 'paid' && !payment?.paidInFull && amount > 0 ? { amount, method: pay.method, paidOn: todayIL() } : null);
+      if (!r.ok) return setFinalState({ armed: false, ok: false, msg: r.error || 'אישור התשלום נכשל.' });
+    }
     setReview(null);
     const { error } = await supabase.from('letters').update({
       is_final: true, finalized_at: new Date().toISOString(), letter_date: todayIL(),
@@ -508,8 +519,28 @@ export default function LetterEditor({
                   {sendTo.length ? sendTo.map((x) => <div key={x}><Icon name="mail" size={14} />{x}</div>) : <div className="hint">המכתב יהיה זמין בתיק</div>}
                 </div>
               )}
+              {payNeeded && (
+                <div className={`rv-pay${payReady ? ' ok' : ''}`}>
+                  <span className="eyebrow">תשלום · חובה לבחור לפני שליחה</span>
+                  <div className="rv-pay-ch" role="radiogroup" aria-label="תשלום">
+                    <button type="button" role="radio" aria-checked={pay.choice === 'paid'} className={pay.choice === 'paid' ? 'on' : ''} onClick={() => setPay({ ...pay, choice: 'paid' })}><Icon name="wallet" size={16} />שולם</button>
+                    <button type="button" role="radio" aria-checked={pay.choice === 'free'} className={pay.choice === 'free' ? 'on' : ''} onClick={() => setPay({ ...pay, choice: 'free' })}><Icon name="check" size={16} />ללא תשלום</button>
+                  </div>
+                  {pay.choice === 'paid' && (payment?.paidInFull
+                    ? <p className="hint">התשלום כבר נרשם במלואו בתיק.</p>
+                    : <>
+                      <label className="field"><span>כמה התקבל (₪)</span><input inputMode="decimal" dir="ltr" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0" /></label>
+                      <div className="pp-methods" role="radiogroup" aria-label="אמצעי תשלום">
+                        {(['transfer', 'bit', 'card', 'cash', 'check', 'other'] as PayMethod[]).map((m) => (
+                          <button key={m} type="button" role="radio" aria-checked={pay.method === m} className={pay.method === m ? 'on' : ''} onClick={() => setPay({ ...pay, method: m })}>{PAY_METHODS[m]}</button>
+                        ))}
+                      </div>
+                    </>)}
+                  {pay.choice === 'free' && <p className="hint">המסמך יישלח בלי חיוב.</p>}
+                </div>
+              )}
               <div className="review-actions">
-                <button type="button" className="btn btn-ok btn-lg" onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : 'אישור, חתימה ושליחה'}</button>
+                <button type="button" className="btn btn-ok btn-lg" disabled={!payReady} onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : !payReady ? 'בחרו קודם: שולם או ללא תשלום' : 'אישור, חתימה ושליחה'}</button>
                 <a className="btn" href={`/letters/${appointmentId}/print?v=preview`} target="_blank" rel="noopener"><Icon name="printer" />פתיחה להדפסה</a>
                 <button type="button" className="btn btn-ghost" onClick={() => setReview(null)}>חזרה לעריכה</button>
               </div>
