@@ -17,7 +17,7 @@ function marks(text: string) {
 }
 
 /** A live A4 preview of the letter on the clinic's letterhead (same layout as the printed letter). */
-export default function PaperPreview({ info, type, recipient, subject, body, date, onPick }: {
+export default function PaperPreview({ info, type, recipient, body, date, onPick }: {
   info: PaperInfo; type: ReferralType; recipient: string; subject: string; body: string; date: string;
   onPick?: (heading: string) => void;
 }) {
@@ -41,7 +41,6 @@ export default function PaperPreview({ info, type, recipient, subject, body, dat
       </header>
       <div className="lt-date">תאריך: {fmtDate(date)}</div>
       {to.length > 0 && <div className="lt-to"><div>לכבוד</div>{to.map((r) => <div key={r}><b>{r}</b></div>)}</div>}
-      {subject && <div className="lt-subj">הנדון: <u>{subject}</u></div>}
       <div className="lt-pt">
         <span><b>שם:</b> {info.patient.name}</span>
         <span><b>ת.ז.:</b> {info.patient.idNumber}</span>
