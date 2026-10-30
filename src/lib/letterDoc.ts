@@ -49,27 +49,33 @@ export function docHtml(d: DocInput) {
 
   const head = headHtml(s, d.banner);
 
-  const title = opinion ? `חוות דעת רפואית${to[0] ? ` עבור ${to[0]}` : ''}` : d.title;
+  const title = opinion ? 'חוות דעת רפואית' : d.title;
   const intro = opinion
     ? `<p class="doc-intro">הנני מגיש בזאת את חוות דעתי הרפואית${d.visitDate ? ` לאחר בדיקתי ב־${esc(fmtDate(d.visitDate))}` : ''}.</p>${s.cv_in_opinions && s.lh_cv ? `<div class="doc-cv">${cvHtml(s.lh_cv)}</div>` : ''}`
     : '';
+  const visit = d.visitDate && d.visitDate !== d.date ? d.visitDate : null;
 
   return `
 <table class="ldoc"><thead><tr><td><div class="doc-head">${head}</div></td></tr></thead>
 <tbody><tr><td class="doc-main">
   ${d.draft ? '<div class="doc-draft">טיוטה</div>' : ''}
-  <div class="doc-date">תאריך: ${esc(fmtDate(d.date))}</div>
-  ${to.length ? `<div class="doc-to"><div>לכבוד</div>${to.map((r) => `<div><b>${esc(r)}</b></div>`).join('')}</div>` : ''}
-  <h1 class="doc-title">${esc(title)}</h1>
-  ${d.subject ? `<div class="doc-subj">הנדון: <u>${esc(d.subject)}</u></div>` : ''}
-  <div class="doc-pt"><span><b>שם:</b> ${esc(d.patient.name)}</span><span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>
+  <div class="of-top">
+    <div class="of-title">${esc(title)}</div>
+    <div class="of-meta"><div><span>תאריך</span><b>${esc(fmtDate(d.date))}</b></div>${visit ? `<div><span>תאריך הבדיקה</span><b>${esc(fmtDate(visit))}</b></div>` : ''}</div>
+  </div>
+  <div class="of-pt">
+    <div><span>שם המטופל/ת</span><b>${esc(d.patient.name) || '&nbsp;'}</b></div>
+    <div><span>מס׳ זהות</span><b>${esc(d.patient.idNumber) || '&nbsp;'}</b></div>
+    <div><span>תאריך לידה</span><b>${d.patient.dob ? esc(fmtDate(d.patient.dob)) : '&nbsp;'}</b></div>
+    <div><span>גיל</span><b>${ag != null ? ag : '&nbsp;'}</b></div>
+  </div>
+  ${to.length ? `<div class="of-to"><span>לכבוד:</span> <b>${to.map(esc).join(' · ')}</b></div>` : ''}
   ${intro}
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
-  <div class="doc-sign">
-    <div>בכבוד רב,</div>
-    ${d.signature ? `<img class="doc-sig" src="${esc(d.signature)}" alt="חתימה">` : `<div class="doc-signname"><b>${esc(s.lh_name)}</b>${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}</div>`}
-    ${d.signLine ? '<div class="doc-signline">חתימה וחותמת הרופא: ______________________</div>' : ''}
+  <div class="of-sign">
+    <div class="of-doc"><div class="of-regards">בכבוד רב,</div><b>${esc(s.lh_name)}</b>${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}</div>
+    <div class="of-stamp">${d.signature ? `<img class="doc-sig" src="${esc(d.signature)}" alt="חתימה">` : '<div class="of-sigspace"></div>'}<div class="of-line">חתימה וחותמת הרופא</div></div>
   </div>
 </td></tr></tbody>
 <tfoot><tr><td><div class="doc-foot-space"></div></td></tr></tfoot></table>
@@ -228,6 +234,26 @@ ${p}.rxo-stamp { text-align: center; min-width: 60mm; }
 ${p}.rxo-stamp .doc-sig { margin: 0 auto 1mm; width: 46mm; }
 ${p}.rxo-sigspace { height: 18mm; }
 ${p}.rxo-line { border-top: 1px solid #111; padding-top: 1mm; font-size: 9.5pt; }
+${p}.of-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #0D1B2A; padding-bottom: 2.5mm; margin-bottom: 4mm; }
+${p}.of-title { font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 19pt; font-weight: 700; color: #0D1B2A; line-height: 1.15; }
+${p}.of-meta { display: flex; gap: 6px; }
+${p}.of-meta > div { border: 1px solid #0D1B2A; border-radius: 3px; padding: 1.2mm 3mm; text-align: center; min-width: 24mm; }
+${p}.of-meta span, ${p}.of-pt span { display: block; font-size: 8.5pt; color: #5b6475; }
+${p}.of-meta b { font-size: 11pt; letter-spacing: .02em; }
+${p}.of-pt { display: grid; grid-template-columns: 2fr 1.4fr 1.2fr .6fr; border: 1px solid #9AA4B5; border-radius: 3px; margin-bottom: 4mm; background: #FAFBFC; }
+${p}.of-pt > div { padding: 1.5mm 3mm; border-inline-start: 1px solid #D5DAE3; }
+${p}.of-pt > div:first-child { border-inline-start: 0; }
+${p}.of-pt b { font-size: 11pt; }
+${p}.of-to { margin: 0 0 4mm; font-size: 10.5pt; }
+${p}.of-to span { color: #5b6475; }
+${p}.doc-body h3 { color: #0D1B2A; text-decoration: none !important; font-size: 11.5pt; border-bottom: 1px solid #D5DAE3; padding-bottom: 1mm; margin: 5mm 0 2mm; }
+${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 10mm; break-inside: avoid; }
+${p}.of-doc { font-size: 10.5pt; line-height: 1.5; }
+${p}.of-doc b { display: block; font-size: 12pt; margin-top: 2mm; }
+${p}.of-stamp { text-align: center; min-width: 60mm; }
+${p}.of-stamp .doc-sig { margin: 0 auto 1mm; width: 48mm; }
+${p}.of-sigspace { height: 18mm; }
+${p}.of-line { border-top: 1px solid #111; padding-top: 1mm; font-size: 9.5pt; color: #333; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }

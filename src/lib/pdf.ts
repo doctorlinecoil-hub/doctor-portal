@@ -20,7 +20,7 @@ export function letterHtml(s: Settings, l: LetterDoc, pt: PatientDoc, o: { title
     ? sanitizeHtml(stripMarker(l.body))
     : bodyBlocks(l.body).map((b) => (b.kind === 'h' ? `<h3>${esc(b.text)}</h3>` : b.kind === 'li' ? `<ul><li>${esc(b.text)}</li></ul>` : `<p>${esc(b.text)}</p>`)).join('\n');
   return `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;700&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700&family=Noto+Sans+Hebrew:wght@400;700&display=block">
 <style>* { box-sizing: border-box; } body { margin: 0; } ${docCss()}</style></head><body>
 ${docHtml({
     settings: s, title: o.title || typeOf(l.letter_type).label, baseType: l.letter_type, date: l.letter_date, visitDate: o.visitDate,
