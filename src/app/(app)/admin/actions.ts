@@ -300,3 +300,22 @@ export async function deletePayment(paymentId: string): Promise<Result> {
   revalidatePath('/admin/payments');
   return { ok: true };
 }
+
+/** A referrer's own price list: one price per service. An empty price returns the service to its list price. */
+export async function setFirmPrices(firmId: string, entries: { serviceId: string; price: number | null }[]): Promise<Result> {
+  const supabase = await assertAdmin().catch(() => null);
+  if (!supabase) return { ok: false, error: 'אין הרשאה.' };
+  if (!UUID.test(firmId) || entries.length > 200 || entries.some((e) => !UUID.test(e.serviceId))) return { ok: false, error: 'בקשה לא תקינה.' };
+  const set = entries.filter((e) => e.price != null && Number.isFinite(e.price) && e.price >= 0 && e.price < 1000000);
+  const drop = entries.filter((e) => e.price == null).map((e) => e.serviceId);
+  if (set.length) {
+    const { error } = await supabase.from('firm_prices').upsert(set.map((e) => ({ firm_id: firmId, service_id: e.serviceId, price: money(e.price), updated_at: new Date().toISOString() })), { onConflict: 'firm_id,service_id' });
+    if (error) return { ok: false, error: 'שמירת המחירון נכשלה.' };
+  }
+  if (drop.length) {
+    const { error } = await supabase.from('firm_prices').delete().eq('firm_id', firmId).in('service_id', drop);
+    if (error) return { ok: false, error: 'שמירת המחירון נכשלה.' };
+  }
+  revalidatePath('/admin/users');
+  return { ok: true, info: 'המחירון נשמר. תורים חדשים של המפנה יתומחרו לפיו.' };
+}
