@@ -35,7 +35,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
   const [scan, setScan] = useState<'idle' | 'running' | 'done' | 'error'>(c.extract ? 'done' : 'idle');
   const [scanMsg, setScanMsg] = useState('');
   const [ext, setExt] = useState<Extracted | null>(c.extract);
-  const [ai, setAi] = useState<Set<string>>(new Set(preview && c.extract ? ['name', 'idNumber', 'dob', 'phone', 'type', 'notes'] : []));
+  const [ai, setAi] = useState<Set<string>>(new Set(preview && c.extract ? ['name', 'idNumber', 'dob', 'phone', 'type'] : []));
   const [f, setF] = useState({ name: c.name, idNumber: c.idNumber, dob: c.dob, phone: c.phone, email: c.email, notes: c.notes, submittedBy: c.submittedBy });
   const [svc, setSvc] = useState<Service | null>(services.find((x) => x.id === c.serviceId) ?? (c.serviceId === null && c.type ? services.find((x) => x.base_type === c.type) ?? null : null));
   const [suggested, setSuggested] = useState<string | null>(null);
@@ -59,8 +59,6 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
       const v = String(x[FROM[k]] || '');
       if (v && !cur[k].trim()) { next[k] = v; filled.add(k); }
     });
-    const req = [x.request, x.event && `האירוע: ${x.event}${x.event_date ? ` (${x.event_date})` : ''}`].filter(Boolean).join('\n');
-    if (req && !cur.notes.trim()) { next.notes = req; filled.add('notes'); }
     setF(next);
     const match = x.suggested_type ? services.find((v) => v.base_type === x.suggested_type) : undefined;
     if (match) { setSuggested(match.id); if (!svc) { setSvc(match); filled.add('type'); } }
@@ -71,7 +69,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
     if (preview) return;
     setScan('running');
     setScanMsg('');
-    const r = await extractFromDocs(c.id).catch(() => ({ ok: false as const, error: 'הסריקה נכשלה. אפשר למלא ידנית.' }));
+    const r = await extractFromDocs(c.id).catch(() => ({ ok: false as const, error: '' }));
     if (r.ok) {
       apply(r.data);
       setScan('done');
@@ -159,7 +157,8 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
     );
   }
 
-  const tag = (k: string) => ai.has(k) && <span className="ai-tag"><Icon name="sparkles" size={12} />זוהה מהמסמכים</span>;
+  // filled quietly from the documents: no labels, the details just appear
+  const tag = (_k: string) => null;
 
   return (
     <>
@@ -178,7 +177,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
               <h2><Icon name="upload" />מסמכים</h2>
               {docs.length > 0 && <span className="hint">{docs.length} קבצים בתיק</span>}
             </div>
-            <p className="muted" style={{ margin: 0 }}>העלו את המסמכים הרפואיים, כתב התביעה או ההפניה. המערכת תקרא מהם את פרטי המטופל ואת הבקשה, ותמלא את הטופס בשבילכם.</p>
+            <p className="muted" style={{ margin: 0 }}>צרפו מסמכים שכדאי שהרופא יראה: הפניה, תוצאות בדיקות, סיכומי ביקור או כתב תביעה.</p>
             {docs.length > 0 && (
               <ul className="doc-chips">
                 {docs.map((d) => <li key={d.id}><Icon name="file" size={15} /><span>{d.file_name}</span><small>{(d.size_bytes / 1048576).toFixed(1)}MB</small></li>)}
@@ -189,18 +188,15 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
             <div className="row" style={{ gap: 8 }}>
               {files.length > 0 && (
                 <button type="button" className="btn btn-primary" onClick={upload} disabled={progress != null || scan === 'running'}>
-                  <Icon name="sparkles" />{progress != null ? `מעלה ${Math.round(progress * 100)}%` : `העלאה וסריקה (${files.length})`}
+                  <Icon name="upload" />{progress != null ? `מעלה ${Math.round(progress * 100)}%` : `צירוף ${files.length === 1 ? 'המסמך' : `${files.length} מסמכים`}`}
                 </button>
-              )}
-              {!files.length && docs.length > 0 && scan !== 'running' && (
-                <button type="button" className="btn" onClick={runScan}><Icon name="refresh" />{scan === 'done' ? 'סריקה מחדש' : 'סריקת המסמכים'}</button>
               )}
             </div>
 
             {scan === 'running' && (
               <div className="scan-live" role="status">
                 <span className="scan-orb" aria-hidden="true"><Icon name="sparkles" /></span>
-                <div><b>קוראים את המסמכים…</b><small>מחפשים שם, תעודת זהות, תאריך לידה, טלפון ומה מבקשים מהרופא. זה לוקח עד דקה.</small></div>
+                <div><b>מצרפים את המסמכים לתיק…</b><small>זה עשוי להימשך עד דקה. נא לא לסגור את הדף.</small></div>
                 <div className="scan-bars" aria-hidden="true"><i /><i /><i /></div>
               </div>
             )}
@@ -208,19 +204,18 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
               <div className="scan-result">
                 <Icon name="checkCircle" />
                 <div>
-                  <b>הסריקה הושלמה</b>
-                  <small>{ext.name ? `נמצאו פרטים של ${ext.name}. ` : ''}בדקו את הפרטים למטה ותקנו אם צריך.</small>
-                  {ext.warning && <small className="warn-t"><Icon name="alert" size={13} />{ext.warning}</small>}
+                  <b>המסמכים צורפו לתיק</b>
+                  <small>{ext.name || ext.id_number ? 'נא לוודא שהפרטים למטה נכונים.' : 'נא למלא את פרטי המטופל למטה.'}</small>
+
                 </div>
               </div>
             )}
-            {scan === 'error' && <p className="field-help err"><Icon name="alert" size={15} />{scanMsg} אפשר להמשיך ולמלא ידנית.</p>}
             {scan !== 'error' && scanMsg && <p className="field-help err">{scanMsg}</p>}
           </section>
 
           {/* ---------- stage 3: confirm the details ---------- */}
           <form ref={formRef} className="panel" onSubmit={submit} noValidate>
-            <div className="panel-head"><h2><Icon name="user" />פרטי המטופל</h2>{ai.size > 0 && <span className="ai-tag big"><Icon name="sparkles" size={13} />מולא מהמסמכים</span>}</div>
+            <div className="panel-head"><h2><Icon name="user" />פרטי המטופל</h2></div>
             <div className="grid-2">
               <label className={`field${ai.has('name') ? ' from-ai' : ''}`} htmlFor="pName"><span>שם מלא {tag('name')}</span><input id="pName" autoComplete="off" value={f.name} onChange={set('name')} /></label>
               <label className={`field${ai.has('idNumber') ? ' from-ai' : ''}`} htmlFor="pId"><span>תעודת זהות {tag('idNumber')}</span><input id="pId" inputMode="numeric" dir="ltr" value={f.idNumber} onChange={set('idNumber')} /></label>
