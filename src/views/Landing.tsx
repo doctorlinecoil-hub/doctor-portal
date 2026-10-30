@@ -65,7 +65,7 @@ export default function Landing({ s, services, audience = 'all' }: { s: Settings
         <div>
           <span className="lp-kicker">למטופלים</span>
           <h2 className="lp-h">קובעים תור בעצמכם, תוך שתי דקות</h2>
-          <p className="lp-sub">בוחרים מועד, מעלים את המסמכים הרפואיים, ומקבלים זימון ותזכורות. פרטי העלות נשלחים אליכם במייל מהמרפאה.</p>
+          <p className="lp-sub">בוחרים מועד, מעלים את המסמכים הרפואיים, ומקבלים זימון ותזכורות.</p>
           <div className="lp-cta"><a className="btn btn-primary btn-lg" href="/book"><Icon name="calendarPlus" />קביעת תור</a><a className="btn btn-lg" href="/register?k=patient">פתיחת חשבון מטופל</a></div>
         </div>
         <ul className="lp-checks">
@@ -222,7 +222,7 @@ export default function Landing({ s, services, audience = 'all' }: { s: Settings
           <div className="lp-wrap">
             <span className="lp-kicker">שירותים</span>
             <h2 className="lp-h">מה אפשר לקבל</h2>
-            <p className="lp-sub">כל מסמך נכתב על נייר המכתבים הרשמי, חתום ומוכן להגשה. פרטי העלות נשלחים במייל מהמרפאה.</p>
+            <p className="lp-sub">כל מסמך נכתב על נייר המכתבים הרשמי, חתום ומוכן להגשה.</p>
             <div className="lp-grid lp-grid-svc">
               {services.map((v) => (
                 <a key={v.id} className="lp-card lp-svc lp-tilt" href={`/book?s=${v.id}`}>
@@ -245,7 +245,7 @@ export default function Landing({ s, services, audience = 'all' }: { s: Settings
             <ol className="lp-steps lp-steps-line">
               <li><span className="lp-step-n">1</span><b>בוחרים שירות ומועד</b><p>היומן של המרפאה פתוח אונליין. בוחרים יום ושעה, במרפאה או בשיחה טלפונית.</p></li>
               <li><span className="lp-step-n">2</span><b>מצרפים מסמכים</b><p>הפניה, תוצאות בדיקות וכל מה שחשוב שהרופא יראה לפני הפגישה.</p></li>
-              <li><span className="lp-step-n">3</span><b>אישור וזימון</b><p>הרופא מאשר, ונשלח אליכם זימון עם כתובת וניווט. בלי תשלום מראש.</p></li>
+              <li><span className="lp-step-n">3</span><b>אישור וזימון</b><p>הרופא מאשר, ונשלח אליכם זימון עם כתובת וניווט.</p></li>
               <li><span className="lp-step-n">4</span><b>מקבלים את המסמך</b><p>אחרי הביקור המסמך החתום נשלח במייל כ־PDF, וזמין גם באזור האישי.</p></li>
             </ol>
           </div>
@@ -316,7 +316,6 @@ export default function Landing({ s, services, audience = 'all' }: { s: Settings
             <span className="lp-kicker">שאלות נפוצות</span>
             <h2 className="lp-h">כל מה שחשוב לדעת</h2>
             <details><summary>איך קובעים תור?</summary><p>דרך דף קביעת התור: בוחרים שירות ומועד, מצרפים מסמכים אם יש, ומאשרים פרטים. משרדים ומתווכים יכולים גם להירשם ולנהל את כל התיקים מחשבון אחד.</p></details>
-            <details><summary>כמה זה עולה?</summary><p>העלות תלויה בסוג השירות ובהיקף התיק. אחרי קביעת התור המרפאה שולחת אליכם במייל את פרטי העלות ואופן התשלום.</p></details>
             <details><summary>אפשר שיחה טלפונית במקום להגיע?</summary><p>כן, לחלק מהשירותים. בזמן קביעת התור בוחרים ״שיחה טלפונית״, והרופא מתקשר אליכם במועד שנקבע.</p></details>
             {bring.length > 0 && <details><summary>מה להביא לביקור?</summary><ul>{bring.map((b) => <li key={b}>{b}</li>)}</ul></details>}
             <details><summary>איך מקבלים את המסמך?</summary><p>אחרי הביקור המסמך החתום נשלח במייל כקובץ PDF, למפנה ולמטופל, ומופיע גם באזור האישי להורדה.</p></details>
