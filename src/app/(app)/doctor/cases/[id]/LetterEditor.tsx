@@ -345,7 +345,16 @@ export default function LetterEditor({
         {paper.patient.idNumber && <span><b>ת.ז.:</b> <span className="num">{paper.patient.idNumber}</span></span>}
         {paper.patient.dob && <span><b>תאריך לידה:</b> <span className="num">{fmtDate(paper.patient.dob)}</span>{ag != null ? ` (גיל ${ag})` : ''}</span>}
       </div>
-      {paper.visits && paper.visits.length > 0 && <div className="cl-rv"><b>ביקור חוזר</b> · {paper.visits.length === 1 ? 'ביקור קודם' : 'ביקורים קודמים'} במרפאה: <span className="num">{paper.visits.map((x) => fmtDate(x)).join(' · ')}</span></div>}
+      {paper.visits && paper.visits.length > 0 && (
+        <div className="cl-rv">
+          <div><b>סוג ביקור:</b> ביקור חוזר</div>
+          <div>
+            <b>{paper.visits.length === 1 ? 'ביקור קודם במרפאה' : 'ביקורים קודמים במרפאה'}:</b>{' '}
+            {paper.visits.slice(-5).map((v, i) => <span key={v.date + v.label}>{i > 0 && <> <span className="cl-rv-sep">·</span> </>}<span className="cl-rv-i"><span className="num">{fmtDate(v.date)}</span> – {v.label}</span></span>)}
+            {paper.visits.length > 5 && <span className="cl-rv-more"> (ועוד {paper.visits.length - 5} מוקדמים יותר)</span>}
+          </div>
+        </div>
+      )}
       {opinion && (
         <div className="pg-intro">
           <p>הנני מגיש בזאת את חוות דעתי הרפואית{paper.visitDate ? ` לאחר בדיקתי ב־${fmtDate(paper.visitDate)}` : ''}.</p>
@@ -364,7 +373,7 @@ export default function LetterEditor({
       {d.letter_type === 'legal' && <div className="lt-decl">{LEGAL_DECLARATION}</div>}
       <div className="of-sign">
         <div className="of-doc"><div>בברכה,</div><b>{paper.lh_name}</b>{titles[0] && <div>{titles[0]}</div>}{paper.lh_licenses && <div>{paper.lh_licenses}</div>}</div>
-        <div className="of-stamp">{paper.sign_final !== false ? <div className="pg-sigbox"><Icon name="checkCircle" size={14} />החתימה והחותמת יתווספו בגרסה הסופית</div> : <div className="of-sigspace" />}<div className="of-line">חתימה וחותמת הרופא</div></div>
+        <div className="of-stamp">{paper.sign_final !== false ? <div className="pg-sigbox"><Icon name="checkCircle" size={14} />החתימה והחותמת יופיעו בתחתית כל עמוד בגרסה הסופית</div> : <div className="of-sigspace" />}<div className="of-line">חתימה וחותמת הרופא</div></div>
       </div>
       {footLines.length > 0 && <div className="pg-foot">{footLines.map((l, i) => <div key={i} className={i === 0 ? 'f1' : ''}>{l}</div>)}</div>}
     </div>
