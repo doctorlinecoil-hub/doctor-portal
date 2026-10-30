@@ -162,7 +162,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
         <aside className="dx-side">
           <section className="dx-card flush" id="waiting">
             <div className="dx-h"><span className={`dx-ic ${waiting.length ? 'hot' : 'ok'}`}><Icon name="file" size={18} /></span><h2>ממתינים למכתב</h2><span className="dx-count">{waiting.length}</span></div>
-            {waiting.length === 0 ? <div className="dx-zero"><Icon name="checkCircle" />הכול כתוב. אין ביקורים שממתינים למכתב.</div> : (
+            {waiting.length === 0 ? <div className="dx-zero"><Icon name="checkCircle" size={20} />הכול כתוב. אין ביקורים שממתינים למכתב.</div> : (
               <div className="dx-wait">
                 {waiting.slice(0, 8).map((r) => {
                   const d = -day(r);

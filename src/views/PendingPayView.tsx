@@ -44,7 +44,7 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, action }: {
       {!gate && <p className="pp-info"><Icon name="info" size={16} />שחרור מסמכים לפי תשלום כבוי בהגדרות: כל מסמך סופי נפתח ונשלח מיד.</p>}
 
       {waiting.length === 0 ? (
-        <section className="pp-card"><div className="pp-zero"><Icon name="checkCircle" />אין מסמכים שמחכים לתשלום.</div></section>
+        <section className="pp-card"><div className="pp-zero"><Icon name="checkCircle" size={22} />אין מסמכים שמחכים לתשלום.</div></section>
       ) : (
         <div className="pp-grid">
           {waiting.map((r) => (
