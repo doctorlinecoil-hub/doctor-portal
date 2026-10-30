@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
-import { EMAIL_RE, PAYERS, dbError, ils, type Payer, type ReferralType } from '@/lib/constants';
+import { EMAIL_RE, PAYERS, dbError, type Payer, type ReferralType } from '@/lib/constants';
 import type { Service } from '@/lib/services';
 import ServicePicker from '@/components/ServicePicker';
 import { fmtDate, fmtDay, ilParts } from '@/lib/dates';
@@ -271,7 +271,6 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
             <div className="sum-row"><span>מטופל</span><b>{f.name.trim() || '—'}</b></div>
             <div className="sum-row"><span>סיבה</span><b>{svc ? svc.label : '—'}</b></div>
             <div className="sum-row"><span>מסמכים</span><b>{docs.length || '—'}</b></div>
-            {svc && Number(svc.price) > 0 && <div className="sum-row"><span>מחיר (כולל מע״מ)</span><b className="money">{ils(Number(svc.price))}</b></div>}
           </div>
           <ol className="how">
             <li><b>מעלים מסמכים</b><span>PDF או תמונות</span></li>
