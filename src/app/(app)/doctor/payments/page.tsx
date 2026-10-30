@@ -5,7 +5,7 @@ import { released } from '@/lib/types';
 import { todayIL } from '@/lib/dates';
 import ApprovePay from './ApprovePay';
 import RemindPay from './RemindPay';
-import { ils } from '@/lib/constants';
+import { ils, payLines } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
 import { fmtDate, ilParts } from '@/lib/dates';
 
@@ -30,6 +30,8 @@ export default async function PaymentApprovalPage() {
     .map((c) => [c.id, { patient: c.patient_phone, firm: (Array.isArray(c.firm) ? c.firm[0] : c.firm)?.phone ?? null }]));
   const lastSent = new Map<string, string>();
   for (const x of (sent as { appointment_id: string; created_at: string }[] | null) ?? []) if (!lastSent.has(x.appointment_id)) lastSent.set(x.appointment_id, x.created_at);
+  const pl = payLines(settings);
+  const payInfo = [pl.bank.length ? `\nפרטי העברה:\n${pl.bank.join('\n')}` : '', pl.bit ? `ביט / פייבוקס: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
   const pays: Record<string, PayLine[]> = {};
   for (const x of (p as (PayLine & { appointment_id: string })[] | null) ?? []) (pays[x.appointment_id] ??= []).push({ amount: Number(x.amount), method: x.method, paid_on: x.paid_on });
   return (
@@ -38,7 +40,7 @@ export default async function PaymentApprovalPage() {
         const patientPays = r.firm_kind === 'private' || r.payer === 'patient';
         const ph = phoneOf.get(r.id);
         const due = Math.max(0, r.price - r.paid);
-        const text = `שלום${patientPays && r.patient_name ? ` ${r.patient_name}` : ''},\n${labelOf(r)} עבור ${r.patient_name} (תיק ${r.case_no}) מוכנה וממתינה לתשלום${due > 0 ? ` (${ils(due)})` : ''}.\nמיד כשהתשלום יתקבל, המסמך יישלח אליכם במייל.\n${settings.lh_name}`;
+        const text = `שלום${patientPays && r.patient_name ? ` ${r.patient_name}` : ''},\n${labelOf(r)} עבור ${r.patient_name} (תיק ${r.case_no}) מוכנה וממתינה לתשלום${due > 0 ? ` (${ils(due)})` : ''}.\n${payInfo}\nמיד כשהתשלום יתקבל, המסמך יישלח אליכם במייל.\n${settings.lh_name}`;
         const last = lastSent.get(r.id);
         return <RemindPay id={r.id} who={patientPays ? 'מטופל' : 'מפנה'} phone={(patientPays ? ph?.patient : ph?.firm || ph?.patient) || null} text={text}
           last={last ? `${fmtDate(ilParts(last).date)} ${ilParts(last).time}` : null} />;
