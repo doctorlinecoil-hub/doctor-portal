@@ -27,8 +27,11 @@ function AiChip({ i }: { i?: IntakeChip }) {
   );
 }
 
-export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup, share }: {
-  rows: ApptRow[]; past: boolean; isAdmin: boolean; name: string; now?: Date; intake?: Record<string, IntakeChip>; openRequests?: number;
+export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), intake = {}, openRequests = 0, approvals, reschedules = [], setup, share, calendar, mode = past ? 'past' : 'list' }: {
+  rows: ApptRow[]; past: boolean;
+  /** the visual calendar (day / week / month), shown in the main card */
+  calendar?: React.ReactNode;
+  mode?: 'day' | 'week' | 'month' | 'list' | 'past'; isAdmin: boolean; name: string; now?: Date; intake?: Record<string, IntakeChip>; openRequests?: number;
   approvals?: (id: string) => React.ReactNode;
   reschedules?: React.ReactNode[];
   setup?: React.ReactNode;
@@ -58,8 +61,8 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
   const load = Array.from({ length: 14 }, (_, i) => active.filter((r) => day(r) === i).length);
   const peak = Math.max(1, ...load);
   const metrics: { k: string; v: number; l: string; href: string; tone?: string }[] = [
-    { k: 'today', v: todays.length, l: 'תורים היום', href: '/doctor/calendar?view=day' },
-    { k: 'week', v: week.length, l: 'השבוע', href: '/doctor/calendar' },
+    { k: 'today', v: todays.length, l: 'תורים היום', href: '/doctor?view=day#cal' },
+    { k: 'week', v: week.length, l: 'השבוע', href: '/doctor?view=week#cal' },
     { k: 'asks', v: asks, l: 'לאישורך', href: '#approvals', tone: asks ? 'warn' : '' },
     { k: 'wait', v: waiting.length, l: 'ממתינים למכתב', href: '#waiting', tone: waiting.length ? 'hot' : '' },
   ];
@@ -80,7 +83,10 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
               </Link>
             ))}
           </div>
-          {share && <div className="dx-share">{share}</div>}
+          <div className="dx-actions">
+            <Link href="/doctor/book" className="dx-cta"><Icon name="calendarPlus" size={18} />קביעת תור חדש</Link>
+            {share && <div className="dx-share">{share}</div>}
+          </div>
         </div>
         {next && np ? (
           <Link href={`/doctor/cases/${next.id}`} className="dx-next">
@@ -129,16 +135,19 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
       )}
 
       <div className="dx-grid">
-        <section className="dx-card flush">
+        <section className="dx-card flush dx-cal" id="cal">
           <div className="dx-h">
             <span className="dx-ic"><Icon name="calendar" size={18} /></span>
-            <h2>{past ? 'ביקורים קודמים' : 'היומן שלי'}</h2>
-            <nav className="dx-seg" aria-label="תצוגה">
-              <Link href="/doctor" aria-current={!past}>קרובים</Link>
-              <Link href="/doctor?view=past" aria-current={past}>עבר</Link>
+            <h2>{mode === 'past' ? 'ביקורים קודמים' : 'היומן'}</h2>
+            <nav className="dx-seg" aria-label="תצוגת היומן">
+              {([['day', 'יום'], ['week', 'שבוע'], ['month', 'חודש'], ['list', 'רשימה'], ['past', 'עבר']] as const).map(([v, l]) => (
+                <Link key={v} href={`/doctor?view=${v}#cal`} aria-current={mode === v}>{l}</Link>
+              ))}
             </nav>
+            <Link href="/doctor/book" className="btn btn-sm btn-primary dx-new"><Icon name="calendarPlus" size={15} />תור חדש</Link>
           </div>
-          {list.length === 0 ? <Empty icon="calendar">{past ? 'אין ביקורים קודמים.' : 'אין תורים קרובים. כשמפנה יקבע תור, הוא יופיע כאן.'}</Empty> : (
+          {calendar && mode !== 'list' && mode !== 'past' ? <div className="dx-calbody">{calendar}</div>
+            : list.length === 0 ? <Empty icon="calendar">{past ? 'אין ביקורים קודמים.' : 'אין תורים קרובים. כשמפנה יקבע תור, הוא יופיע כאן.'}</Empty> : (
             <div className="list dx-list">
               {groupByDay(list.slice(0, 60)).map((g) => (
                 <div key={g.date}>
@@ -148,7 +157,6 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
               ))}
             </div>
           )}
-          <Link className="dx-more" href="/doctor/calendar">לתצוגת היומן המלאה<Icon name="chevron" size={15} /></Link>
         </section>
 
         <aside className="dx-side">
@@ -186,7 +194,7 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
               })}
             </div>
             <div className="dx-links">
-              <Link href="/doctor/calendar"><Icon name="calendar" size={15} />יומן</Link>
+              <Link href="/doctor?view=month#cal"><Icon name="calendar" size={15} />חודש</Link>
               <Link href="/admin/reports"><Icon name="chart" size={15} />דוחות</Link>
               {isAdmin && outstanding > 0 && <Link href="/admin/payments"><Icon name="wallet" size={15} />גבייה</Link>}
             </div>

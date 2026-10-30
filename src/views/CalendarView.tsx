@@ -22,8 +22,12 @@ function minutesOf(iso: string) {
   return { date: p.date, min: hm2min(p.time) };
 }
 
-export function CalendarView({ view, date, rows, blocks, settings, tools, slotAction, blockAction, now = new Date() }: {
+export function CalendarView({ view, date, rows, blocks, settings, tools, slotAction, blockAction, now = new Date(), base = '/doctor/calendar', embedded }: {
   view: 'day' | 'week' | 'month'; date: string; rows: ApptRow[]; blocks: BlockRow[]; settings: Settings; now?: Date;
+  /** the page the calendar lives on (links keep to it) */
+  base?: string;
+  /** inside the dashboard: no page title and no view tabs (the card has them) */
+  embedded?: boolean;
   tools?: React.ReactNode;
   /** the button on a free slot (book / block) */
   slotAction?: (iso: string, label: string) => React.ReactNode;
@@ -44,13 +48,16 @@ export function CalendarView({ view, date, rows, blocks, settings, tools, slotAc
     : view === 'week'
     ? `${fmtDate(start)} – ${fmtDate(fromDayNum(dayNum(start) + 6))}`
     : `${MONTHS[+date.slice(5, 7) - 1]} ${date.slice(0, 4)}`;
-  const href = (v: string, d: string) => `/doctor/calendar?view=${v}&d=${d}`;
+  const href = (v: string, d: string) => `${base}?view=${v}&d=${d}${embedded ? '#cal' : ''}`;
+  const dayHref = (d: string) => href('day', d);
 
   return (
     <>
-      <PageHead title="יומן" sub="כל התורים והשעות החסומות. לחיצה על משבצת פנויה: קביעת תור או חסימה.">
-        <Link href="/doctor/book" className="btn btn-primary"><Icon name="calendarPlus" />תור חדש</Link>
-      </PageHead>
+      {!embedded && (
+        <PageHead title="יומן" sub="כל התורים והשעות החסומות. לחיצה על משבצת פנויה: קביעת תור או חסימה.">
+          <Link href="/doctor/book" className="btn btn-primary"><Icon name="calendarPlus" />תור חדש</Link>
+        </PageHead>
+      )}
       <div className="cal-bar">
         <div className="row" style={{ gap: 6 }}>
           <Link className="btn btn-sm" href={href(view, prev)} aria-label="הקודם"><Icon name="chevron" className="flip" /></Link>
@@ -58,18 +65,20 @@ export function CalendarView({ view, date, rows, blocks, settings, tools, slotAc
           <Link className="btn btn-sm" href={href(view, next)} aria-label="הבא"><Icon name="chevron" /></Link>
           <h2 className="cal-title">{title}</h2>
         </div>
-        <nav className="tabs" aria-label="תצוגה">
-          <Link href={href('day', date)} aria-current={view === 'day'}>יום</Link>
-          <Link href={href('week', date)} aria-current={view === 'week'}>שבוע</Link>
-          <Link href={href('month', date)} aria-current={view === 'month'}>חודש</Link>
-        </nav>
+        {embedded ? tools : (
+          <nav className="tabs" aria-label="תצוגה">
+            <Link href={href('day', date)} aria-current={view === 'day'}>יום</Link>
+            <Link href={href('week', date)} aria-current={view === 'week'}>שבוע</Link>
+            <Link href={href('month', date)} aria-current={view === 'month'}>חודש</Link>
+          </nav>
+        )}
       </div>
-      {tools}
+      {!embedded && tools}
       {view === 'day' && <p className="hint">{dayCount ? `${dayCount === 1 ? 'תור אחד' : `${dayCount} תורים`} ביום הזה` : 'אין תורים ביום הזה'}</p>}
       {view !== 'month' ? (
-        <WeekGrid start={start} single={view === 'day'} rows={active} blocks={blocks} settings={settings} today={today} now={now} slotAction={slotAction} blockAction={blockAction} />
+        <WeekGrid dayHref={dayHref} start={start} single={view === 'day'} rows={active} blocks={blocks} settings={settings} today={today} now={now} slotAction={slotAction} blockAction={blockAction} />
       ) : (
-        <MonthGrid start={start} month={date.slice(0, 7)} rows={active} blocks={blocks} settings={settings} today={today} days={step} />
+        <MonthGrid dayHref={dayHref} start={start} month={date.slice(0, 7)} rows={active} blocks={blocks} settings={settings} today={today} days={step} />
       )}
       <div className="cal-legend hint">
         <span><i className="lg pending" />ממתין לאישור</span><span><i className="lg booked" />מאושר</span><span><i className="lg draft" />מכתב בטיוטה</span>
@@ -79,8 +88,8 @@ export function CalendarView({ view, date, rows, blocks, settings, tools, slotAc
   );
 }
 
-function WeekGrid({ start, single, rows, blocks, settings, today, now, slotAction, blockAction }: {
-  start: string; single?: boolean; rows: ApptRow[]; blocks: BlockRow[]; settings: Settings; today: string; now: Date;
+function WeekGrid({ dayHref, start, single, rows, blocks, settings, today, now, slotAction, blockAction }: {
+  dayHref: (d: string) => string; start: string; single?: boolean; rows: ApptRow[]; blocks: BlockRow[]; settings: Settings; today: string; now: Date;
   slotAction?: (iso: string, label: string) => React.ReactNode; blockAction?: (b: BlockRow) => React.ReactNode;
 }) {
   const days = Array.from({ length: single ? 1 : 7 }, (_, i) => fromDayNum(dayNum(start) + i));
@@ -101,7 +110,7 @@ function WeekGrid({ start, single, rows, blocks, settings, today, now, slotActio
       <div className="cal-head">
         <span />
         {shown.map((d) => (
-          <Link key={d} href={`/doctor/calendar?view=day&d=${d}`} className={`cal-dh${d === today ? ' today' : ''}`}>
+          <Link key={d} href={dayHref(d)} className={`cal-dh${d === today ? ' today' : ''}`}>
             <small>{DAYS[weekday(d)]}</small><b className="num">{+d.slice(8, 10)}.{+d.slice(5, 7)}</b>
           </Link>
         ))}
@@ -166,8 +175,8 @@ function WeekGrid({ start, single, rows, blocks, settings, today, now, slotActio
   );
 }
 
-function MonthGrid({ start, month, rows, blocks, settings, today, days }: {
-  start: string; month: string; rows: ApptRow[]; blocks: BlockRow[]; settings: Settings; today: string; days: number;
+function MonthGrid({ dayHref, start, month, rows, blocks, settings, today, days }: {
+  dayHref: (d: string) => string; start: string; month: string; rows: ApptRow[]; blocks: BlockRow[]; settings: Settings; today: string; days: number;
 }) {
   const cells = Array.from({ length: days + 7 }, (_, i) => fromDayNum(dayNum(start) + i)).slice(0, 42);
   const lastRow = cells.findIndex((d, i) => i % 7 === 0 && d.slice(0, 7) > month);
@@ -181,7 +190,7 @@ function MonthGrid({ start, month, rows, blocks, settings, today, days }: {
         const blocked = settings.blocked_dates.includes(d) || blocks.some((b) => minutesOf(b.starts_at).date <= d && minutesOf(b.ends_at).date >= d);
         const pend = dayRows.filter((r) => r.status === 'pending').length;
         return (
-          <Link key={d} href={`/doctor/calendar?view=day&d=${d}`}
+          <Link key={d} href={dayHref(d)}
             className={`cal-day${d.slice(0, 7) !== month ? ' out' : ''}${d === today ? ' today' : ''}${!cfg?.on ? ' closed' : ''}${blocked ? ' blocked' : ''}`}>
             <span className="cal-dn num">{+d.slice(8, 10)}</span>
             {dayRows.slice(0, 3).map((r) => <span key={r.id} className={`cal-chip ${r.status}`}><span className="num">{ilParts(r.starts_at).time}</span> {r.patient_name || 'ממתין לפרטים'}</span>)}
