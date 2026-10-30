@@ -7,7 +7,6 @@ import type { Service } from '@/lib/services';
 import ServicePicker from '@/components/ServicePicker';
 import { ilToUtc } from '@/lib/dates';
 import Icon from '@/components/Icon';
-import { PageHead } from '@/components/ui';
 
 type Firm = { id: string; name: string; kind: string };
 
@@ -50,50 +49,85 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
     router.push(`/doctor/cases/${data.id}#${f.what}`);
   }
 
+  const isRx = f.what === 'rx';
+  const yesterday = (() => { const d = new Date(ilToUtc(initial.date, '12:00').getTime() - 86400000); return d.toISOString().slice(0, 10); })();
+  const filled = [f.name.trim().length >= 2, f.id.trim().length >= 5, f.phone.trim().length >= 7].filter(Boolean).length;
+
   return (
-    <>
-      <PageHead title="מסמך חדש" sub="מכתב או מרשם לכל מטופל, גם בלי תור ביומן. התיק נשמר בהיסטוריה של המטופל, וכל השליחות עובדות כרגיל." />
-      <form className="panel new-doc" onSubmit={submit} noValidate>
-        <div className="form-sec first">
-          <h3><Icon name="file" />מה מכינים?</h3>
-          <div className="seg">
-            <button type="button" aria-pressed={f.what === 'letter'} onClick={() => setF({ ...f, what: 'letter' })}><Icon name="file" />מכתב / חוות דעת</button>
-            <button type="button" aria-pressed={f.what === 'rx'} onClick={() => setF({ ...f, what: 'rx' })}><Icon name="pill" />מרשם תרופות</button>
-          </div>
-          <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact showPrice />
+    <form className="nd" onSubmit={submit} noValidate>
+      <section className="nd-hero">
+        <div>
+          <span className="nd-kicker"><Icon name="sparkles" size={14} />מסמך חדש · גם בלי תור ביומן</span>
+          <h1>מה מכינים היום?</h1>
+          <p>בוחרים סוג, ממלאים פרטי מטופל, ונכנסים ישר לכתיבה. התיק נשמר בהיסטוריה של המטופל.</p>
         </div>
-
-        <div className="form-sec">
-          <h3><Icon name="user" />המטופל</h3>
-          <div className="grid-2">
-            <label className="field"><span>שם מלא</span><input value={f.name} onChange={set('name')} autoFocus={!f.name} /></label>
-            <label className="field"><span>תעודת זהות</span><input inputMode="numeric" dir="ltr" value={f.id} onChange={set('id')} /></label>
-            <label className="field"><span>תאריך לידה</span><input type="date" value={f.dob} onChange={set('dob')} /></label>
-            <label className="field"><span>טלפון</span><input type="tel" dir="ltr" value={f.phone} onChange={set('phone')} /></label>
-          </div>
-          <label className="field"><span>מייל <small>לא חובה · לשליחת המכתב או המרשם</small></span><input type="email" dir="ltr" value={f.email} onChange={set('email')} aria-invalid={!emailOk} /></label>
+        <div className="nd-pick" role="radiogroup" aria-label="סוג המסמך">
+          <button type="button" role="radio" aria-checked={!isRx} className={!isRx ? 'on' : ''} onClick={() => setF({ ...f, what: 'letter' })}>
+            <span className="nd-pic"><Icon name="file" size={26} /></span>
+            <b>מכתב / חוות דעת</b><small>סיכום ביקור, חוות דעת, הפניה</small>
+            <span className="nd-tick"><Icon name="check" size={14} /></span>
+          </button>
+          <button type="button" role="radio" aria-checked={isRx} className={isRx ? 'on' : ''} onClick={() => setF({ ...f, what: 'rx' })}>
+            <span className="nd-pic rx"><Icon name="pill" size={26} /></span>
+            <b>מרשם תרופות</b><small>מרשם חתום, מוכן להדפסה ולשליחה</small>
+            <span className="nd-tick"><Icon name="check" size={14} /></span>
+          </button>
         </div>
+      </section>
 
-        <div className="form-sec">
-          <h3><Icon name="briefcase" />מפנה ומועד</h3>
-          <div className="grid-2">
+      <div className="nd-grid">
+        <div className="nd-main">
+          {!isRx && (
+            <section className="nd-card">
+              <div className="nd-h"><span className="nd-step">1</span><h2>סוג המכתב</h2></div>
+              <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact showPrice />
+            </section>
+          )}
+
+          <section className="nd-card">
+            <div className="nd-h"><span className="nd-step">{isRx ? 1 : 2}</span><h2>המטופל</h2><span className="nd-prog">{filled}/3</span></div>
+            <div className="grid-2">
+              <label className="field"><span>שם מלא</span><input value={f.name} onChange={set('name')} autoFocus={!f.name} placeholder="ישראל ישראלי" /></label>
+              <label className="field"><span>תעודת זהות</span><input inputMode="numeric" dir="ltr" value={f.id} onChange={set('id')} placeholder="000000000" /></label>
+              <label className="field"><span>טלפון</span><input type="tel" dir="ltr" value={f.phone} onChange={set('phone')} placeholder="050-0000000" /></label>
+              <label className="field"><span>תאריך לידה <small>לא חובה</small></span><input type="date" value={f.dob} onChange={set('dob')} /></label>
+            </div>
+            <label className="field"><span>מייל <small>לא חובה · לשליחת {isRx ? 'המרשם' : 'המכתב'} למטופל</small></span><input type="email" dir="ltr" value={f.email} onChange={set('email')} aria-invalid={!emailOk} placeholder="name@example.com" /></label>
+          </section>
+
+          <section className="nd-card">
+            <div className="nd-h"><span className="nd-step">{isRx ? 2 : 3}</span><h2>מפנה ומועד</h2></div>
             <label className="field"><span>מפנה <small>מטופל שפנה בעצמו = ״פניות ישירות״</small></span>
               <select value={f.firm} onChange={set('firm')}>{firms.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
             </label>
-            <div className="grid-2 tight">
+            <div className="nd-when">
+              <div className="nd-chips" role="group" aria-label="תאריך מהיר">
+                <button type="button" aria-pressed={f.date === initial.date} onClick={() => setF({ ...f, date: initial.date })}>היום</button>
+                <button type="button" aria-pressed={f.date === yesterday} onClick={() => setF({ ...f, date: yesterday })}>אתמול</button>
+              </div>
               <label className="field"><span>תאריך הביקור</span><input type="date" value={f.date} onChange={set('date')} /></label>
               <label className="field"><span>שעה</span><input type="time" value={f.time} onChange={set('time')} /></label>
             </div>
-          </div>
-          <label className="field"><span>הערות <small>לא חובה</small></span><textarea rows={2} value={f.notes} onChange={set('notes')} /></label>
+            <label className="field"><span>הערות <small>לא חובה</small></span><textarea rows={2} value={f.notes} onChange={set('notes')} /></label>
+          </section>
         </div>
 
-        {err && <p className="err" role="alert">{err}</p>}
-        <div className="form-foot">
-          <span className="hint"><Icon name="info" size={14} />לא נקבע תור ולא נשלח זימון.</span>
-          <button className="btn btn-primary btn-lg" disabled={busy}>{busy ? 'פותח…' : <><Icon name={f.what === 'rx' ? 'pill' : 'file'} />פתיחת התיק ו{f.what === 'rx' ? 'כתיבת מרשם' : 'כתיבת המכתב'}</>}</button>
-        </div>
-      </form>
-    </>
+        <aside className="nd-side">
+          <div className="nd-sum">
+            <span className={`nd-sum-ic${isRx ? ' rx' : ''}`}><Icon name={isRx ? 'pill' : 'file'} size={22} /></span>
+            <b>{isRx ? 'מרשם תרופות' : svc?.label || 'מכתב'}</b>
+            <dl>
+              <dt>מטופל</dt><dd>{f.name.trim() || '—'}</dd>
+              <dt>ת״ז</dt><dd className="num">{f.id.trim() || '—'}</dd>
+              <dt>מפנה</dt><dd>{firm?.name || '—'}</dd>
+              <dt>מועד</dt><dd className="num">{f.date.split('-').reverse().join('.')} · {f.time}</dd>
+            </dl>
+            {err && <p className="err" role="alert">{err}</p>}
+            <button className="btn btn-primary btn-lg nd-go" disabled={busy}>{busy ? 'פותח…' : <><Icon name="marker" />{isRx ? 'לכתיבת המרשם' : 'לכתיבת המכתב'}</>}</button>
+            <span className="hint"><Icon name="info" size={13} />לא נקבע תור ולא נשלח זימון.</span>
+          </div>
+        </aside>
+      </div>
+    </form>
   );
 }
