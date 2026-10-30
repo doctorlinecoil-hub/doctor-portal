@@ -60,7 +60,7 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
             <button type="button" aria-pressed={f.what === 'letter'} onClick={() => setF({ ...f, what: 'letter' })}><Icon name="file" />מכתב / חוות דעת</button>
             <button type="button" aria-pressed={f.what === 'rx'} onClick={() => setF({ ...f, what: 'rx' })}><Icon name="pill" />מרשם תרופות</button>
           </div>
-          <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact />
+          <ServicePicker services={services} value={svc?.id ?? null} onChange={setSvc} compact showPrice />
         </div>
 
         <div className="form-sec">
