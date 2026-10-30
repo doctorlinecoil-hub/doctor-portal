@@ -2,7 +2,8 @@
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { dbError } from '@/lib/constants';
+import { dbError, type PayMethod } from '@/lib/constants';
+import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
 import { deliverLetter, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
 
@@ -154,4 +155,18 @@ export async function setPaymentOk(id: string, ok: boolean): Promise<Result> {
   done(id);
   revalidatePath('/firm');
   return { ok: true, info: ok ? 'התשלום אושר. המסמך פתוח עכשיו לצפייה ונשלח במייל.' : 'אישור התשלום בוטל. המסמך שוב ממתין לתשלום.' };
+}
+
+/**
+ * Approve the payment of a ready document: optionally record what was received (amount, method, date),
+ * then release the document, which opens to the referrer and goes out by email.
+ */
+export async function approvePayment(id: string, pay: { amount: number; method: PayMethod; paidOn: string } | null): Promise<Result> {
+  if (pay && pay.amount > 0) {
+    const r = await recordPayment({ appointmentId: id, amount: pay.amount, method: pay.method, paidOn: pay.paidOn, receiptNo: '', receiptUrl: '', note: '', issueInvoice: false, sendEmail: false });
+    if (!r.ok) return r;
+  }
+  const r = await setPaymentOk(id, true);
+  revalidatePath('/doctor/payments');
+  return r.ok ? { ok: true, info: pay && pay.amount > 0 ? 'התשלום נרשם ואושר. המסמך נפתח ונשלח במייל.' : 'התשלום אושר. המסמך נפתח ונשלח במייל.' } : r;
 }
