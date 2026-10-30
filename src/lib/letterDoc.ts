@@ -30,7 +30,7 @@ export type DocInput = {
   /** a line to sign by hand (prescriptions) */
   signLine?: boolean;
   /** dates of the patient's earlier visits: the document says it is a follow-up visit */
-  visits?: string[];
+  visits?: { date: string; label: string }[];
   draft?: boolean;
 };
 
@@ -40,6 +40,15 @@ export const isOpinion = (t?: ReferralType | null) => t === 'legal' || t === 'ni
 export function cvHtml(cv: string) {
   return cv.split('\n').map((l) => l.trim()).filter(Boolean)
     .map((l) => (/[:：]$/.test(l) && l.length < 60 ? `<div class="cv-h">${esc(l)}</div>` : `<div class="cv-l">${esc(l)}</div>`)).join('');
+}
+
+/** Health-fund style block: "ביקור חוזר" with a small table of the previous visits (the last 5). */
+export function visitsHtml(visits: { date: string; label: string }[] | undefined, today?: string | null) {
+  if (!visits?.length) return '';
+  const last = visits.slice(-5);
+  const more = visits.length - last.length;
+  return `<div class="cl-rv"><div class="cl-rv-h"><span class="cl-rv-tag">ביקור חוזר</span><span>${visits.length === 1 ? 'ביקור קודם אחד במרפאה' : `${visits.length} ביקורים קודמים במרפאה`}${today ? ` · ביקור נוכחי ${esc(fmtDate(today))}` : ''}</span></div>
+<table class="cl-rv-t"><thead><tr><th>תאריך</th><th>סוג הביקור</th></tr></thead><tbody>${last.map((v) => `<tr><td class="num">${esc(fmtDate(v.date))}</td><td>${esc(v.label)}</td></tr>`).join('')}</tbody></table>${more > 0 ? `<div class="cl-rv-more">ועוד ${more} ביקורים מוקדמים יותר</div>` : ''}</div>`;
 }
 
 export function docHtml(d: DocInput) {
@@ -64,7 +73,7 @@ export function docHtml(d: DocInput) {
   <div class="cl-date">תאריך: ${esc(fmtDate(d.date))}</div>
   ${to.length ? `<div class="cl-to"><div>לכבוד</div>${to.map((r) => `<div><b>${esc(r)}</b></div>`).join('')}</div>` : ''}
   <h1 class="cl-title">${esc(title)}</h1>
-  <div class="cl-ptw"><div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>${d.visits?.length ? `<div class="cl-rv"><b>ביקור חוזר</b> · ${d.visits.length === 1 ? 'ביקור קודם' : 'ביקורים קודמים'} במרפאה: ${d.visits.map((x) => esc(fmtDate(x))).join(' · ')}</div>` : ''}</div>
+  <div class="cl-ptw"><div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>${visitsHtml(d.visits, d.visitDate)}</div>
   ${intro}
   <div class="doc-body">${d.bodyHtml}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
@@ -247,6 +256,8 @@ ${p}.of-to { margin: 0 0 4mm; font-size: 10.5pt; }
 ${p}.of-to span { color: #5b6475; }
 ${p}.doc-body h3 { color: #0D1B2A; text-decoration: none !important; font-size: 11.5pt; border-bottom: 1px solid #D5DAE3; padding-bottom: 1mm; margin: 5mm 0 2mm; }
 ${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 5mm; }
+${p}.doc-body > :last-child { break-after: avoid; page-break-after: avoid; }
+${p}.of-sign { break-before: avoid; page-break-before: avoid; }
 ${p}.of-doc { font-size: 10.5pt; line-height: 1.5; }
 ${p}.of-doc b { display: block; font-size: 12pt; margin-top: 1mm; }
 ${p}.of-stamp { text-align: center; min-width: 60mm; }
@@ -258,8 +269,15 @@ ${p}.cl-to { margin: 0 0 5mm; line-height: 1.5; }
 ${p}.cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 18pt; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; margin: 2mm 0 4mm; }
 ${p}.cl-ptw { padding-bottom: 3mm; margin-bottom: 5mm; border-bottom: 1px solid #C9CFD8; }
 ${p}.cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 11pt; }
-${p}.cl-rv { text-align: center; font-size: 10pt; color: #0B5F5B; margin-top: 1.5mm; }
-${p}.cl-rv b { color: #0B5F5B; }
+${p}.cl-rv { margin: 3mm auto 0; max-width: 125mm; border: 1px solid #C9CFD8; border-radius: 1.5mm; overflow: hidden; font-size: 9.5pt; break-inside: avoid; }
+${p}.cl-rv-h { display: flex; align-items: center; gap: 3mm; padding: 1.4mm 3mm; background: #F1F4F7; border-bottom: 1px solid #C9CFD8; color: #33415C; }
+${p}.cl-rv-tag { background: #0D1B2A; color: #fff; font-weight: 700; padding: .4mm 2.4mm; border-radius: 1mm; font-size: 9pt; }
+${p}.cl-rv-t { width: 100%; border-collapse: collapse; }
+${p}.cl-rv-t th { text-align: right; font-weight: 700; color: #5B6577; font-size: 8.5pt; padding: 1mm 3mm; border-bottom: 1px solid #E3E7EC; }
+${p}.cl-rv-t td { padding: 1mm 3mm; border-bottom: 1px solid #EEF1F4; }
+${p}.cl-rv-t tr:last-child td { border-bottom: 0; }
+${p}.cl-rv-t td.num { width: 28mm; white-space: nowrap; direction: ltr; text-align: right; }
+${p}.cl-rv-more { padding: 1mm 3mm; color: #5B6577; font-size: 8.5pt; border-top: 1px solid #EEF1F4; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }

@@ -15,7 +15,7 @@ import { isRich, sanitizeHtml, stripMarker } from './richtext';
 export type LetterDoc = { letter_type: ReferralType; recipient: string; subject: string; body: string; letter_date: string };
 export type PatientDoc = { name: string; idNumber: string; dob: string | null };
 
-export function letterHtml(s: Settings, l: LetterDoc, pt: PatientDoc, o: { title?: string; visitDate?: string | null; signed?: boolean; visits?: string[] } = {}) {
+export function letterHtml(s: Settings, l: LetterDoc, pt: PatientDoc, o: { title?: string; visitDate?: string | null; signed?: boolean; visits?: { date: string; label: string }[] } = {}) {
   const body = isRich(l.body)
     ? sanitizeHtml(stripMarker(l.body))
     : bodyBlocks(l.body).map((b) => (b.kind === 'h' ? `<h3>${esc(b.text)}</h3>` : b.kind === 'li' ? `<ul><li>${esc(b.text)}</li></ul>` : `<p>${esc(b.text)}</p>`)).join('\n');
