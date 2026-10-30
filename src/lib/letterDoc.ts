@@ -42,6 +42,11 @@ export function cvHtml(cv: string) {
     .map((l) => (/[:：]$/.test(l) && l.length < 60 ? `<div class="cv-h">${esc(l)}</div>` : `<div class="cv-l">${esc(l)}</div>`)).join('');
 }
 
+/** The sworn statement is added by the system, and only to a legal opinion: a copy written in the body is dropped (no duplicate, never in other documents). */
+function withoutOath(html: string) {
+  return html.replace(/<(p|div|li)[^>]*>(?:(?!<\/\1>)[\s\S])*?(?:במקום עדות בשבועה|דין חוות דעת זו כשהיא חתומה)(?:(?!<\/\1>)[\s\S])*?<\/\1>/g, '');
+}
+
 /** "ביקור חוזר" line under the patient details, like a health-fund document: just the dates of the previous visits. */
 export function visitsHtml(visits: { date: string; label?: string }[] | undefined) {
   const dates = [...new Set((visits ?? []).map((v) => v.date))];
@@ -73,7 +78,7 @@ export function docHtml(d: DocInput) {
   <h1 class="cl-title">${esc(title)}</h1>
   <div class="cl-ptw"><div class="cl-pt"><span><b>שם מלא:</b> ${esc(d.patient.name)}</span>${d.patient.idNumber ? `<span><b>ת.ז.:</b> ${esc(d.patient.idNumber)}</span>` : ''}${d.patient.dob ? `<span><b>תאריך לידה:</b> ${esc(fmtDate(d.patient.dob))}${ag != null ? ` (גיל ${ag})` : ''}</span>` : ''}</div>${visitsHtml(d.visits)}</div>
   ${intro}
-  <div class="doc-body">${d.bodyHtml}</div>
+  <div class="doc-body">${withoutOath(d.bodyHtml)}</div>
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
   <div class="of-sign">
     <div class="of-doc"><div class="of-regards">בברכה,</div><b>${esc(s.lh_name)}</b>${d.signature ? '' : `${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}`}</div>
