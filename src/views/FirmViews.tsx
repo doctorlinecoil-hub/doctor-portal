@@ -36,91 +36,120 @@ export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; 
 
 export function FirmDashboardView({ firmName, clinicName, rows, gate = true }: { firmName: string; clinicName: string; rows: ApptRow[]; gate?: boolean }) {
   const today = todayIL();
+  const now = new Date().toISOString();
   const live = rows.filter((r) => r.status !== 'cancelled');
   const upcoming = live.filter((r) => ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const pending = rows.filter((r) => r.status === 'pending').sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const active = rows.filter((r) => r.status === 'booked' || r.status === 'draft');
   const ready = rows.filter((r) => r.status === 'done').sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+  const todo = live.filter((r) => !r.patient_name && r.starts_at >= now).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const patients = new Set(live.map((r) => (r.patient_id_number || r.patient_name || r.id).replace(/\s/g, ''))).size;
-  const hour = Number(ilParts(new Date().toISOString()).time.slice(0, 2));
+  const next = upcoming.find((r) => r.starts_at >= now && r.status !== 'pending');
+  const np = next ? ilParts(next.starts_at) : null;
+  const hour = Number(ilParts(now).time.slice(0, 2));
   const hello = hour < 12 ? 'בוקר טוב' : hour < 18 ? 'צהריים טובים' : 'ערב טוב';
-  const kpi = (href: string, icon: string, tone: string, label: string, value: number, sub?: string) => (
-    <Link href={href} className="fd-kpi">
-      <span className={`fd-kpi-ic ${tone}`}><Icon name={icon} /></span>
-      <span><b className="num">{value}</b><em>{label}</em>{sub && <small>{sub}</small>}</span>
-    </Link>
-  );
+  const soon = upcoming.filter((r) => r.status !== 'pending').slice(0, 6);
+  const metrics: { href: string; v: number; l: string; tone?: string }[] = [
+    { href: '/firm/cases?f=pending', v: pending.length, l: 'ממתינים לאישור', tone: pending.length ? 'warn' : '' },
+    { href: '/firm/cases?f=upcoming', v: upcoming.length, l: 'תורים קרובים' },
+    { href: '/firm/cases?f=open', v: active.length + pending.length, l: 'תיקים בטיפול' },
+    { href: '/firm/cases?f=done', v: ready.length, l: 'מסמכים מוכנים', tone: ready.length ? 'ok' : '' },
+  ];
+  const Row = ({ r }: { r: ApptRow }) => {
+    const p = ilParts(r.starts_at);
+    return (
+      <Link href={!r.patient_name && r.status !== 'cancelled' ? `/firm/cases/${r.id}/details` : `/firm/cases?open=${r.id}`} className="fx-row">
+        <span className="fx-when"><b className="num">{p.time}</b><small>{p.date === today ? 'היום' : fmtDate(p.date)}</small></span>
+        <span className="fx-rm">
+          <b>{r.patient_name || 'ממתין לפרטי המטופל'}</b>
+          <small>{labelOf(r)}{r.mode === 'phone' ? ' · טלפוני' : ''} · <span className="num">תיק {r.case_no}</span></small>
+        </span>
+        <span className={`fx-st ${r.status}`}><i />{STATUS_FIRM_SHORT[r.status]}</span>
+      </Link>
+    );
+  };
   return (
-    <>
-      <section className="fd-hero">
-        <div>
-          <span className="fd-hello">{hello}</span>
+    <div className="fx">
+      <section className="fx-hero">
+        <div className="fx-hero-main">
+          <span className="fx-hello">{hello}</span>
           <h1>{firmName}</h1>
-          <p>הדשבורד שלכם מול {clinicName}: כל המטופלים שהפניתם, הבקשות הממתינות והמסמכים המוכנים.</p>
-          <form className="fd-search" action="/firm/cases" role="search">
-            <Icon name="search" />
-            <input name="q" placeholder="חיפוש מטופל לפי שם מלא או תעודת זהות" aria-label="חיפוש מטופל" />
+          <p>כל המטופלים שהפניתם ל{clinicName} במקום אחד: תורים, סטטוס ומסמכים מוכנים.</p>
+          <form className="fx-search" action="/firm/cases" role="search">
+            <Icon name="search" size={18} />
+            <input name="q" placeholder="חיפוש מטופל: שם, ת״ז או מספר תיק" aria-label="חיפוש מטופל" />
             <button className="btn btn-sm" type="submit">חיפוש</button>
           </form>
+          <div className="fx-metrics">
+            {metrics.map((m) => (
+              <Link key={m.l} href={m.href} className={`fx-m ${m.tone || ''}`}><b className="num">{m.v}</b><span>{m.l}</span></Link>
+            ))}
+          </div>
         </div>
-        <Link href="/firm/book" className="fd-new">
-          <span className="fd-new-ic"><Icon name="calendarPlus" /></span>
-          <b>זימון חדש</b>
-          <small>קביעת תור למטופל בכמה קליקים</small>
-          <span className="fd-new-go">להתחלה<Icon name="arrowLeft" size={16} /></span>
-        </Link>
+        <aside className="fx-side">
+          <Link href="/firm/book" className="fx-new">
+            <span className="fx-new-ic"><Icon name="calendarPlus" size={22} /></span>
+            <span><b>זימון חדש</b><small>תור למטופל בשלושה צעדים</small></span>
+            <Icon name="arrowLeft" size={18} />
+          </Link>
+          {next && np ? (
+            <Link href={`/firm/cases?open=${next.id}`} className="fx-next">
+              <span className="fx-next-k"><span className="dx-pulse" />התור הבא</span>
+              <span className="fx-next-t num">{np.time}</span>
+              <b>{next.patient_name || 'ממתין לפרטים'}</b>
+              <small>{np.date === today ? 'היום' : fmtDay(np.date)} · {labelOf(next)}</small>
+            </Link>
+          ) : (
+            <div className="fx-next empty"><span className="fx-next-k">התור הבא</span><b>אין תורים קרובים</b><small>קובעים תור חדש בלחיצה למעלה.</small></div>
+          )}
+        </aside>
       </section>
 
-      <div className="fd-kpis">
-        {kpi('/firm/cases?f=pending', 'clock', 'warn', 'ממתינים לאישור הרופא', pending.length)}
-        {kpi('/firm/cases?f=upcoming', 'calendar', 'info', 'תורים קרובים', upcoming.length)}
-        {kpi('/firm/cases?f=open', 'folder', 'violet', 'תיקים בטיפול', active.length + pending.length)}
-        {kpi('/firm/cases?f=done', 'fileCheck', 'ok', 'מסמכים מוכנים', ready.length, `${patients} מטופלים בסך הכל`)}
-      </div>
+      {todo.length > 0 && (
+        <section className="fx-todo">
+          <span className="fx-todo-ic"><Icon name="upload" size={18} /></span>
+          <div><b>{todo.length === 1 ? 'תיק אחד מחכה לפרטים ומסמכים' : `${todo.length} תיקים מחכים לפרטים ומסמכים`}</b><small>כדי שהרופא יתכונן לביקור, השלימו את פרטי המטופל והעלו את המסמכים.</small></div>
+          <Link href={`/firm/cases/${todo[0].id}/details`} className="btn btn-sm btn-primary">להשלמה<Icon name="arrowLeft" size={15} /></Link>
+        </section>
+      )}
 
-      <div className="fd-grid">
-        <section className="panel flush">
-          <div className="panel-head"><h2><Icon name="fileCheck" />מסמכים מוכנים להורדה</h2><Link href="/firm/cases?f=done" className="btn btn-ghost btn-sm">הכל</Link></div>
-          {ready.length === 0 ? <Empty icon="file">כשהרופא יסיים מסמך, הוא יופיע כאן להורדה.</Empty> : (
-            <ul className="fd-docs">
-              {ready.slice(0, 8).map((r) => (
+      <div className="fx-grid">
+        <section className="fx-card">
+          <div className="fx-h"><span className="fx-ic ok"><Icon name="fileCheck" size={18} /></span><h2>מסמכים מוכנים</h2><Link href="/firm/cases?f=done" className="fx-all">הכל<Icon name="chevron" size={14} className="flip" /></Link></div>
+          {ready.length === 0 ? <div className="fx-zero"><Icon name="file" size={22} />כשהרופא יסיים מסמך, הוא יופיע כאן להורדה.</div> : (
+            <ul className="fx-docs">
+              {ready.slice(0, 6).map((r) => (
                 <li key={r.id}>
-                  <span className="fd-pdf">PDF</span>
-                  <Link href={`/firm/cases?open=${r.id}`} className="fd-doc-main"><b>{r.patient_name || 'מטופל'}</b><small className="num">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)} · תיק {r.case_no}</small></Link>
+                  <span className="fx-pdf">PDF</span>
+                  <Link href={`/firm/cases?open=${r.id}`} className="fx-rm"><b>{r.patient_name || 'מטופל'}</b><small className="num">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)}</small></Link>
                   {released(r, gate)
-                    ? <a className="btn btn-sm btn-ok" href={`/letters/${r.id}/pdf`} download><Icon name="download" size={15} />הורדה</a>
-                    : <span className="badge b-pending">מוכן · ממתין לתשלום</span>}
+                    ? <a className="fx-dl" href={`/letters/${r.id}/pdf`} download aria-label={`הורדת המסמך של ${r.patient_name}`}><Icon name="download" size={16} /><span>הורדה</span></a>
+                    : <span className="fx-wait">ממתין לתשלום</span>}
                 </li>
               ))}
             </ul>
           )}
         </section>
 
-        <div className="stack">
-          <section className="panel flush">
-            <div className="panel-head"><h2><Icon name="clock" />ממתינים לאישור</h2>{pending.length > 0 && <span className="badge b-pending">{pending.length}</span>}</div>
-            {pending.length === 0 ? <Empty icon="checkCircle">אין בקשות שממתינות לאישור.</Empty> : (
-              <div className="list">{pending.slice(0, 5).map((r) => <ApptItem key={r.id} r={r} href={`/firm/cases/${r.id}`} />)}</div>
-            )}
-          </section>
-          <section className="panel flush">
-            <div className="panel-head"><h2><Icon name="calendar" />התורים הקרובים</h2><Link href="/firm/cases?f=upcoming" className="btn btn-ghost btn-sm">הכל</Link></div>
-            {upcoming.filter((r) => r.status !== 'pending').length === 0 ? <Empty icon="calendar">אין תורים מאושרים קרובים. <Link href="/firm/book">לזימון חדש</Link></Empty> : (
-              <div className="list">
-                {groupByDay(upcoming.filter((r) => r.status !== 'pending').slice(0, 6)).map((g) => (
-                  <div key={g.date}>
-                    <div className="list-day">{fmtDay(g.date)} <span>{fmtDate(g.date)}</span></div>
-                    {g.rows.map((r) => <ApptItem key={r.id} r={r} href={`/firm/cases/${r.id}`} />)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+        <section className="fx-card">
+          <div className="fx-h"><span className="fx-ic"><Icon name="calendar" size={18} /></span><h2>התורים הקרובים</h2><Link href="/firm/cases?f=upcoming" className="fx-all">הכל<Icon name="chevron" size={14} className="flip" /></Link></div>
+          {pending.length > 0 && (
+            <div className="fx-pend">
+              <span className="fx-sub">ממתינים לאישור הרופא</span>
+              {pending.slice(0, 3).map((r) => <Row key={r.id} r={r} />)}
+            </div>
+          )}
+          {soon.length === 0 ? <div className="fx-zero"><Icon name="calendar" size={22} />אין תורים מאושרים קרובים. <Link href="/firm/book">לזימון חדש</Link></div> : (
+            <div className="fx-list">{soon.map((r) => <Row key={r.id} r={r} />)}</div>
+          )}
+        </section>
       </div>
-    </>
+      <p className="fx-foot"><Icon name="users" size={14} />{patients === 1 ? 'מטופל אחד' : `${patients} מטופלים`} הופנו עד היום</p>
+    </div>
   );
 }
+
+const STATUS_FIRM_SHORT: Record<ApptRow['status'], string> = { pending: 'ממתין לאישור', booked: 'מאושר', draft: 'בטיפול', done: 'מוכן', cancelled: 'בוטל' };
 
 export function groupByDay(rows: ApptRow[]) {
   const out: { date: string; rows: ApptRow[] }[] = [];
