@@ -41,7 +41,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
       key: `l-${l.appointment_id}`, kind: 'letter' as const, when: l.updated_at, appt: l.appointments,
       title: l.appointments.service_label || typeOf(l.letter_type).label,
       sub: (l.final_subject || l.subject || '').slice(0, 120),
-      final: l.is_final, href: `/doctor/cases/${l.appointment_id}#letter`, pdf: `/letters/${l.appointment_id}/print${l.is_final ? '' : '?v=draft'}`,
+      final: l.is_final, href: `/doctor/cases/${l.appointment_id}#letter`, pdf: l.is_final ? `/letters/${l.appointment_id}/pdf` : `/letters/${l.appointment_id}/print?v=draft`,
     })),
     ...((rxs as unknown as RxRowJ[] | null) ?? []).map((r) => ({
       key: `r-${r.id}`, kind: 'rx' as const, when: r.rx_date, appt: r.appointments,
@@ -84,7 +84,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                 <span role="cell">{d.final ? <span className="badge b-done">{d.kind === 'rx' ? 'הופק' : 'סופי · נשלח'}</span> : <span className="badge b-draft">טיוטה</span>}</span>
                 <span role="cell" className="doc-acts">
                   <Link className="btn btn-sm btn-primary" href={d.href}><Icon name="file" size={15} />{d.kind === 'rx' ? 'פתיחה' : 'עריכה'}</Link>
-                  <a className="btn btn-sm" href={d.pdf} target="_blank" rel="noopener"><Icon name="printer" size={15} />PDF</a>
+                  <a className="btn btn-sm" href={d.pdf} {...(d.pdf.endsWith('/pdf') ? { download: true } : { target: '_blank', rel: 'noopener' })}><Icon name="printer" size={15} />PDF</a>
                 </span>
               </div>
             ))}
