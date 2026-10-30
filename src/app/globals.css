@@ -2763,3 +2763,10 @@ html.wm .studio.focus .studio-side { top: auto; }
 }
 .sp-top .sp-tabs .sp-fold { flex: 0 0 auto; flex-direction: row; padding: 7px 12px; font-size: 13px; color: var(--muted); }
 .sp-top .sp-tabs .sp-fold[aria-expanded] { background: none; box-shadow: none; }
+
+/* v49: preview before sending */
+.review-wrap { z-index: 1000; }
+.review-h .fc-x { margin-inline-start: auto; }
+.review-side { gap: 16px; padding: 20px; }
+.review-actions .btn-lg { padding: 14px; font-size: 16px; }
+@media (max-width: 860px) { .review-wrap { padding: 0; } .review { height: 100%; border-radius: 0; } }
