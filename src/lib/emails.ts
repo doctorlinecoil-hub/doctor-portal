@@ -296,10 +296,10 @@ export function awaitingPaymentEmail(s: Settings, a: ApptInfo, balance: string, 
   const subject = `${label} מוכנה וממתינה לתשלום · ${a.patientName}`;
   const body =
     p(`${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.`) +
-    card([['יתרה לתשלום', esc(balance)]]) +
-    p('המסמך יישלח אליכם אוטומטית מיד אחרי שהתשלום יירשם.') +
+    (balance ? card([['יתרה לתשלום', esc(balance)]]) : '') +
+    p('המסמך יישלח אליכם אוטומטית מיד אחרי אישור התשלום במרפאה.') +
     `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק')}</div>`;
-  return { subject, html: layout(s, { preheader: `יתרה: ${balance}`, title: 'המסמך מוכן', body }), text: textOf([subject, `יתרה: ${balance}`, link]) };
+  return { subject, html: layout(s, { preheader: 'המסמך מוכן וממתין לתשלום', title: 'המסמך מוכן', body }), text: textOf([subject, balance && `יתרה: ${balance}`, link]) };
 }
 
 export function rxEmail(s: Settings, patientName: string): Rendered {

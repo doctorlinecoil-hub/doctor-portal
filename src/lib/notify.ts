@@ -250,12 +250,13 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   const ai = info(a);
   ai.type = (l.final_letter_type || l.letter_type) as ReferralType;
 
-  if (s.letter_requires_payment && paid + 0.001 < price) {
+  const { data: released } = await db.rpc('letter_released', { p_id: id });
+  if (!released) {
     if (!(await alreadySent(db, id, 'letter_awaiting_payment'))) {
-      const m = awaitingPaymentEmail(s, ai, ils(price - paid), caseLink(id, false));
+      const m = awaitingPaymentEmail(s, ai, '', caseLink(id, false));
       await sendMail(db, id, 'letter_awaiting_payment', { to: firmTo, ...m });
     }
-    return { ok: true, sent: 0, info: 'המכתב ממתין לתשלום. הוא יישלח לבד כשהתשלום יירשם.' };
+    return { ok: true, sent: 0, info: 'המסמך ממתין לאישור התשלום. הוא יישלח למפנה לבד ברגע שתאשר תשלום.' };
   }
 
   const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_subject || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
@@ -294,10 +295,9 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
   const { data: l } = await db.from('letters').select('*').eq('appointment_id', id).maybeSingle();
   if (!l?.is_final || !l.final_body) return { ok: false, sent: 0, info: 'המכתב עוד לא סופי' };
-  if (opts.byReferrer && s.letter_requires_payment) {
-    const { data: pays } = await db.from('payments').select('amount').eq('appointment_id', id);
-    const paid = (pays ?? []).reduce((x, p) => x + Number(p.amount), 0);
-    if (paid + 0.001 < Number(a.price)) return { ok: false, sent: 0, info: 'המכתב יהיה זמין לשליחה אחרי השלמת התשלום.' };
+  if (opts.byReferrer) {
+    const { data: released } = await db.rpc('letter_released', { p_id: id });
+    if (!released) return { ok: false, sent: 0, info: 'המסמך מוכן וממתין לתשלום. הוא יהיה זמין מיד אחרי אישור התשלום.' };
   }
   const ai = info(a);
   ai.type = (l.final_letter_type || l.letter_type) as ReferralType;

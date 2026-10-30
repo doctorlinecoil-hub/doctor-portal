@@ -17,6 +17,7 @@ export type ApptRow = {
   details_at?: string | null;
   service_label?: string;
   mode?: 'clinic' | 'phone';
+  payment_ok_at?: string | null;
 };
 
 export type FirmInfo = { id: string; name: string; kind: ReferrerKind; contact_name: string; phone: string; email: string; tax_id: string };
@@ -60,6 +61,10 @@ export type PaymentRow = {
   note?: string;
   invoice_error?: string;
 };
+
+/** May the office see and download the doctor's document? (the doctor approved the payment, or it was paid in full) */
+export const released = (r: { payment_ok_at?: string | null; price: number; paid: number }, gate: boolean) =>
+  !gate || !!r.payment_ok_at || (Number(r.price) > 0 && Number(r.paid) + 0.001 >= Number(r.price));
 
 /** Joins appointments with paid totals. */
 export function withPaid<T extends { id: string; price: number | string }>(rows: T[], totals: { appointment_id: string; paid: number | string }[] | null) {
