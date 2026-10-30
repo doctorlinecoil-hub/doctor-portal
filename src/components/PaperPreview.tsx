@@ -6,7 +6,7 @@ export type PaperInfo = {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string;
   lh_footer?: string; lh_cv?: string; use_banner?: boolean; cv_in_opinions?: boolean; sign_final?: boolean;
   /** the clinic's name for the service (the document's title) */
-  title?: string; titleType?: string | null; visitDate?: string | null; visits?: string[];
+  title?: string; titleType?: string | null; visitDate?: string | null; visits?: string[]; prevLetters?: { date: string; label: string; text: string }[];
   patient: { name: string; idNumber: string; dob: string | null };
 };
 
