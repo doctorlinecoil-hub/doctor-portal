@@ -31,6 +31,10 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
   const [known, setKnown] = useState<Known | null>(null);
   const [hits, setHits] = useState<Known[]>([]);
   const lookup = useRef(0);
+  const [mode, setMode] = useState<'existing' | 'new'>(initial.name || initial.id ? 'new' : 'existing');
+  const [q, setQ] = useState('');
+  const [found, setFound] = useState<Known[]>([]);
+  const [searching, setSearching] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const emailOk = !f.email.trim() || EMAIL_RE.test(f.email.trim());
   const isRx = f.what === 'rx';
@@ -66,6 +70,26 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.id]);
+
+  // existing patient: search by name, ID or phone (recent patients when empty)
+  useEffect(() => {
+    if (preview || mode !== 'existing' || known) return;
+    const term = q.trim().replace(/[%_,()]/g, '');
+    const num = digits(term);
+    setSearching(true);
+    const t = setTimeout(async () => {
+      let req = supabase.from('appointments').select(COLS).neq('patient_name', '').order('starts_at', { ascending: false }).limit(60);
+      if (term.length >= 2) req = num.length >= 3 && num.length === term.replace(/[\s-]/g, '').length
+        ? req.or(`patient_id_number.ilike.%${num}%,patient_phone.ilike.%${num}%`)
+        : req.ilike('patient_name', `%${term}%`);
+      else if (term) { setSearching(false); return; }
+      const { data } = await req;
+      setFound(fold((data as Omit<Known, 'visits'>[] | null) ?? []).slice(0, term ? 8 : 6));
+      setSearching(false);
+    }, term ? 250 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, mode, known]);
 
   // name typed: suggest patients who were here before
   useEffect(() => {
@@ -146,9 +170,53 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
         <div className="nd-main">
           <section className="nd-card">
             <div className="nd-h"><span className="nd-step">1</span><h2>למי?</h2>
-              {known && <span className="nd-known"><Icon name="checkCircle" size={14} />מטופל חוזר · {known.visits === 1 ? 'ביקור אחד' : `${known.visits} ביקורים`} · אחרון {fmtDate(ilParts(known.starts_at).date)}</span>}
+              <div className="nd-who" role="radiogroup" aria-label="מטופל קיים או חדש">
+                <button type="button" role="radio" aria-checked={mode === 'existing'} className={mode === 'existing' ? 'on' : ''} onClick={() => setMode('existing')}><Icon name="users" size={15} />מטופל קיים</button>
+                <button type="button" role="radio" aria-checked={mode === 'new'} className={mode === 'new' ? 'on' : ''} onClick={() => { setMode('new'); }}><Icon name="plus" size={15} />מטופל חדש</button>
+              </div>
             </div>
-            <div className="grid-2">
+
+            {mode === 'existing' && (known ? (
+              <div className="nd-picked">
+                <span className="fc-av lg">{known.patient_name.trim().slice(0, 1)}</span>
+                <div className="nd-picked-m">
+                  <b>{f.name || known.patient_name}</b>
+                  <small className="num">{f.id ? `ת״ז ${f.id}` : ''}{f.phone ? ` · ${f.phone}` : ''}</small>
+                  <span className="nd-known"><Icon name="checkCircle" size={13} />{known.visits === 1 ? 'ביקור קודם אחד' : `${known.visits} ביקורים`} · אחרון {fmtDate(ilParts(known.starts_at).date)}</span>
+                </div>
+                <div className="nd-picked-a">
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setMode('new')}><Icon name="settings" size={14} />עריכת פרטים</button>
+                  <button type="button" className="btn btn-sm" onClick={() => { setKnown(null); setF({ ...f, name: '', id: '', phone: '', email: '', dob: '' }); setQ(''); }}><Icon name="refresh" size={14} />החלפה</button>
+                </div>
+              </div>
+            ) : (
+              <div className="nd-find">
+                <label className="nd-search">
+                  <Icon name="search" size={18} />
+                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש לפי שם, ת״ז או טלפון" autoFocus aria-label="חיפוש מטופל קיים" autoComplete="off" />
+                </label>
+                <span className="nd-find-h">{q.trim() ? (found.length ? 'תוצאות' : '') : 'מטופלים אחרונים'}</span>
+                {found.length > 0 ? (
+                  <ul className="nd-results">
+                    {found.map((h) => (
+                      <li key={h.patient_id_number + h.patient_name}>
+                        <button type="button" onClick={() => fill(h)}>
+                          <span className="fc-av">{h.patient_name.trim().slice(0, 1)}</span>
+                          <span className="nd-r-m"><b>{h.patient_name}</b><small className="num">{h.patient_id_number ? `ת״ז ${h.patient_id_number}` : 'ללא ת״ז'}{h.patient_phone ? ` · ${h.patient_phone}` : ''}</small></span>
+                          <span className="nd-r-v">{h.visits === 1 ? 'ביקור אחד' : `${h.visits} ביקורים`}<small className="num">{fmtDate(ilParts(h.starts_at).date)}</small></span>
+                          <Icon name="chevron" size={16} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : q.trim().length >= 2 && !searching ? (
+                  <div className="nd-none">לא מצאנו מטופל כזה. <button type="button" className="link" onClick={() => { setMode('new'); setF({ ...f, ...(/^\d+$/.test(q.trim()) ? { id: q.trim() } : { name: q.trim() }) }); }}>הוספה כמטופל חדש</button></div>
+                ) : null}
+              </div>
+            ))}
+
+            {mode === 'new' && (
+              <div className="grid-2">
               <label className="field nd-name"><span>שם מלא</span>
                 <input value={f.name} onChange={(e) => { setF({ ...f, name: e.target.value }); if (known && e.target.value.trim() !== known.patient_name.trim()) setKnown(null); }} autoFocus={!f.name} placeholder="שם המטופל" autoComplete="off" />
                 {hits.length > 0 && (
@@ -167,7 +235,8 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
               <label className="field"><span>תעודת זהות</span><input inputMode="numeric" dir="ltr" value={f.id} onChange={set('id')} placeholder="000000000" /></label>
               <label className="field"><span>טלפון <small>לא חובה</small></span><input type="tel" dir="ltr" value={f.phone} onChange={set('phone')} placeholder="050-0000000" /></label>
               <label className="field"><span>מייל <small>לא חובה · לשליחה</small></span><input type="email" dir="ltr" value={f.email} onChange={set('email')} aria-invalid={!emailOk} placeholder="name@example.com" /></label>
-            </div>
+              </div>
+            )}
           </section>
 
           {!isRx && (
