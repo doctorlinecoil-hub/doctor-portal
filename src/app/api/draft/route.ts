@@ -5,7 +5,7 @@ import { loadDocBlocks } from '@/lib/caseDocs';
 import { intakeForPrompt, type IntakeData } from '@/lib/intake';
 import { buildPrompt } from '@/lib/letter';
 import { aiErrorText } from '@/lib/aiErrors';
-import { priorVisits } from '@/lib/visits';
+import { priorLetters, priorVisits } from '@/lib/visits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,6 +60,7 @@ export async function POST(req: Request) {
       instructions,
       length,
       visits: await priorVisits(supabase, a),
+      history: input?.withHistory ? await priorLetters(supabase, a) : undefined,
     }),
   });
 
