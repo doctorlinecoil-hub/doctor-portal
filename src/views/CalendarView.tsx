@@ -100,7 +100,8 @@ function WeekGrid({ dayHref, start, single, rows, blocks, settings, today, now, 
   const to = Math.max(...on.map((w) => hm2min(w.to)), ...rows.map((r) => minutesOf(r.ends_at ?? r.starts_at).min), from + 4 * 60);
   const top = Math.floor(from / 60) * 60;
   const bottom = Math.ceil(to / 60) * 60;
-  const PX = 1.4; // pixels per minute
+  // pixels per minute: short slots get more room, so each one is easy to click
+  const PX = step <= 15 ? 2.2 : step <= 20 ? 1.8 : 1.4;
   const hours = Array.from({ length: (bottom - top) / 60 }, (_, i) => top + i * 60);
   const nowP = ilParts(now);
   const nowMin = hm2min(nowP.time);
