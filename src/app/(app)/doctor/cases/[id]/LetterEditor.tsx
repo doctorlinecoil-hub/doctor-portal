@@ -407,15 +407,12 @@ export default function LetterEditor({
             </nav>
             <div className={`sp-body${toolsOpen ? '' : ' folded'}`}>
             {side === 'ai' && (<>
-            <div className="ais-h">
-              <span className="ai-badge"><Icon name="sparkles" /></span>
-              <div><b>סטודיו AI</b><small>ניסוח ושיפור ברמה של מומחה בכיר</small></div>
-            </div>
             <label className="ais-ins" htmlFor="aiIns">
-              <span>מה חשוב לך? <small>לא חובה</small></span>
-              <AutoText id="aiIns" minRows={2} value={opts.instructions} onChange={(e) => setOpts({ ...opts, instructions: e.target.value })} disabled={ai.running}
+              <span className="ais-lbl">מה לכתוב או להדגיש? <small>לא חובה · אפשר להכתיב</small><Dictate onText={(t) => setOpts((o) => ({ ...o, instructions: o.instructions ? `${o.instructions} ${t}` : t }))} label="הכתבה" /></span>
+              <AutoText id="aiIns" minRows={3} value={opts.instructions} onChange={(e) => setOpts({ ...opts, instructions: e.target.value })} disabled={ai.running}
                 placeholder="למשל: להדגיש קשר סיבתי לתאונה, נכות 10% לפי סעיף 37(7)(ב), לסיים בהמלצה לפיזיותרפיה" />
             </label>
+            <div className="ais-row">
             <div className="ais-len" role="radiogroup" aria-label="אורך">
               {([['short', 'תמציתי'], ['normal', 'רגיל'], ['long', 'מפורט']] as const).map(([k, l]) => (
                 <button key={k} type="button" role="radio" aria-checked={opts.length === k} className={opts.length === k ? 'on' : ''} onClick={() => setOpts({ ...opts, length: k })} disabled={ai.running}>{l}</button>
@@ -424,6 +421,7 @@ export default function LetterEditor({
             <button type="button" className="btn btn-primary ais-go" onClick={preview ? undefined : runAI} disabled={ai.running || cancelled}>
               <Icon name="sparkles" />{ai.running && ai.label === 'מנסח טיוטה מלאה' ? 'מנסח…' : hasBody ? 'ניסוח מחדש מהתיק' : 'ניסוח טיוטה מלאה'}
             </button>
+            </div>
             {hasBody && (
               <div className="ais-refine">
                 <span className="ais-sub">שיפור הטיוטה הקיימת</span>
