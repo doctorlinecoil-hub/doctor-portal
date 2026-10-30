@@ -67,13 +67,14 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
   const first = useRef<HTMLInputElement | null>(null);
 
   const p = ilParts(iso);
-  const end = ilParts(new Date(new Date(iso).getTime() + (ctx?.minutes || 30) * 60000));
   const service = services.find((s) => s.id === svc) ?? null;
+  const minutes = service?.duration_minutes || ctx?.minutes || 30;
+  const end = ilParts(new Date(new Date(iso).getTime() + minutes * 60000));
   const firm = firms.find((x) => x.id === firmId);
   const emailOk = !f.email.trim() || EMAIL_RE.test(f.email.trim());
   const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
-  // Escape closes; the page behind doesn't scroll
+  // Escape closes (the page behind keeps its scrollbar, so nothing shifts sideways)
   const closeRef = useRef(onClose);
   const busyRef = useRef(busy);
   closeRef.current = onClose;
@@ -81,11 +82,9 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busyRef.current) closeRef.current(); };
     document.addEventListener('keydown', key);
-    const o = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     // focus once, without scrolling anything behind the window
     const t = setTimeout(() => first.current?.focus({ preventScroll: true }), 60);
-    return () => { clearTimeout(t); document.removeEventListener('keydown', key); document.body.style.overflow = o; };
+    return () => { clearTimeout(t); document.removeEventListener('keydown', key); };
   }, []);
 
   // existing patient: search by name, ID or phone (recent patients when empty)
@@ -153,7 +152,7 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
     }).select('id').single();
     if (error || !data) {
       setBusy(false);
-      return setErr(error?.code === '23505' || error?.code === '23P01' ? 'המשבצת נתפסה בינתיים. סגרו ובחרו שעה אחרת.' : dbError(error));
+      return setErr(error?.code === '23505' || error?.code === '23P01' ? `אין ${minutes} דקות פנויות ברצף מהשעה הזו (יש תור אחר בהמשך). בחרו שעה אחרת או טיפול קצר יותר.` : /SLOT_INVALID_TIME/.test(error?.message || '') ? `הטיפול (${minutes} דקות) חורג משעות הקבלה. בחרו שעה מוקדמת יותר.` : /SLOT_DAY_BLOCKED/.test(error?.message || '') ? 'הזמן הזה חסום ביומן.' : dbError(error));
     }
     // the summons email and the AI scan, as with any booking
     await afterBooking(data.id).catch(() => undefined);
@@ -171,7 +170,7 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
           <div className="qb-when">
             <span className="qb-k"><Icon name="calendarPlus" size={14} />קביעת תור</span>
             <b className="num">{p.time}<small>–{end.time}</small></b>
-            <span>יום {DAYS[weekday(p.date)]} · <span className="num">{fmtDate(p.date)}</span></span>
+            <span>יום {DAYS[weekday(p.date)]} · <span className="num">{fmtDate(p.date)}</span> · <span className="num">{minutes}</span> דקות</span>
           </div>
           <button type="button" className="qb-x" onClick={onClose} aria-label="סגירה" disabled={busy}><Icon name="x" /></button>
         </header>
@@ -189,6 +188,34 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
           </div>
         ) : (<>
           <div className="qb-body">
+            <section className="qb-sec">
+              <div className="qb-sh"><h3>הטיפול</h3></div>
+              <div className="qb-chips" role="radiogroup" aria-label="סוג הביקור">
+                {services.map((s) => (
+                  <button type="button" key={s.id} role="radio" aria-checked={svc === s.id} onClick={() => setSvc(s.id)}><Icon name={s.icon || 'file'} size={15} />{s.label}<small className="qb-dur num">{s.duration_minutes || ctx?.minutes || 30}′</small></button>
+                ))}
+              </div>
+              <div className="qb-row">
+                <div className="qb-seg wide" role="radiogroup" aria-label="סוג הפגישה">
+                  <button type="button" role="radio" aria-checked={mode === 'clinic'} onClick={() => setMode('clinic')}><Icon name="building" size={15} />במרפאה</button>
+                  {ctx?.phoneOk !== false && <button type="button" role="radio" aria-checked={mode === 'phone'} onClick={() => setMode('phone')}><Icon name="phone" size={15} />טלפוני</button>}
+                </div>
+                <label className="qb-firm">
+                  <span>מפנה</span>
+                  <select value={firmId} onChange={(e) => setFirmId(e.target.value)}>
+                    {firms.map((x) => <option key={x.id} value={x.id}>{x.kind === 'private' ? 'פנייה ישירה (פרטי)' : x.name}</option>)}
+                  </select>
+                </label>
+              </div>
+              {!more ? (
+                <button type="button" className="qb-more" onClick={() => setMore(true)}><Icon name="plus" size={14} />הערה{who === 'new' && !known ? ' ותאריך לידה' : ''}</button>
+              ) : (
+                <div className="qb-grid">
+                  {!known && <label className="field"><span>תאריך לידה</span><input type="date" value={f.dob} onChange={set('dob')} /></label>}
+                  <label className="field qb-full"><span>הערה <small>לצוות בלבד</small></span><textarea rows={2} value={f.notes} onChange={set('notes')} placeholder="למשל: כאבי גב תחתון, הביא צילום" /></label>
+                </div>
+              )}
+            </section>
             <section className="qb-sec">
               <div className="qb-sh">
                 <h3>המטופל</h3>
@@ -246,34 +273,6 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
               )}
             </section>
 
-            <section className="qb-sec">
-              <div className="qb-sh"><h3>הביקור</h3></div>
-              <div className="qb-chips" role="radiogroup" aria-label="סוג הביקור">
-                {services.map((s) => (
-                  <button type="button" key={s.id} role="radio" aria-checked={svc === s.id} onClick={() => setSvc(s.id)}><Icon name={s.icon || 'file'} size={15} />{s.label}</button>
-                ))}
-              </div>
-              <div className="qb-row">
-                <div className="qb-seg wide" role="radiogroup" aria-label="סוג הפגישה">
-                  <button type="button" role="radio" aria-checked={mode === 'clinic'} onClick={() => setMode('clinic')}><Icon name="building" size={15} />במרפאה</button>
-                  {ctx?.phoneOk !== false && <button type="button" role="radio" aria-checked={mode === 'phone'} onClick={() => setMode('phone')}><Icon name="phone" size={15} />טלפוני</button>}
-                </div>
-                <label className="qb-firm">
-                  <span>מפנה</span>
-                  <select value={firmId} onChange={(e) => setFirmId(e.target.value)}>
-                    {firms.map((x) => <option key={x.id} value={x.id}>{x.kind === 'private' ? 'פנייה ישירה (פרטי)' : x.name}</option>)}
-                  </select>
-                </label>
-              </div>
-              {!more ? (
-                <button type="button" className="qb-more" onClick={() => setMore(true)}><Icon name="plus" size={14} />הערה{who === 'new' && !known ? ' ותאריך לידה' : ''}</button>
-              ) : (
-                <div className="qb-grid">
-                  {!known && <label className="field"><span>תאריך לידה</span><input type="date" value={f.dob} onChange={set('dob')} /></label>}
-                  <label className="field qb-full"><span>הערה <small>לצוות בלבד</small></span><textarea rows={2} value={f.notes} onChange={set('notes')} placeholder="למשל: כאבי גב תחתון, הביא צילום" /></label>
-                </div>
-              )}
-            </section>
           </div>
 
           <footer className="qb-foot">
