@@ -21,20 +21,22 @@ function Kpi({ icon, tone, label, value, delta, sub, href }: { icon: string; ton
   return href ? <a className="stat stat-link kpi" href={href}>{body}</a> : <div className="stat kpi">{body}</div>;
 }
 
-export function ReportsView({ report: r }: { report: Report }) {
+export function ReportsView({ report: r, bare }: { report: Report; bare?: boolean }) {
   const k = r.kpi;
   return (
     <>
-      <PageHead title="דוחות והכנסות" sub="12 החודשים האחרונים · הסכומים כוללים מע״מ">
+      {bare ? <p className="hint">12 החודשים האחרונים · הסכומים כוללים מע״מ</p> : (
+        <PageHead title="דוחות והכנסות" sub="12 החודשים האחרונים · הסכומים כוללים מע״מ">
         <a className="btn" href="/api/export?what=cases"><Icon name="download" />תיקים לאקסל</a>
         <a className="btn" href="/api/export?what=payments"><Icon name="download" />תשלומים לאקסל</a>
-      </PageHead>
+        </PageHead>
+      )}
 
       <div className="stats">
         <Kpi icon="calendar" tone="info" label="תיקים החודש" value={k.casesMonth} delta={<Delta now={k.casesMonth} before={k.casesPrev} />} />
         <Kpi icon="receipt" tone="violet" label="חויב החודש" value={ils(k.billedMonth)} delta={<Delta now={k.billedMonth} before={k.billedPrev} />} />
         <Kpi icon="wallet" tone="ok" label="נגבה החודש" value={ils(k.collectedMonth)} delta={<Delta now={k.collectedMonth} before={k.collectedPrev} />} />
-        <Kpi icon="alert" tone="bad" label="יתרות פתוחות" value={ils(k.outstanding)} href="/admin/payments" sub="לחצו לפירוט ולרישום תשלום" />
+        <Kpi icon="alert" tone="bad" label="יתרות פתוחות" value={ils(k.outstanding)} href="/admin/reports?tab=collect" sub="לחצו לפירוט ולרישום תשלום" />
       </div>
 
       <section className="panel">

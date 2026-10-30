@@ -195,8 +195,8 @@ export function DoctorAgendaView({ rows, past, isAdmin, name, now = new Date(), 
             </div>
             <div className="dx-links">
               <Link href="/doctor?view=month#cal"><Icon name="calendar" size={15} />חודש</Link>
-              <Link href="/admin/reports"><Icon name="chart" size={15} />דוחות</Link>
-              {isAdmin && outstanding > 0 && <Link href="/admin/payments"><Icon name="wallet" size={15} />גבייה</Link>}
+              <Link href="/admin/reports"><Icon name="chart" size={15} />תשלומים</Link>
+              {isAdmin && outstanding > 0 && <Link href="/admin/reports?tab=collect"><Icon name="wallet" size={15} />גבייה</Link>}
             </div>
           </section>
         </aside>

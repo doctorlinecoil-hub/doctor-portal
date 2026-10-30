@@ -22,7 +22,7 @@ function matches(r: ApptRow, f: string) {
   return s === f;
 }
 
-export function PaymentsView({ rows, filter, q, collectedThisMonth }: { rows: ApptRow[]; filter: string; q: string; collectedThisMonth: number }) {
+export function PaymentsView({ rows, filter, q, collectedThisMonth, bare }: { rows: ApptRow[]; filter: string; q: string; collectedThisMonth: number; bare?: boolean }) {
   const active = rows.filter((r) => r.status !== 'cancelled');
   const outstanding = active.reduce((s, r) => s + Math.max(0, r.price - r.paid), 0);
   const unpaid = active.filter((r) => payState(r.price, r.paid) === 'unpaid').length;
@@ -43,11 +43,11 @@ export function PaymentsView({ rows, filter, q, collectedThisMonth }: { rows: Ap
     byFirm.set(k, cur);
   }
   const debtors = [...byFirm.values()].sort((a, b) => b.due - a.due);
-  const href = (f: string, extra = '') => `/admin/payments?f=${f}${extra}`;
+  const href = (f: string, extra = '') => `/admin/reports?tab=collect&f=${f}${extra}`;
 
   return (
     <>
-      <PageHead title="תשלומים" sub="מה שולם, מה פתוח ומי חייב. רישום תשלום והפקת חשבונית נעשים מתוך התיק." />
+      {!bare && <PageHead title="תשלומים" sub="מה שולם, מה פתוח ומי חייב. רישום תשלום והפקת חשבונית נעשים מתוך התיק." />}
       <div className="stats">
         <Stat icon="wallet" label="יתרה לגבייה" value={ils(outstanding)} tone="bad" />
         <Stat icon="checkCircle" label={`נגבה ב${new Intl.DateTimeFormat('he-IL', { month: 'long', timeZone: 'Asia/Jerusalem' }).format(new Date())}`} value={ils(collectedThisMonth)} tone="ok" />
@@ -76,7 +76,8 @@ export function PaymentsView({ rows, filter, q, collectedThisMonth }: { rows: Ap
             <nav className="tabs" aria-label="סינון" style={{ boxShadow: 'none' }}>
               {FILTERS.map((t) => <Link key={t.key} href={href(t.key, needle ? `&q=${encodeURIComponent(needle)}` : '')} aria-current={filter === t.key}>{t.label}</Link>)}
             </nav>
-            <form action="/admin/payments" style={{ marginInlineStart: 'auto' }}>
+            <form action="/admin/reports" style={{ marginInlineStart: 'auto' }}>
+              <input type="hidden" name="tab" value="collect" />
               <input type="hidden" name="f" value={filter} />
               <input type="search" name="q" defaultValue={needle} placeholder="חיפוש מטופל, מפנה או מספר תיק" aria-label="חיפוש" />
             </form>
