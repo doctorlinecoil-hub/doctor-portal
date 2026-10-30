@@ -2730,3 +2730,36 @@ html.wm .a11y { display: none; }
   .studio-focus { display: none; }
   .studio-head .save-state { font-size: 12px; }
 }
+
+/* ===== v47 tools panel above the document ===== */
+.studio-grid2 { grid-template-columns: minmax(0, 1fr) !important; gap: 14px; }
+.studio-side { position: static !important; order: -1; display: block; }
+.sp-top .sp-tabs { gap: 4px; padding: 6px; align-items: center; }
+.sp-top .sp-tabs button:not(.sp-fold) { flex: 0 0 auto; flex-direction: row; gap: 7px; padding: 9px 16px; font-size: 14px; }
+.sp-top .sp-tabs .ais-live, .sp-top .sp-tabs .sp-dot { position: static; }
+.sp-fold { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border: 0; border-radius: 10px; background: none; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer; }
+.sp-fold:hover { color: var(--fg); background: var(--surface); }
+.sp-fold svg.up { transform: rotate(90deg); }
+.sp-fold svg.down { transform: rotate(-90deg); }
+.sp-top .sp-body { max-height: none; padding: 16px 18px; }
+.sp-top .sp-body.folded { display: none; }
+@media (min-width: 900px) {
+  .sp-top.sp-ai .sp-body { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); grid-template-areas: "h h" "ins len" "ins go" "ref ref" "note note" "row row"; gap: 10px 18px; align-items: start; }
+  .sp-top.sp-ai .ais-h { grid-area: h; }
+  .sp-top.sp-ai .ais-ins { grid-area: ins; }
+  .sp-top.sp-ai .ais-len { grid-area: len; }
+  .sp-top.sp-ai .ais-go { grid-area: go; }
+  .sp-top.sp-ai .ais-refine { grid-area: ref; }
+  .sp-top.sp-ai .ais-note { grid-area: note; }
+  .sp-top.sp-ai .sp-body > .row { grid-area: row; }
+  .sp-top .sp-body .tool-list { flex-direction: row; flex-wrap: wrap; }
+  .sp-top .sp-body .tool-list .btn { flex: 0 0 auto; }
+  .sp-top .sp-body #ltExam { min-height: 90px; }
+}
+html.wm .studio.focus .studio-side { top: auto; }
+@media (max-width: 760px) {
+  .sp-fold { display: none; }
+  .sp-top .sp-body.folded { display: flex; }
+}
+.sp-top .sp-tabs .sp-fold { flex: 0 0 auto; flex-direction: row; padding: 7px 12px; font-size: 13px; color: var(--muted); }
+.sp-top .sp-tabs .sp-fold[aria-expanded] { background: none; box-shadow: none; }
