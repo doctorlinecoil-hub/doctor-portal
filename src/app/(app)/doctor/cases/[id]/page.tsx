@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { priorVisits } from '@/lib/visits';
+import { priorLetters, priorVisits } from '@/lib/visits';
 import { requireUser } from '@/lib/auth';
 import { BUCKET } from '@/lib/constants';
 import { morningEnabled } from '@/lib/morning';
@@ -33,7 +33,7 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
 
   const { data: a } = await supabase.from('appointments').select('*, firm:firms(id, name, kind, contact_name, phone, email, tax_id)').eq('id', id).maybeSingle();
   if (!a) notFound();
-  const visits = await priorVisits(supabase, a);
+  const [visits, prevLetters] = await Promise.all([priorVisits(supabase, a), priorLetters(supabase, a)]);
   const [{ data: notes }, { data: docs }, { data: letter }, pays, { data: intake }, { data: emails }] = await Promise.all([
     supabase.from('case_notes').select('id, body, created_at, kind, resolved_at').eq('appointment_id', id).order('created_at'),
     supabase.from('documents').select('id, file_name, mime_type, size_bytes, storage_path, created_at').eq('appointment_id', id).order('created_at'),
@@ -111,7 +111,7 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
       letter={<LetterEditor appointmentId={id} payment={{ needed: settings.letter_requires_payment !== false && !(a as { payment_ok_at?: string | null }).payment_ok_at && c.status !== 'cancelled', due: Math.max(0, c.price - paid), paidInFull: c.price > 0 && paid + 0.001 >= c.price }} sendTo={[c.firm.kind !== 'private' ? `${c.firm.name} (המפנה)` : '', c.patient_email ? `${c.patient_email} (המטופל)` : ''].filter(Boolean)} diagnoses={((dx as DxRow[] | null) ?? []).map((d) => ({ code: d.code, name: d.name, primary: d.is_primary }))} defaultType={c.referral_type} initial={(letter as LetterRow | null) ?? null} docCount={docRows.length} cancelled={c.status === 'cancelled'}
         paper={{ lh_name: settings.lh_name, lh_titles: settings.lh_titles, lh_licenses: settings.lh_licenses, lh_address: settings.lh_address, lh_phone: settings.lh_phone, lh_email: settings.lh_email,
           lh_footer: settings.lh_footer, lh_cv: settings.lh_cv, use_banner: settings.use_banner, cv_in_opinions: settings.cv_in_opinions, sign_final: settings.sign_final,
-          title: c.service_label || undefined, titleType: c.referral_type, visits, visitDate: ilParts(c.starts_at).date,
+          title: c.service_label || undefined, titleType: c.referral_type, visits, prevLetters, visitDate: ilParts(c.starts_at).date,
           patient: { name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob } }} />}
     />
   );

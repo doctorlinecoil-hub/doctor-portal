@@ -70,7 +70,7 @@ export default function LetterEditor({
   const [html, setHtml] = useState(startHtml);
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
   const [ai, setAi] = useState<{ running: boolean; text: string; note: string; bad?: boolean; label?: string }>({ running: false, text: '', note: '' });
-  const [opts, setOpts] = useState<{ instructions: string; length: 'short' | 'normal' | 'long' }>({ instructions: '', length: 'normal' });
+  const [opts, setOpts] = useState<{ instructions: string; length: 'short' | 'normal' | 'long'; withHistory: boolean }>({ instructions: '', length: 'normal', withHistory: false });
   const [undo, setUndo] = useState<{ html: string; recipient: string; subject: string; label: string }[]>([]);
   // on a phone the studio shows one pane at a time
   const [pane, setPane] = useState<'letter' | 'side'>('letter');
@@ -237,7 +237,7 @@ export default function LetterEditor({
       const res = await fetch('/api/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId, letterType: before.letter_type, exam: before.exam_notes, instructions: opts.instructions, length: opts.length }),
+        body: JSON.stringify({ appointmentId, letterType: before.letter_type, exam: before.exam_notes, instructions: opts.instructions, length: opts.length, withHistory: opts.withHistory }),
         signal: ctl.signal,
       });
       if (!res.ok || !res.body) {
@@ -424,6 +424,12 @@ export default function LetterEditor({
               <AutoText id="aiIns" minRows={3} value={opts.instructions} onChange={(e) => setOpts({ ...opts, instructions: e.target.value })} disabled={ai.running}
                 placeholder="למשל: להדגיש קשר סיבתי לתאונה, נכות 10% לפי סעיף 37(7)(ב), לסיים בהמלצה לפיזיותרפיה" />
             </label>
+            {paper.prevLetters && paper.prevLetters.length > 0 && (
+              <label className="ais-hist">
+                <input type="checkbox" checked={opts.withHistory} onChange={(e) => setOpts({ ...opts, withHistory: e.target.checked })} disabled={ai.running} />
+                <span><b>לשלב את הרקע מהביקור הקודם</b><small>{paper.prevLetters.map((p) => `${p.label} · ${fmtDate(p.date)}`).join(' | ')}</small></span>
+              </label>
+            )}
             <div className="ais-row">
             <div className="ais-len" role="radiogroup" aria-label="אורך">
               {([['short', 'תמציתי'], ['normal', 'רגיל'], ['long', 'מפורט']] as const).map(([k, l]) => (
@@ -472,6 +478,10 @@ export default function LetterEditor({
             </>)}
             {side === 'tools' && (<>
             <div className="tool-list">
+              {(paper.prevLetters ?? []).map((p) => (
+                <button key={p.date + p.label} type="button" className="btn" disabled={ai.running || cancelled}
+                  onClick={() => editor.current?.insertHtml(textToHtml(`רקע מביקור קודם (${fmtDate(p.date)}):\n${p.text}`))}><Icon name="clock" />הוספת המסמך מהביקור ב־{fmtDate(p.date)}</button>
+              ))}
               <button type="button" className="btn" onClick={() => editor.current?.insertHtml(textToHtml(outlineFor(d.letter_type)))} disabled={ai.running || cancelled}><Icon name="list" />מבנה מוכן לפי סוג המכתב</button>
               <TemplatePicker letterType={d.letter_type} onInsert={(t) => editor.current?.insertHtml(textToHtml(t))} selection={() => editor.current?.selectedText() ?? ''} />
               {diagnoses.length > 0 && (
