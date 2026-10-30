@@ -42,13 +42,12 @@ export function cvHtml(cv: string) {
     .map((l) => (/[:：]$/.test(l) && l.length < 60 ? `<div class="cv-h">${esc(l)}</div>` : `<div class="cv-l">${esc(l)}</div>`)).join('');
 }
 
-/** Health-fund style block: "ביקור חוזר" with a small table of the previous visits (the last 5). */
-export function visitsHtml(visits: { date: string; label: string }[] | undefined, today?: string | null) {
+/** Formal "ביקור חוזר" lines under the patient details, like a health-fund document (no table). */
+export function visitsHtml(visits: { date: string; label: string }[] | undefined, _today?: string | null) {
   if (!visits?.length) return '';
   const last = visits.slice(-5);
   const more = visits.length - last.length;
-  return `<div class="cl-rv"><div class="cl-rv-h"><span class="cl-rv-tag">ביקור חוזר</span><span>${visits.length === 1 ? 'ביקור קודם אחד במרפאה' : `${visits.length} ביקורים קודמים במרפאה`}${today ? ` · ביקור נוכחי ${esc(fmtDate(today))}` : ''}</span></div>
-<table class="cl-rv-t"><thead><tr><th>תאריך</th><th>סוג הביקור</th></tr></thead><tbody>${last.map((v) => `<tr><td class="num">${esc(fmtDate(v.date))}</td><td>${esc(v.label)}</td></tr>`).join('')}</tbody></table>${more > 0 ? `<div class="cl-rv-more">ועוד ${more} ביקורים מוקדמים יותר</div>` : ''}</div>`;
+  return `<div class="cl-rv"><div><b>סוג ביקור:</b> ביקור חוזר</div><div><b>${visits.length === 1 ? 'ביקור קודם במרפאה' : 'ביקורים קודמים במרפאה'}:</b> ${last.map((v) => `<span class="cl-rv-i">${esc(fmtDate(v.date))} – ${esc(v.label)}</span>`).join(' <span class="cl-rv-sep">·</span> ')}${more > 0 ? ` <span class="cl-rv-more">(ועוד ${more} מוקדמים יותר)</span>` : ''}</div></div>`;
 }
 
 export function docHtml(d: DocInput) {
@@ -269,15 +268,11 @@ ${p}.cl-to { margin: 0 0 5mm; line-height: 1.5; }
 ${p}.cl-title { text-align: center; font-family: "Frank Ruhl Libre", "FreeSerif", "David", serif; font-size: 18pt; font-weight: 700; color: #0D1B2A; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; margin: 2mm 0 4mm; }
 ${p}.cl-ptw { padding-bottom: 3mm; margin-bottom: 5mm; border-bottom: 1px solid #C9CFD8; }
 ${p}.cl-pt { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 22px; font-size: 11pt; }
-${p}.cl-rv { margin: 3mm auto 0; max-width: 125mm; border: 1px solid #C9CFD8; border-radius: 1.5mm; overflow: hidden; font-size: 9.5pt; break-inside: avoid; }
-${p}.cl-rv-h { display: flex; align-items: center; gap: 3mm; padding: 1.4mm 3mm; background: #F1F4F7; border-bottom: 1px solid #C9CFD8; color: #33415C; }
-${p}.cl-rv-tag { background: #0D1B2A; color: #fff; font-weight: 700; padding: .4mm 2.4mm; border-radius: 1mm; font-size: 9pt; }
-${p}.cl-rv-t { width: 100%; border-collapse: collapse; }
-${p}.cl-rv-t th { text-align: right; font-weight: 700; color: #5B6577; font-size: 8.5pt; padding: 1mm 3mm; border-bottom: 1px solid #E3E7EC; }
-${p}.cl-rv-t td { padding: 1mm 3mm; border-bottom: 1px solid #EEF1F4; }
-${p}.cl-rv-t tr:last-child td { border-bottom: 0; }
-${p}.cl-rv-t td.num { width: 28mm; white-space: nowrap; direction: ltr; text-align: right; }
-${p}.cl-rv-more { padding: 1mm 3mm; color: #5B6577; font-size: 8.5pt; border-top: 1px solid #EEF1F4; }
+${p}.cl-rv { text-align: center; font-size: 10.5pt; line-height: 1.6; margin-top: 1.5mm; }
+${p}.cl-rv b { color: #0D1B2A; }
+${p}.cl-rv-i { white-space: nowrap; }
+${p}.cl-rv-sep { margin: 0 1mm; color: #8A94A6; }
+${p}.cl-rv-more { color: #5B6577; font-size: 9.5pt; }
 @media print {
   ${p}.doc-foot { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; }
 }
