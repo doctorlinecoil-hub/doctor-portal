@@ -35,7 +35,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   }
   await supabase.rpc('log_event', { p_action: draft || review ? 'print_draft' : 'print_final', p_entity: 'letter', p_entity_id: id });
 
-  const date = draft || review ? todayIL() : letter.letter_date || todayIL();
+  const date = letter.letter_date || todayIL();
   const visits = await priorVisits(supabase, a);
   return (
     <LetterPaper
