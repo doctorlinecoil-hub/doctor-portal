@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { dbError } from '@/lib/constants';
+import { afterClinicCancel } from '../../actions';
 
 export default function DoctorCancel({ appointmentId }: { appointmentId: string }) {
   const supabase = useSupabase();
@@ -18,8 +19,9 @@ export default function DoctorCancel({ appointmentId }: { appointmentId: string 
           if (!armed) return setArmed(true);
           const { error } = await supabase.rpc('cancel_appointment', { p_id: appointmentId });
           setArmed(false);
-          if (error) setErr(dbError(error));
-          else router.push('/doctor');
+          if (error) return setErr(dbError(error));
+          await afterClinicCancel(appointmentId).catch(() => undefined);
+          router.push('/doctor');
         }}
       >
         {armed ? 'לחצו שוב לביטול התור' : 'ביטול התור'}
