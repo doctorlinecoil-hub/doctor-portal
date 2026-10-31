@@ -6,7 +6,7 @@ import { dbError } from '@/lib/constants';
 import { uploadCaseFiles } from '@/lib/upload';
 import FilePicker from '@/components/FilePicker';
 import Icon from '@/components/Icon';
-import { afterCaseUpdate } from '../../actions';
+import { afterCaseUpdate, afterChange } from '../../actions';
 
 export default function CaseActions({ appointmentId, firmId, canAdd, canCancel }: { appointmentId: string; firmId: string; canAdd: boolean; canCancel: boolean }) {
   const supabase = useSupabase();
@@ -41,6 +41,7 @@ export default function CaseActions({ appointmentId, firmId, canAdd, canCancel }
     setBusy(false);
     setArmed(false);
     if (error) return setMsg({ ok: false, text: dbError(error) });
+    await afterChange(appointmentId, 'cancel').catch(() => undefined);
     router.refresh();
   }
 

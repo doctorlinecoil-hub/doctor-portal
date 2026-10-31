@@ -6,6 +6,7 @@ import { dbError } from '@/lib/constants';
 import { DAYS, fmtDate, ilParts, weekday } from '@/lib/dates';
 import type { DaySlots } from '@/lib/slots';
 import Icon from '@/components/Icon';
+import { afterChange } from '../../actions';
 
 export type MyReschedule = { status: 'pending' | 'approved' | 'declined'; requested_starts_at: string; response: string; created_at: string } | null;
 
@@ -35,6 +36,7 @@ export default function RescheduleRequest({ appointmentId, firmId, slots, last, 
     if (preview) return setMsg({ ok: true, text: 'תצוגה מקדימה' });
     const { error } = await supabase.from('reschedule_requests').insert({ appointment_id: appointmentId, firm_id: firmId, requested_starts_at: slot, reason: reason.trim().slice(0, 500) });
     if (error) return setMsg({ ok: false, text: dbError(error) });
+    await afterChange(appointmentId, 'reschedule').catch(() => undefined);
     setMsg({ ok: true, text: 'הבקשה נשלחה לרופא' });
     setOpen(false);
     router.refresh();
