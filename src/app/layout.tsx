@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   description: 'תורים, תיקים, מכתבים רפואיים ותשלומים',
   robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: 'ד״ר חנוך', statusBarStyle: 'black-translucent' },
+  // Meta (WhatsApp) domain verification
+  other: { 'facebook-domain-verification': 'wphd09rfr3dzk89giknmyq27576ijj' },
 };
 
 export const viewport: Viewport = {
