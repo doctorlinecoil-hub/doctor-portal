@@ -26,11 +26,11 @@ export async function GET(req: Request) {
   const r = await runTick();
   const minute = new Date().getUTCMinutes();
   const tmpRemoved = minute < 10 ? await cleanupTmpUploads().catch(() => -1) : 0;
-  // the daily backup to the admin, once, in the quiet hours (03:00–04:00 Israel time)
+  // every evening at 21:00 (Israel time): the backup and the doctor's daily summary, once each
   const hour = Number(ilParts(new Date()).time.slice(0, 2));
-  const backup = hour === 3 ? await sendBackup().catch((e) => ({ ok: false, info: String((e as Error)?.message ?? e) })) : null;
-  // the doctor's morning summary (07:00) and automatic payment reminders (10:00), once a day each
-  const digest = hour === 7 ? await sendDailyDigest().catch((e) => ({ ok: false, info: String((e as Error)?.message ?? e) })) : null;
+  const backup = hour === 21 ? await sendBackup().catch((e) => ({ ok: false, info: String((e as Error)?.message ?? e) })) : null;
+  // the doctor's daily summary (21:00) and automatic payment reminders (10:00), once a day each
+  const digest = hour === 21 ? await sendDailyDigest().catch((e) => ({ ok: false, info: String((e as Error)?.message ?? e) })) : null;
   const payReminders = hour === 10 && minute < 10 ? await runAutoPayReminders().catch(() => ({ sent: -1 })) : null;
   return Response.json({ ...r, tmpRemoved, backup, digest, payReminders });
 }
