@@ -5,7 +5,7 @@ import { released } from '@/lib/types';
 import { todayIL } from '@/lib/dates';
 import ApprovePay from './ApprovePay';
 import RemindPay from './RemindPay';
-import { ils, payLines } from '@/lib/constants';
+import { BUCKET, ils, payLines } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
 import { fmtDate, ilParts } from '@/lib/dates';
 
@@ -28,6 +28,17 @@ export default async function PaymentApprovalPage() {
   ]) : [{ data: [] }, { data: [] }];
   const phoneOf = new Map(((contacts as { id: string; patient_phone: string | null; firm: { phone: string | null } | { phone: string | null }[] | null }[] | null) ?? [])
     .map((c) => [c.id, { patient: c.patient_phone, firm: (Array.isArray(c.firm) ? c.firm[0] : c.firm)?.phone ?? null }]));
+  // transfer confirmations the payer uploaded (newest per case), with a link to open the file
+  const { data: proofDocs } = wids.length
+    ? await supabase.from('documents').select('appointment_id, storage_path, created_at').in('appointment_id', wids).like('file_name', 'אישור העברה%').order('created_at', { ascending: false })
+    : { data: [] };
+  const newest = new Map<string, { path: string; at: string }>();
+  for (const d of (proofDocs as { appointment_id: string; storage_path: string; created_at: string }[] | null) ?? []) if (!newest.has(d.appointment_id)) newest.set(d.appointment_id, { path: d.storage_path, at: d.created_at });
+  const paths = [...newest.values()].map((x) => x.path);
+  const { data: signed } = paths.length ? await supabase.storage.from(BUCKET).createSignedUrls(paths, 3600) : { data: [] };
+  const urlOf = new Map(((signed as { path: string | null; signedUrl: string }[] | null) ?? []).map((x) => [x.path, x.signedUrl]));
+  const proofs: Record<string, { url: string; at: string }> = {};
+  for (const [id, x] of newest) { const u = urlOf.get(x.path); if (u) proofs[id] = { url: u, at: `${fmtDate(ilParts(x.at).date)} ${ilParts(x.at).time}` }; }
   const lastSent = new Map<string, string>();
   for (const x of (sent as { appointment_id: string; created_at: string }[] | null) ?? []) if (!lastSent.has(x.appointment_id)) lastSent.set(x.appointment_id, x.created_at);
   const pl = payLines(settings);
@@ -35,7 +46,7 @@ export default async function PaymentApprovalPage() {
   const pays: Record<string, PayLine[]> = {};
   for (const x of (p as (PayLine & { appointment_id: string })[] | null) ?? []) (pays[x.appointment_id] ??= []).push({ amount: Number(x.amount), method: x.method, paid_on: x.paid_on });
   return (
-    <PendingPayView waiting={waiting} approved={approved} gate={gate} pays={pays}
+    <PendingPayView waiting={waiting} approved={approved} gate={gate} pays={pays} proofs={proofs}
       remind={(r) => {
         const patientPays = r.firm_kind === 'private' || r.payer === 'patient';
         const ph = phoneOf.get(r.id);
