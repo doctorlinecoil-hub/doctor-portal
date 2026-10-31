@@ -324,7 +324,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
 
   const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_doc_title || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
-  const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: await priorVisits(db, a) });
+  const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: l.show_visits ? await priorVisits(db, a) : [] });
   // the PDF goes in the same email; one more try if the first render fails
   const pdf = await renderPdf(html, '');
   const attachments = pdf ? [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }] : undefined;
@@ -384,7 +384,7 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
   ai.type = (l.final_letter_type || l.letter_type) as ReferralType;
   const doc = { letter_type: ai.type, recipient: l.final_recipient || '', subject: l.final_doc_title || '', body: l.final_body, letter_date: l.letter_date || todayIL() };
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
-  const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: await priorVisits(db, a) });
+  const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: l.show_visits ? await priorVisits(db, a) : [] });
   // the PDF goes in the same email; one more try if the first render fails
   const pdf = await renderPdf(html, '');
   if (!pdf) return { ok: false, sent: 0, info: 'יצירת קובץ ה־PDF נכשלה. נסו שוב בעוד דקה.' };
