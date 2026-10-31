@@ -8,6 +8,7 @@ import { EMAIL_RE, dbError } from '@/lib/constants';
 import type { Service } from '@/lib/services';
 import { DAYS, fmtDate, ilParts, weekday } from '@/lib/dates';
 import { afterBooking } from '../../firm/actions';
+import { summonsWa } from '../actions';
 import Icon from '@/components/Icon';
 
 type Firm = { id: string; name: string; kind: string };
@@ -62,7 +63,7 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [done, setDone] = useState<{ id: string; name: string } | null>(null);
+  const [done, setDone] = useState<{ id: string; name: string; wa?: string | null } | null>(null);
   const lookup = useRef(0);
   const first = useRef<HTMLInputElement | null>(null);
 
@@ -156,8 +157,9 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
     }
     // the summons email and the AI scan, as with any booking
     await afterBooking(data.id).catch(() => undefined);
+    const wa = await summonsWa(data.id).catch(() => null);
     setBusy(false);
-    setDone({ id: data.id, name: f.name.trim() });
+    setDone({ id: data.id, name: f.name.trim(), wa });
     router.refresh();
   }
 
@@ -180,8 +182,9 @@ export default function QuickBook({ iso, onClose, onBlock, blocking }: { iso: st
             <span className="qb-ok"><Icon name="check" size={30} /></span>
             <h3>התור נקבע</h3>
             <p>{done.name} · יום {DAYS[weekday(p.date)]} {fmtDate(p.date)} בשעה <span className="num">{p.time}</span></p>
-            <small>{f.email.trim() ? 'זימון נשלח למטופל במייל.' : 'אין מייל למטופל. אפשר לשלוח זימון בוואטסאפ מתוך התיק.'}</small>
+            <small>{f.email.trim() ? 'זימון נשלח למטופל במייל.' : 'אין מייל למטופל. שלחו את הזימון בוואטסאפ בכפתור הירוק.'}</small>
             <div className="qb-done-a">
+              {done.wa && <a className="btn btn-wa" href={done.wa} target="_blank" rel="noopener"><Icon name="message" />זימון בוואטסאפ</a>}
               <Link className="btn btn-primary" href={`/doctor/cases/${done.id}`}><Icon name="file" />לתיק</Link>
               <button type="button" className="btn" onClick={onClose}>סגירה</button>
             </div>
