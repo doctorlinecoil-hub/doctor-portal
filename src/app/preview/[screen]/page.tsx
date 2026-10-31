@@ -71,7 +71,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'login':
       return <AuthFrame><div className="panel"><div><h1>כניסה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>הזינו את פרטי הכניסה שקיבלתם מהמרפאה</p></div><LoginForm /></div></AuthFrame>;
     case 'firm-home':
-      return firmShell('/firm', <FirmDashboardView firmName={fx.firms[0].name} clinicName={clinic} rows={fx.firmRows} />);
+      return firmShell('/firm', <FirmDashboardView firmName={fx.firms[0].name} clinicName={clinic} rows={fx.firmRows} free={availableSlots(fx.settings, [], new Date()).slice(0, 4).map((d) => ({ date: d.date, times: d.times.slice(0, 6) }))} />);
     case 'firm-book':
       return firmShell('/firm/book', <SlotBooking firmId="f1" slots={availableSlots(fx.settings, fx.rows.map((r) => ({ starts_at: r.starts_at, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() })))} horizon={30} clinicName={clinic} needsApproval preview />);
     case 'firm-details':
