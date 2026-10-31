@@ -6,9 +6,9 @@ import { BUCKET, dbError, type PayMethod } from '@/lib/constants';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendClinicCancel, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons, sendMoved } from '@/lib/notify';
+import { deliverLetter, sendClinicCancel, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons, sendMoved, summonsWaLink } from '@/lib/notify';
 
-type Result = { ok: boolean; error?: string; info?: string };
+type Result = { ok: boolean; error?: string; info?: string; wa?: string | null };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Staff only, and only for a case the caller can see. */
@@ -33,7 +33,7 @@ export async function approveRequest(id: string): Promise<Result> {
   if (error) return { ok: false, error: dbError(error) };
   const r = await sendSummons(id);
   done(id);
-  return { ok: true, info: r.sent ? 'התור אושר והזימון נשלח במייל' : `התור אושר.${r.info ? ` הזימון לא נשלח במייל: ${r.info}` : ''} אפשר לשלוח בוואטסאפ.` };
+  return { ok: true, wa: await summonsWaLink(id).catch(() => null), info: r.sent ? 'התור אושר והזימון נשלח' : `התור אושר.${r.info ? ` הזימון לא נשלח במייל: ${r.info}` : ''}` };
 }
 
 /** The deposit arrived: record it as a payment, approve, and send the summons. */
@@ -47,7 +47,7 @@ export async function approveWithDeposit(id: string, method: 'transfer' | 'bit' 
   if (error) return { ok: false, error: dbError(error) };
   const r = await sendSummons(id);
   done(id);
-  return { ok: true, info: r.sent ? 'המקדמה נרשמה, התור אושר והזימון נשלח' : `המקדמה נרשמה והתור אושר.${r.info ? ` הזימון לא נשלח במייל: ${r.info}` : ''}` };
+  return { ok: true, wa: await summonsWaLink(id).catch(() => null), info: r.sent ? 'המקדמה נרשמה, התור אושר והזימון נשלח' : `המקדמה נרשמה והתור אושר.${r.info ? ` הזימון לא נשלח במייל: ${r.info}` : ''}` };
 }
 
 export async function declineRequest(id: string, reason: string): Promise<Result> {
@@ -254,7 +254,7 @@ export async function moveAppointment(id: string, startsAt: string, notify = tru
   }
   done(id);
   revalidatePath('/doctor/calendar');
-  return { ok: true, info };
+  return { ok: true, info, wa: await summonsWaLink(id).catch(() => null) };
 }
 
 /** A document the doctor opened and decided not to make: removed, so it never counts anywhere. */
@@ -272,4 +272,11 @@ export async function discardDraft(id: string): Promise<Result> {
   if (paths.length) await admin.storage.from(BUCKET).remove(paths).catch(() => undefined);
   revalidatePath('/doctor');
   return { ok: true };
+}
+
+/** The summons as a ready WhatsApp message (sent from the clinic's phone). */
+export async function summonsWa(id: string): Promise<string | null> {
+  const c = await staffCase(id);
+  if (!c) return null;
+  return summonsWaLink(id).catch(() => null);
 }

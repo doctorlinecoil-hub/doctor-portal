@@ -16,6 +16,7 @@ export default function ApprovalButtons({ id, compact, preview, deposit }: { id:
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [wa, setWa] = useState<string | null>(null);
   const [method, setMethod] = useState<'transfer' | 'bit' | 'cash' | 'card'>('transfer');
   const needsDeposit = !!deposit && deposit.amount > 0 && !deposit.paid;
 
@@ -23,12 +24,14 @@ export default function ApprovalButtons({ id, compact, preview, deposit }: { id:
     if (preview) return setMsg({ ok: true, text: 'תצוגה מקדימה' });
     const r = await approveRequest(id);
     setMsg(r.ok ? { ok: true, text: r.info || 'אושר' } : { ok: false, text: r.error || 'נכשל' });
+    if (r.ok) setWa(r.wa ?? null);
     router.refresh();
   });
   const approveDep = () => start(async () => {
     if (preview) return setMsg({ ok: true, text: 'תצוגה מקדימה' });
     const r = await approveWithDeposit(id, method, deposit!.amount);
     setMsg(r.ok ? { ok: true, text: r.info || 'אושר' } : { ok: false, text: r.error || 'נכשל' });
+    if (r.ok) setWa(r.wa ?? null);
     router.refresh();
   });
   const decline = () => start(async () => {
@@ -39,7 +42,8 @@ export default function ApprovalButtons({ id, compact, preview, deposit }: { id:
     router.refresh();
   });
 
-  if (msg?.ok && !compact) return <p className="ok-msg" role="status"><Icon name="checkCircle" size={16} /> {msg.text}</p>;
+  const waBtn = wa ? <a className="btn btn-wa" href={wa} target="_blank" rel="noopener"><Icon name="message" size={16} />שליחת הזימון בוואטסאפ</a> : null;
+  if (msg?.ok && (!compact || waBtn)) return <div className="approve-done"><p className="ok-msg" role="status"><Icon name="checkCircle" size={16} /> {msg.text}</p>{waBtn}</div>;
   return (
     <div className={`approve${compact ? ' compact' : ''}`}>
       {!declining ? (
