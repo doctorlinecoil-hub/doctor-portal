@@ -61,12 +61,24 @@ function Section({ id, icon, title, sub, children, tone }: { id: string; icon: s
   );
 }
 
+type AiKind = 'all' | 'legal' | 'nii' | 'summary' | 'referral';
+const AI_KINDS: [AiKind, string][] = [['all', 'כל המסמכים'], ['legal', 'חוות דעת משפטית'], ['nii', 'ביטוח לאומי'], ['summary', 'סיכום ביקור'], ['referral', 'הפניה']];
+const AI_HINTS: Record<AiKind, string> = {
+  all: 'למשל: לכתוב בגוף ראשון, משפטים קצרים וענייניים. בלי סופרלטיבים. להשתמש במונחים רפואיים מקובלים בעברית, ובסוגריים באנגלית כשצריך.',
+  legal: 'למשל: לפתוח בתמצית המסקנה. לדון בקשר הסיבתי בסעיף נפרד. לציין אחוזי נכות לפי תקנות המל״ל עם מספר הסעיף. לסיים בהצהרה ובחתימה.',
+  nii: 'למשל: להתמקד בהגבלה התפקודית ובהשפעה על כושר העבודה. לפרט ממצאים אובייקטיביים מהבדיקה ומהדימות. להמליץ על אחוזי נכות לפי הסעיפים.',
+  summary: 'למשל: מבנה קבוע – תלונה עיקרית, רקע, בדיקה, הדמיה, אבחנה, המלצות. המלצות כרשימה ממוספרת. קצר, עד עמוד.',
+  referral: 'למשל: שורה אחת של סיבת ההפניה, שאלה ברורה לגורם המקבל, ודחיפות. בלי פירוט מיותר.',
+};
+
 const NAV: [string, string, string][] = [
+  ['notify', 'bell', 'התראות לרופא'],
   ['hours', 'calendar', 'יומן'],
   ['policy', 'refresh', 'שינויים וביטולים'],
   ['booking', 'calendarPlus', 'תורים וזימונים'],
   ['auto', 'bolt', 'אוטומציות'],
   ['pay', 'wallet', 'תשלומים'],
+  ['ai', 'sparkles', 'סגנון AI'],
   ['docs', 'file', 'מסמכים'],
   ['security', 'shield', 'אבטחה'],
 ];
@@ -88,6 +100,17 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
   const [digestBusy, runDigest] = useTransition();
   const [digestMsg, setDigestMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const dirty = JSON.stringify(s) !== saved;
+  const [aiKind, setAiKind] = useState<AiKind>('all');
+  const [newMail, setNewMail] = useState('');
+  const [mailErr, setMailErr] = useState('');
+  const mails = String(s.notify_email || '').split(/[\s,;]+/).filter(Boolean);
+  const setMails = (list: string[]) => setS({ ...s, notify_email: [...new Set(list)].join(', ') });
+  const addMail = () => {
+    const m = newMail.trim().toLowerCase();
+    if (!/^[^@\s,]+@[^@\s,]+\.[^@\s,]+$/.test(m)) return setMailErr('כתובת המייל לא תקינה.');
+    if (mails.length >= 5) return setMailErr('אפשר עד 5 כתובות.');
+    setMailErr(''); setMails([...mails, m]); setNewMail('');
+  };
 
   const set = <K extends keyof Settings>(k: K) => (v: Settings[K]) => setS((x) => ({ ...x, [k]: v }));
   const text = (k: keyof Settings) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setS({ ...s, [k]: e.target.value });
@@ -158,6 +181,41 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
         {NAV.map(([id, ic, l]) => <a key={id} href={`#${id}`}><Icon name={ic} size={15} />{l}</a>)}
         <a href="#maintenance"><Icon name="key" size={15} />גיבוי ותחזוקה</a>
       </nav>
+
+      <Section id="notify" icon="bell" title="התראות לרופא במייל" sub="לאן נשלחות ההתראות של המרפאה. אפשר כמה כתובות, למשל המייל הפרטי של הרופא ושל המזכירה.">
+        <div className="st-block">
+          <div className="st-txt"><b>כתובות לקבלת התראות</b><small>{mails.length ? 'כל ההתראות נשלחות לכל הכתובות האלה.' : 'כרגע ההתראות נשלחות למייל שאיתו הרופא נכנס למערכת.'}</small></div>
+          <div className="chips">
+            {mails.map((m) => (
+              <span className="xchip" key={m} dir="ltr">{m}<button type="button" aria-label={`הסרת ${m}`} onClick={() => setMails(mails.filter((x) => x !== m))}>×</button></span>
+            ))}
+          </div>
+          <div className="st-range">
+            <label style={{ flex: '1 1 260px' }}><span>הוספת כתובת</span>
+              <input type="email" dir="ltr" value={newMail} onChange={(e) => setNewMail(e.target.value)} placeholder="doctor@gmail.com"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMail(); } }} /></label>
+            <button type="button" className="btn" onClick={addMail} disabled={!newMail.trim()}><Icon name="plus" />הוספה</button>
+          </div>
+          {mailErr && <small className="bad-t">{mailErr}</small>}
+        </div>
+        <ul className="st-notes">
+          <li><Icon name="inbox" size={16} /><span><b>בקשה לתור חדש</b> – עם כפתור לאישור וקובץ להוספה ליומן</span></li>
+          <li><Icon name="wallet" size={16} /><span><b>התקבל אישור תשלום</b> – עם האסמכתא, בדיקת AI וכפתור לאישור התשלום</span></li>
+          <li><Icon name="x" size={16} /><span><b>תור בוטל</b> – עם קובץ שמסיר את התור מהיומן</span></li>
+          <li><Icon name="calendar" size={16} /><span><b>בקשה לשינוי מועד</b> – עם כפתור לאישור או דחייה</span></li>
+          <li><Icon name="upload" size={16} /><span><b>מסמכים חדשים מהמפנה</b> – כשמשלימים תיק</span></li>
+        </ul>
+        <Toggle id="digest" on={s.daily_digest} set={set('daily_digest')} title="סיכום יומי וגיבוי במייל (21:00)" desc="כל ערב: התורים של מחר, מה קרה היום, בקשות שמחכות, אישורי העברה לבדיקה וכמה ממתין לגבייה. יחד איתו נשלח גיבוי מלא של המערכת." />
+        {s.daily_digest && (
+          <div className="st-inline">
+            <button type="button" className="btn btn-sm" disabled={digestBusy || preview} onClick={() => runDigest(async () => {
+              const r = await digestNow();
+              setDigestMsg({ ok: r.ok, t: r.ok ? r.info || 'נשלח' : r.error || 'השליחה נכשלה' });
+            })}><Icon name="send" size={14} />{digestBusy ? 'שולח…' : 'שליחת סיכום לדוגמה עכשיו'}</button>
+            {digestMsg && <small className={digestMsg.ok ? 'ok-t' : 'bad-t'} role="status">{digestMsg.t}</small>}
+          </div>
+        )}
+      </Section>
 
       <Section id="hours" icon="calendar" title="יומן וזמני קבלה" sub="מכאן נבנים התורים הפנויים שהמפנים רואים. תורים שכבר נקבעו לא משתנים.">
         <div className="st-week">
@@ -235,9 +293,6 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
         <Toggle id="phoneAp" on={s.phone_appointments} set={set('phone_appointments')} title="אפשר לקבוע גם שיחה טלפונית" desc="בקביעה בוחרים ״פגישה במרפאה״ או ״שיחה טלפונית״." />
         <Toggle id="approval" on={s.require_approval} set={set('require_approval')} title="כל תור ממפנה ממתין לאישור שלך" desc="הזימון נשלח רק אחרי שאישרת. בלי זה, התור נקבע מיד." />
         <Toggle id="reg" on={s.open_registration} set={set('open_registration')} title="הרשמה עצמית למערכת" desc="מפנים נרשמים לבד (/register), וכל חשבון חדש ממתין לאישור שלך." />
-        <Row title="מייל להתראות על בקשות חדשות" desc="ריק = המייל של הרופא במערכת" htmlFor="notify">
-          <input id="notify" type="email" dir="ltr" value={s.notify_email} onChange={text('notify_email')} placeholder="doctor@example.com" />
-        </Row>
         <label className="st-field" htmlFor="bring"><b>מה להביא לביקור</b><small>שורה לכל פריט. מופיע בזימון ובתזכורת.</small>
           <textarea id="bring" rows={4} value={s.bring_items} onChange={text('bring_items')} /></label>
         <label className="st-field" htmlFor="snote"><b>הערה בזימון</b><small>חניה, קומה, איך מגיעים</small>
@@ -246,16 +301,6 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
 
       <Section id="auto" icon="bolt" title="אוטומציות" sub="מה המערכת עושה לבד, כדי שלא תצטרך לזכור.">
         {!mail && <div className="callout info"><div><Icon name="mail" />שליחת מיילים עוד לא הוגדרה (RESEND_API_KEY ו־MAIL_FROM ב־Vercel). עד אז האוטומציות במייל לא יוצאות.</div></div>}
-        <Toggle id="digest" on={s.daily_digest} set={set('daily_digest')} title="סיכום בוקר במייל (07:00)" desc="התורים של היום, בקשות שמחכות לאישור, אישורי העברה לבדיקה וכמה כסף ממתין לגבייה." />
-        {s.daily_digest && (
-          <div className="st-inline">
-            <button type="button" className="btn btn-sm" disabled={digestBusy || preview} onClick={() => runDigest(async () => {
-              const r = await digestNow();
-              setDigestMsg({ ok: r.ok, t: r.ok ? r.info || 'נשלח' : r.error || 'השליחה נכשלה' });
-            })}><Icon name="send" size={14} />{digestBusy ? 'שולח…' : 'שליחת סיכום לדוגמה עכשיו'}</button>
-            {digestMsg && <small className={digestMsg.ok ? 'ok-t' : 'bad-t'} role="status">{digestMsg.t}</small>}
-          </div>
-        )}
         <Row title="תזכורת תשלום אוטומטית" desc="כשמסמך מוכן ועוד לא שולם. עד 3 תזכורות לתיק, ולא כשאישור העברה ממתין לבדיקה שלך.">
           <Seg label="תדירות" value={s.auto_pay_reminder_days} set={set('auto_pay_reminder_days')} options={[[0, 'כבוי'], [3, 'כל 3 ימים'], [7, 'כל שבוע'], [14, 'כל שבועיים']]} />
         </Row>
@@ -285,6 +330,23 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
           <a className="st-link" href="/doctor/payments"><Icon name="wallet" /><span><b>אישור תשלומים</b><small>מסמכים שממתינים לתשלום ואסמכתאות</small></span><Icon name="chevron" size={16} /></a>
         </div>
         <div className={`callout ${morning ? '' : 'info'}`}><div><Icon name="receipt" />{morning ? 'מחובר למורנינג: אפשר להפיק חשבונית מס / קבלה מתוך כל תיק.' : 'מורנינג לא מחובר. אפשר לרשום מספר קבלה ידנית בכל תשלום.'}</div></div>
+      </Section>
+
+      <Section id="ai" icon="sparkles" title="סגנון הכתיבה של ה־AI" sub="הנחיות קבועות שה־AI מקבל בכל ניסוח ושיפור של מסמך. כותבים כמו שמסבירים למתמחה: מה חשוב, מה להימנע, באיזה מבנה.">
+        <div className="st-seg st-ai-tabs" role="tablist" aria-label="סוג המסמך">
+          {AI_KINDS.map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={aiKind === k} className={aiKind === k ? 'on' : ''} onClick={() => setAiKind(k)}>
+              {l}{(s.ai_style?.[k] || '').trim() && <i className="st-dot" aria-label="יש הנחיות" />}
+            </button>
+          ))}
+        </div>
+        <label className="st-field" htmlFor="aiStyle">
+          <b>{aiKind === 'all' ? 'הנחיות לכל המסמכים' : `הנחיות ל${AI_KINDS.find(([k]) => k === aiKind)?.[1]}`}</b>
+          <small>{aiKind === 'all' ? 'חלות על כל סוגי המסמכים. הנחיות של סוג מסוים מתווספות אליהן.' : 'מתווספות להנחיות הכלליות, רק במסמכים מהסוג הזה.'}</small>
+          <textarea id="aiStyle" rows={7} value={s.ai_style?.[aiKind] ?? ''} placeholder={AI_HINTS[aiKind]}
+            onChange={(e) => setS({ ...s, ai_style: { ...(s.ai_style || {}), [aiKind]: e.target.value } })} />
+        </label>
+        <div className="callout info"><div><Icon name="info" />ההנחיות נשמרות בלחיצה על ״שמירה״ ונכנסות לתוקף מהניסוח הבא. בתוך כל מסמך אפשר עדיין לתת הנחיות חד־פעמיות.</div></div>
       </Section>
 
       <Section id="docs" icon="file" title="מסמכים ונייר מכתבים" sub="כל מסמך שהמערכת מפיקה יוצא על נייר המכתבים הרשמי, עם החתימה והחותמת.">

@@ -32,7 +32,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
-  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
+  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<'all' | ReferralType, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -43,8 +43,13 @@ export async function saveSettings(input: {
     if (d.on && d.from >= d.to) return { ok: false, error: 'שעת הסיום צריכה להיות אחרי שעת ההתחלה.' };
     weekly[String(i)] = { on: !!d.on, from: d.from, to: d.to };
   }
-  const notifyEmail = clean(input.notify_email, 200).toLowerCase();
-  if (notifyEmail && !EMAIL_RE.test(notifyEmail)) return { ok: false, error: 'כתובת המייל להתראות לא תקינה.' };
+  const notifyParts = clean(input.notify_email, 800).toLowerCase().split(/[\s,;]+/).filter(Boolean);
+  const badMail = notifyParts.find((e) => !EMAIL_RE.test(e));
+  if (badMail) return { ok: false, error: `כתובת המייל להתראות לא תקינה: ${badMail}` };
+  if (notifyParts.length > 5) return { ok: false, error: 'אפשר עד 5 כתובות מייל להתראות.' };
+  const notifyEmail = [...new Set(notifyParts)].join(', ');
+  const aiStyle = Object.fromEntries((['all', 'legal', 'nii', 'summary', 'referral'] as const)
+    .map((k) => [k, clean(input.ai_style?.[k] ?? '', 3000)]).filter(([, v]) => v));
   const prices = Object.fromEntries((Object.keys(TYPES) as ReferralType[]).map((k) => [k, Math.max(0, Math.min(999999, money(input.prices?.[k] || 0)))]));
   const { error } = await supabase.from('settings').update({
     weekly,
@@ -65,6 +70,7 @@ export async function saveSettings(input: {
     public_booking: !!input.public_booking,
     require_approval: !!input.require_approval,
     notify_email: notifyEmail,
+    ai_style: aiStyle,
     bring_items: clean(input.bring_items, 2000),
     summons_note: clean(input.summons_note, 2000),
     reminders_on: !!input.reminders_on,
@@ -373,5 +379,5 @@ export async function digestNow(): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
   const r = await sendDailyDigest({ force: true });
-  return r.ok ? { ok: true, info: 'סיכום הבוקר נשלח למייל של הרופא' } : { ok: false, error: r.info };
+  return r.ok ? { ok: true, info: 'הסיכום היומי נשלח לכתובות ההתראות' } : { ok: false, error: r.info };
 }
