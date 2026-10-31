@@ -15,6 +15,7 @@ import PaymentPanel from './PaymentPanel';
 import PaymentRelease from './PaymentRelease';
 import DoctorCancel from './DoctorCancel';
 import MoveAppointment from './MoveAppointment';
+import DiscardDraft from './DiscardDraft';
 import DeletePatient from './DeletePatient';
 import IntakePanel from './IntakePanel';
 import CommsPanel, { type EmailLogRow } from './CommsPanel';
@@ -56,7 +57,7 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
   ]);
   const intakeDx = intake?.status === 'done' ? ((intake.data as IntakeData)?.diagnoses ?? []).map((d) => d.name).filter(Boolean) : [];
   const [{ data: hist }, { data: resched }] = await Promise.all([
-    supabase.from('appointments').select('id, case_no, starts_at, referral_type, status, firms(name)').eq('patient_id_number', a.patient_id_number).neq('id', id).order('starts_at', { ascending: false }).limit(30),
+    supabase.from('appointments').select('id, case_no, starts_at, referral_type, status, firms(name)').eq('provisional', false).eq('patient_id_number', a.patient_id_number).neq('id', id).order('starts_at', { ascending: false }).limit(30),
     supabase.from('reschedule_requests').select('id, appointment_id, requested_starts_at, reason, created_at').eq('appointment_id', id).eq('status', 'pending').maybeSingle(),
   ]);
   const history: HistoryRow[] = ((hist as unknown as (HistoryRow & { firms: { name: string } | null })[] | null) ?? []).map(({ firms, ...r }) => ({ ...r, firm_name: firms?.name ?? '' }));
@@ -77,7 +78,7 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
       c={c}
       notes={(notes as NoteRow[]) ?? []}
       docs={docRows}
-      cancel={<>{open && <MoveAppointment appointmentId={id} startsAt={a.starts_at} pending={c.status === 'pending'} />}{open && <DoctorCancel appointmentId={id} />}<DeletePatient appointmentId={id} name={c.patient_name || 'מחק'} cases={history.length + 1} /></>}
+      cancel={<>{a.provisional && <DiscardDraft appointmentId={id} />}{open && !a.walk_in && <MoveAppointment appointmentId={id} startsAt={a.starts_at} pending={c.status === 'pending'} />}{open && !a.provisional && <DoctorCancel appointmentId={id} />}<DeletePatient appointmentId={id} name={c.patient_name || 'מחק'} cases={history.length + 1} /></>}
       approval={<ApprovalButtons id={id} deposit={Number(a.deposit_amount) > 0 ? { amount: Number(a.deposit_amount), paid: !!a.deposit_paid_at, proof: !!a.deposit_proof_at } : null} />}
       history={<PatientHistory rows={history} />}
       reschedule={resched ? <RescheduleDecision req={resched as RescheduleRow} fromLabel={label(a.starts_at)} toLabel={label((resched as RescheduleRow).requested_starts_at)} /> : null}
