@@ -5,7 +5,8 @@ import Icon from '@/components/Icon';
 import { PAY_METHODS, type PayMethod } from '@/lib/constants';
 import { approvePayment, setPaymentOk } from '../actions';
 
-const QUICK: PayMethod[] = ['transfer', 'bit', 'card', 'cash', 'check', 'other'];
+// the clinic does not take credit cards
+const QUICK: PayMethod[] = ['transfer', 'bit', 'cash', 'check', 'other'];
 
 /**
  * Approve a payment. When the case is already paid in full: one click. Otherwise the doctor notes what

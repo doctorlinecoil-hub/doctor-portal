@@ -44,6 +44,8 @@ export default async function PaymentApprovalPage() {
   for (const [id, x] of newest) { const u = urlOf.get(x.path); if (u) proofs[id] = { url: u, at: `${fmtDate(ilParts(x.at).date)} ${ilParts(x.at).time}`, check: checkOf.get(id) ?? null }; }
   const lastSent = new Map<string, string>();
   for (const x of (sent as { appointment_id: string; created_at: string }[] | null) ?? []) if (!lastSent.has(x.appointment_id)) lastSent.set(x.appointment_id, x.created_at);
+  const { data: mp } = await supabase.from('payments').select('amount').gte('paid_on', `${today.slice(0, 7)}-01`);
+  const month = ((mp as { amount: number }[] | null) ?? []).reduce((x, y) => x + Number(y.amount), 0);
   const pl = payLines(settings);
   const payInfo = [pl.bank.length ? `\nפרטי העברה:\n${pl.bank.join('\n')}` : '', pl.bit ? `ביט / פייבוקס: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
   const pays: Record<string, PayLine[]> = {};
@@ -51,7 +53,7 @@ export default async function PaymentApprovalPage() {
   return (
     <>
     <LiveRefresh />
-    <PendingPayView waiting={waiting} approved={approved} gate={gate} pays={pays} proofs={proofs}
+    <PendingPayView month={month} waiting={waiting} approved={approved} gate={gate} pays={pays} proofs={proofs}
       remind={(r) => {
         const patientPays = r.firm_kind === 'private' || r.payer === 'patient';
         const ph = phoneOf.get(r.id);
