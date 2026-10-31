@@ -63,7 +63,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
   const { screen } = await params;
   const clinic = fx.settings.lh_name;
   const firmShell = (active: string, body: React.ReactNode) => <AppShell role="firm" userName="עו״ד דנה לוי" orgName={fx.firms[0].name} clinicName={clinic} active={active}>{body}</AppShell>;
-  const staffShell = (active: string, body: React.ReactNode) => <AppShell role="admin" userName="אלי" clinicName={clinic} active={active}>{body}</AppShell>;
+  const staffShell = (active: string, body: React.ReactNode) => <AppShell role="admin" userName="ד״ר אלרן חנוך" clinicName={clinic} active={active}>{body}</AppShell>;
   const c = fx.caseDetail;
   const paid = fx.payments.reduce((s, p) => s + p.amount, 0);
 
