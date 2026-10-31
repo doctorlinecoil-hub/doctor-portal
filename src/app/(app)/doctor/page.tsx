@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import LiveRefresh from '@/components/LiveRefresh';
 import { released } from '@/lib/types';
 import { loadAppointments } from '@/lib/queries';
 import type { IntakeData } from '@/lib/intakeTypes';
@@ -98,6 +99,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
   const { data: depRows } = await supabase.from('appointments').select('id, deposit_amount, deposit_paid_at, deposit_proof_at').eq('status', 'pending').gt('deposit_amount', 0);
   const deposits: Record<string, DepositState> = Object.fromEntries((depRows ?? []).map((d) => [d.id, { amount: Number(d.deposit_amount), paid: !!d.deposit_paid_at, proof: !!d.deposit_proof_at }]));
   return (
+    <>
+    <LiveRefresh />
     <DoctorAgendaView
       share={<ShareLink path="/book" compact title="קישור לקביעת תור למפנים ולמטופלים" />}
       rows={rows}
@@ -113,5 +116,6 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       reschedules={reschedules}
       setup={<SetupStatus items={setupItems} />}
     />
+    </>
   );
 }
