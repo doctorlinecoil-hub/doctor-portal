@@ -10,7 +10,7 @@ import PrintButton from './PrintButton';
 
 export const dynamic = 'force-dynamic';
 
-type L = { letter_type: ReferralType; recipient: string; subject: string; body: string; letter_date: string | null };
+type L = { letter_type: ReferralType; recipient: string; subject: string; body: string; letter_date: string | null; show_visits?: boolean };
 
 export default async function PrintPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ v?: string; embed?: string }> }) {
   const { id } = await params;
@@ -24,7 +24,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   // how the final document will look, before the doctor confirms it (signature included, nothing is sent)
   const review = staff && v === 'preview';
   if (draft || review) {
-    const { data } = await supabase.from('letters').select('letter_type, recipient, subject:doc_title, body, letter_date').eq('appointment_id', id).maybeSingle();
+    const { data } = await supabase.from('letters').select('letter_type, recipient, subject:doc_title, body, letter_date, show_visits').eq('appointment_id', id).maybeSingle();
     letter = data as L | null;
   } else {
     const { data } = await supabase.rpc('final_letter', { p_id: id });
@@ -36,7 +36,8 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   await supabase.rpc('log_event', { p_action: draft || review ? 'print_draft' : 'print_final', p_entity: 'letter', p_entity_id: id });
 
   const date = letter.letter_date || todayIL();
-  const visits = await priorVisits(supabase, a);
+  // earlier visits are printed only when the doctor added them to the document
+  const visits = letter.show_visits ? await priorVisits(supabase, a) : [];
   return (
     <LetterPaper
       settings={settings}
