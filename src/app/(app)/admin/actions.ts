@@ -30,7 +30,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
-  deposit_amount: number; deposit_hold_hours: number; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
+  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -71,6 +71,7 @@ export async function saveSettings(input: {
     auto_draft: !!input.auto_draft,
     deposit_amount: Math.max(0, Math.min(99999, money(input.deposit_amount || 0))),
     deposit_hold_hours: Math.min(336, Math.max(1, Math.round(+input.deposit_hold_hours || 48))),
+    change_business_days: Math.min(30, Math.max(0, Math.round(Number(input.change_business_days ?? 5)))),
     bank_details: clean(input.bank_details, 1000), bit_phone: clean(input.bit_phone, 30), pay_note: clean(input.pay_note, 1000),
     open_registration: !!input.open_registration,
     phone_appointments: !!input.phone_appointments,

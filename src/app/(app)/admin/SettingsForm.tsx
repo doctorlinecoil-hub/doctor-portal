@@ -47,6 +47,7 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
                 </select>
               </label>
               <label className="field" htmlFor="horizon"><span>כמה ימים קדימה</span><input id="horizon" type="number" min={1} max={180} value={s.horizon_days} onChange={(e) => setS({ ...s, horizon_days: +e.target.value })} /></label>
+              <label className="field" htmlFor="changeDays"><span>שינוי או ביטול ע״י מפנה עד (ימי עסקים לפני התור)</span><input id="changeDays" type="number" min={0} max={30} value={s.change_business_days ?? 5} onChange={(e) => setS({ ...s, change_business_days: +e.target.value })} /></label>
               <label className="field" htmlFor="notice"><span>התראה מינימלית (שעות)</span><input id="notice" type="number" min={0} max={336} value={s.notice_hours} onChange={(e) => setS({ ...s, notice_hours: +e.target.value })} /></label>
               <label className="field" htmlFor="maxOpen"><span>מקסימום תורים פתוחים למפנה</span><input id="maxOpen" type="number" min={1} max={500} value={s.max_open_per_firm} onChange={(e) => setS({ ...s, max_open_per_firm: +e.target.value })} /></label>
             </div>
