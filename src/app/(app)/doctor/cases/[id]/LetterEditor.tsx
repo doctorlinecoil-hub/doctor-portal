@@ -309,7 +309,10 @@ export default function LetterEditor({
     if (error) return setFinalState({ armed: false, ok: false, msg: 'השליחה נכשלה. נסו שוב.' });
     setFinalState({ armed: false, ok: true, msg: 'המכתב סומן כסופי. שולח…' });
     const r = initial?.is_final ? null : await sendLetter(appointmentId).catch(() => null);
-    setFinalState({ armed: false, ok: true, msg: r?.ok ? `המכתב זמין למפנה. ${r.info || ''}` : `המכתב זמין למפנה בתיק.${r?.error ? ` המייל לא נשלח: ${r.error}` : ''}` });
+    const waits = /ממתין לאישור התשלום/.test(r?.info || '');
+    setFinalState({ armed: false, ok: true, msg: waits
+      ? 'המכתב נשמר כסופי ונעול עד לתשלום. נשלחה בקשת תשלום, והמסמך יישלח לבד ברגע שתאשר את התשלום.'
+      : r?.ok ? `המכתב נשלח והוא זמין למפנה. ${r.info || ''}` : `המכתב זמין למפנה בתיק.${r?.error ? ` המייל לא נשלח: ${r.error}` : ''}` });
     router.refresh();
   }
 
