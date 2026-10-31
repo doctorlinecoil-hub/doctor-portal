@@ -70,10 +70,11 @@ export function age(dob: string | null | undefined) {
   return a;
 }
 
-/** The last day (Israel date) on which a confirmed appointment may still be moved or cancelled: N business days (Sun–Thu) before it. */
-export function changeDeadline(startsAt: string, days: number) {
+/** The last day (Israel date) on which a confirmed appointment may still be moved or cancelled: N business days (Sun–Thu) or calendar days before it. */
+export function changeDeadline(startsAt: string, days: number, unit: 'business' | 'calendar' = 'business') {
   let d = ilParts(startsAt).date;
   if (!(days > 0)) return d;
+  if (unit === 'calendar') return fromDayNum(dayNum(d) - days);
   let n = 0;
   while (n < days) {
     d = fromDayNum(dayNum(d) - 1);

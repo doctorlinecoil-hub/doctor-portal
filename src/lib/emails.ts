@@ -1,4 +1,5 @@
 import 'server-only';
+import { policyLines } from './policy';
 import { ils, payLines, typeOf, type Settings } from './constants';
 import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } from './messages';
 import { appUrl } from './mail';
@@ -117,6 +118,7 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
     (c.note && !a.phone ? p(esc(c.note).replace(/\n/g, '<br>')) : '') +
     (o.due && o.due > 0 ? payBlock(s, o.due, 'לתשלום לפני הביקור') + p('נא להעביר את התשלום לפני מועד הביקור. אחרי ההעברה אפשר להעלות את האישור לתיק או להשיב למייל הזה.') : '') +
     p(`מצורף קובץ <b>הוספה ליומן</b>. ${c.phone ? `לשאלות או לשינוי מועד: <span dir="ltr">${esc(c.phone)}</span>.` : ''}`) +
+    (s.policy_in_summons !== false ? policyBlock(s, a.startsAt) : '') +
     (o.forReferrer && o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'צפייה בתיק')}</div>` : '');
   return {
     subject,
@@ -127,6 +129,13 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
       bring.length ? `מה להביא: ${bring.join(', ')}` : '', c.note, o.due && o.due > 0 ? payText(s, o.due) : '', c.phone && `טלפון: ${c.phone}`,
     ]),
   };
+}
+
+/** The change and cancellation policy, in a quiet box under the confirmation. */
+function policyBlock(s: Settings, startsAt: string) {
+  const lines = policyLines(s, startsAt);
+  if (!lines.length) return '';
+  return `<div style="margin:0 0 14px;padding:12px 14px;border-radius:10px;background:#F6F8FB;border:1px solid #E3E8EF;color:${MUTED};font-size:13.5px;line-height:1.6"><b style="color:${INK}">שינוי מועד וביטול</b><br>${lines.map(esc).join('<br>')}</div>`;
 }
 
 export type RemindWhen = 'tomorrow' | '3d' | '2h';
@@ -422,4 +431,38 @@ export function backupEmail(s: Settings, o: { date: string; counts: [string, num
     p('<b>שמרו את המייל הזה.</b> הוא מכיל מידע רפואי אישי: אל תעבירו אותו הלאה.') +
     `<div style="margin:6px 0 10px">${button(o.link, 'כניסה למערכת', false)}</div>`;
   return { subject, html: layout(s, { preheader: 'הגיבוי היומי מצורף', title: 'גיבוי יומי', body }), text: textOf([subject, ...o.counts.map(([k, v]) => `${k}: ${v}`)]) };
+}
+
+export type DigestData = {
+  date: string;
+  today: { time: string; patient: string; service: string; referrer: string; phone: boolean; caseNo: number }[];
+  pending: number; moves: number; waitingCount: number; waitingSum: number; proofs: number; link: string;
+};
+
+/** The doctor's morning summary. */
+export function dailyDigestEmail(s: Settings, d: DigestData): Rendered {
+  const n = d.today.length;
+  const subject = `היום במרפאה · ${n ? `${n} ${n === 1 ? 'תור' : 'תורים'}` : 'אין תורים'} · ${fmtDate(d.date)}`;
+  const tile = (v: string, l: string, warn = false) =>
+    `<td style="width:25%;padding:4px"><div style="padding:12px 8px;border-radius:12px;background:${warn ? '#FFF8EB' : '#F6F8FB'};border:1px solid ${warn ? '#F5DDB0' : '#E3E8EF'};text-align:center"><div style="font-size:22px;font-weight:700;color:${warn ? '#7A4B0B' : ACCENT}">${v}</div><div style="font-size:12px;color:${MUTED}">${l}</div></div></td>`;
+  const tiles = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>${
+    tile(String(n), 'תורים היום') + tile(String(d.pending), 'בקשות לאישור', d.pending > 0) + tile(String(d.waitingCount), 'ממתינים לתשלום', d.proofs > 0) + tile(d.waitingSum ? ils(d.waitingSum) : '0', 'יתרה לגבייה')}</tr></table>`;
+  const rows = d.today.map((t) =>
+    `<tr><td style="padding:10px 12px;border-bottom:1px solid #EEF1F5;font-weight:700;color:${ACCENT};white-space:nowrap;direction:ltr;text-align:right">${esc(t.time)}</td>` +
+    `<td style="padding:10px 12px;border-bottom:1px solid #EEF1F5"><b style="color:${INK}">${esc(t.patient)}</b><br><span style="font-size:12.5px;color:${MUTED}">${esc(t.service)}${t.referrer ? ` · ${esc(t.referrer)}` : ''}${t.phone ? ' · שיחה טלפונית' : ''} · תיק ${t.caseNo}</span></td></tr>`).join('');
+  const agenda = n
+    ? `<h2 style="margin:4px 0 8px;font-size:16px;color:${INK}">לוח הזמנים להיום</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border:1px solid #E3E8EF;border-radius:12px;border-collapse:separate;overflow:hidden">${rows}</table>`
+    : p('אין תורים היום.');
+  const todo = [
+    d.pending ? `${d.pending} ${d.pending === 1 ? 'בקשת תור ממתינה' : 'בקשות תור ממתינות'} לאישור` : '',
+    d.moves ? `${d.moves} ${d.moves === 1 ? 'בקשה' : 'בקשות'} לשינוי מועד` : '',
+    d.proofs ? `${d.proofs} ${d.proofs === 1 ? 'אישור העברה ממתין' : 'אישורי העברה ממתינים'} לבדיקה שלך` : '',
+  ].filter(Boolean);
+  const body = tiles + agenda + (todo.length ? `<h2 style="margin:4px 0 8px;font-size:16px;color:${INK}">מחכה לך</h2>` + list(todo) : '') +
+    `<div style="margin:10px 0">${button(d.link, 'כניסה ליומן')}</div>`;
+  return {
+    subject,
+    html: layout(s, { preheader: n ? `${n} תורים היום, הראשון ב־${d.today[0].time}` : 'סיכום הבוקר', title: `בוקר טוב · ${fmtDate(d.date)}`, body }),
+    text: textOf([subject, ...d.today.map((t) => `${t.time} ${t.patient} · ${t.service}`), d.pending ? `בקשות לאישור: ${d.pending}` : '', d.waitingCount ? `ממתינים לתשלום: ${d.waitingCount}` : '', d.link]),
+  };
 }

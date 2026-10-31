@@ -81,6 +81,17 @@ export type Settings = {
   deposit_hold_hours: number;
   /** a referrer may move or cancel a confirmed appointment until this many business days before it */
   change_business_days: number;
+  /** the referrer's change policy for confirmed appointments */
+  allow_reschedule: boolean;
+  allow_cancel: boolean;
+  cancel_days: number;
+  change_days_unit: 'business' | 'calendar';
+  /** 0 = no limit */
+  max_reschedules: number;
+  daily_digest: boolean;
+  /** 0 = off */
+  auto_pay_reminder_days: number;
+  policy_in_summons: boolean;
   bank_details: string;
   bit_phone: string;
   pay_note: string;
@@ -108,7 +119,10 @@ const DB_ERRORS: Record<string, string> = {
   BAD_AMOUNT: 'סכום לא תקין.',
   SLOT_TAKEN: 'המועד הזה כבר תפוס. בחרו מועד אחר.',
   CANNOT_RESCHEDULE: 'אי אפשר לשנות את המועד של התור הזה.',
-  TOO_LATE_TO_CHANGE: 'כבר אי אפשר לשנות או לבטל את התור דרך המערכת (פחות מ־5 ימי עסקים לפני המועד). לשינוי צרו קשר עם המרפאה.',
+  TOO_LATE_TO_CHANGE: 'המועד האחרון לשינוי או ביטול דרך המערכת עבר. לשינוי צרו קשר עם המרפאה.',
+  RESCHEDULE_DISABLED: 'שינוי מועד של תור שאושר נעשה מול המרפאה בלבד. צרו קשר עם המרפאה.',
+  CANCEL_DISABLED: 'ביטול של תור שאושר נעשה מול המרפאה בלבד. צרו קשר עם המרפאה.',
+  TOO_MANY_RESCHEDULES: 'מועד התור הזה כבר שונה את מספר הפעמים המרבי. לשינוי נוסף צרו קשר עם המרפאה.',
   CANNOT_DECLINE: 'הבקשה כבר טופלה.',
   IN_PAST: 'אי אפשר לבטל תור שכבר עבר.',
   FORBIDDEN: 'אין לכם הרשאה לפעולה הזו.',
@@ -148,6 +162,14 @@ export const SETTINGS_DEFAULTS = {
   deposit_amount: 0,
   deposit_hold_hours: 48,
   change_business_days: 5,
+  allow_reschedule: true,
+  allow_cancel: true,
+  cancel_days: 5,
+  change_days_unit: 'business',
+  max_reschedules: 0,
+  daily_digest: true,
+  auto_pay_reminder_days: 0,
+  policy_in_summons: true,
   bank_details: '',
   bit_phone: '',
   pay_note: '',
