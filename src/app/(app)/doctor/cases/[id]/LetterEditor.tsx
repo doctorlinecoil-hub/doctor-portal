@@ -28,9 +28,10 @@ export type LetterRow = {
   finalized_at: string | null;
   ai_draft_at?: string | null;
   letter_date?: string | null;
+  show_visits?: boolean;
 };
 
-type Draft = { letter_type: ReferralType; recipient: string; subject: string; doc_title: string; body: string; exam_notes: string; letter_date: string };
+type Draft = { letter_type: ReferralType; recipient: string; subject: string; doc_title: string; body: string; exam_notes: string; letter_date: string; show_visits: boolean };
 
 const escHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -69,6 +70,8 @@ export default function LetterEditor({
     exam_notes: initial?.exam_notes ?? '',
     // the document keeps the date it was written on; editing it later doesn't change it (only the doctor, in "פרטים")
     letter_date: initial?.letter_date || todayIL(),
+    // earlier visits appear in the document only when the doctor adds them
+    show_visits: !!initial?.show_visits,
   });
   const [html, setHtml] = useState(startHtml);
   const [saveState, setSaveState] = useState(initial ? 'נשמר' : '');
@@ -240,7 +243,7 @@ export default function LetterEditor({
       const res = await fetch('/api/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId, letterType: before.letter_type, exam: before.exam_notes, instructions: opts.instructions, length: opts.length, withHistory: opts.withHistory }),
+        body: JSON.stringify({ appointmentId, letterType: before.letter_type, exam: before.exam_notes, instructions: opts.instructions, length: opts.length, withHistory: opts.withHistory, withVisits: before.show_visits }),
         signal: ctl.signal,
       });
       if (!res.ok || !res.body) {
@@ -323,6 +326,8 @@ export default function LetterEditor({
 
   const placeholders = countPlaceholders(bodyText(d.body));
   const hasBody = !!bodyText(d.body).trim();
+  const visitDates = [...new Set((paper.visits ?? []).map((v) => v.date))];
+  const words = bodyText(d.body).trim().split(/\s+/).filter(Boolean).length;
   const titles = paper.lh_titles.split('\n').filter(Boolean);
   const to = d.recipient.split('|').map((x) => x.trim()).filter(Boolean);
   const ag = age(paper.patient.dob);
@@ -356,9 +361,15 @@ export default function LetterEditor({
         {paper.patient.idNumber && <span><b>ת.ז.:</b> <span className="num">{paper.patient.idNumber}</span></span>}
         {paper.patient.dob && <span><b>תאריך לידה:</b> <span className="num">{fmtDate(paper.patient.dob)}</span>{ag != null ? ` (גיל ${ag})` : ''}</span>}
       </div>
-      {paper.visits && paper.visits.length > 0 && (
-        <div className="cl-rv"><b>ביקור חוזר</b> {new Set(paper.visits.map((v) => v.date)).size === 1 ? 'מתאריך' : '· ביקורים קודמים מתאריכים'} {[...new Set(paper.visits.map((v) => v.date))].map((x, i) => <span key={x}>{i > 0 && ', '}<bdi className="num">{fmtDate(x)}</bdi></span>)}</div>
-      )}
+      {paper.visits && paper.visits.length > 0 && (d.show_visits ? (
+        <div className="cl-rv cl-rv-on"><b>ביקור חוזר</b> {visitDates.length === 1 ? 'מתאריך' : '· ביקורים קודמים מתאריכים'} {visitDates.map((x, i) => <span key={x}>{i > 0 && ', '}<bdi className="num">{fmtDate(x)}</bdi></span>)}
+          {!cancelled && <button type="button" className="cl-rv-x" onClick={() => update({ show_visits: false })} title="הסרה מהמסמך" aria-label="הסרת ציון הביקור החוזר מהמסמך"><Icon name="x" size={13} /></button>}
+        </div>
+      ) : !cancelled && (
+        <button type="button" className="cl-rv-add" onClick={() => update({ show_visits: true })}>
+          <Icon name="plus" size={14} />ציון ביקור חוזר במסמך <span className="num">({visitDates.map((x) => fmtDate(x)).join(', ')})</span><small>לא יופיע אם לא תוסיף</small>
+        </button>
+      ))}
       {opinion && (
         <div className="pg-intro">
           <p>הנני מגיש בזאת את חוות דעתי הרפואית{paper.visitDate ? ` לאחר בדיקתי ב־${fmtDate(paper.visitDate)}` : ''}.</p>
@@ -386,13 +397,25 @@ export default function LetterEditor({
   const SIDE = [['ai', 'AI', 'sparkles'], ['exam', 'ממצאים', 'stethoscope'], ['details', 'פרטים', 'settings'], ['tools', 'כלים', 'template']] as const;
   return (
     <section className={`studio${focus ? ' focus' : ''}`} data-pane={pane} aria-label="המכתב">
-      <div className="studio-head">
+      <div className="studio-head sh2">
         <div className="studio-title">
           <span className="studio-ic"><Icon name="file" /></span>
-          <div><h2>{typeOf(d.letter_type).label}</h2><span className="hint">{initial?.is_final ? `נשלח${initial.finalized_at ? ` · ${fmtStamp(initial.finalized_at)}` : ''}` : 'טיוטה'}</span></div>
+          <div>
+            <span className="sh2-k">{paper.patient.name}{paper.visitDate ? ` · ${fmtDate(paper.visitDate)}` : ''}</span>
+            <h2>{d.doc_title.trim() || defaultTitle}</h2>
+          </div>
         </div>
-        <span className="save-state" aria-live="polite">{saveState === 'נשמר' && <Icon name="check" />}{saveState}</span>
-        <button type="button" className="btn btn-sm btn-ghost studio-focus" onClick={() => setFocus(!focus)} aria-pressed={focus}><Icon name={focus ? 'x' : 'externalLink'} size={15} />{focus ? 'יציאה ממסך מלא' : 'מסך מלא'}</button>
+        <ol className="sh2-steps" aria-label="מצב המסמך">
+          {(['טיוטה', 'בבדיקה', initial?.is_final ? 'נשלח' : 'סופי'] as const).map((l, i) => {
+            const at = initial?.is_final ? 2 : hasBody ? 1 : 0;
+            return <li key={l} className={i < at ? 'done' : i === at ? 'on' : ''}><i>{i < at ? <Icon name="check" size={12} /> : i + 1}</i>{l}</li>;
+          })}
+        </ol>
+        <div className="sh2-meta">
+          <span className="sh2-words"><b className="num">{words}</b> מילים · כ־<b className="num">{Math.max(1, Math.round(words / 250))}</b> עמ׳</span>
+          <span className={`save-state${saveState === 'נשמר' ? ' ok' : saveState.includes('נכשלה') ? ' bad' : ''}`} aria-live="polite"><i aria-hidden="true" />{saveState || 'חדש'}</span>
+          <button type="button" className="btn btn-sm studio-focus" onClick={() => setFocus(!focus)} aria-pressed={focus}><Icon name={focus ? 'x' : 'externalLink'} size={15} />{focus ? 'יציאה' : 'מסך מלא'}</button>
+        </div>
       </div>
       {initial?.is_final && <div className="callout"><div><Icon name="checkCircle" />נשלחה גרסה סופית. שינויים יגיעו למפנה רק אחרי ״עדכון המכתב הסופי״.</div></div>}
       {cancelled && <div className="callout bad"><div><Icon name="x" />התור בוטל.</div></div>}
