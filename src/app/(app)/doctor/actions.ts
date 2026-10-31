@@ -188,3 +188,15 @@ export async function rejectPayment(id: string, message: string): Promise<Result
   const r = await sendPaymentRejected(id, text);
   return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
+
+/** The doctor sets how much is still owed on a case (the payment request asks for this): price = paid so far + amount. */
+export async function setDueAmount(id: string, amount: number): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const due = Math.round(Number(amount) * 100) / 100;
+  if (!(due > 0 && due < 1000000)) return { ok: false, error: 'סכום לא תקין.' };
+  const { data: pays } = await c.supabase.from('payments').select('amount').eq('appointment_id', id);
+  const paid = ((pays as { amount: number }[] | null) ?? []).reduce((x, p) => x + Number(p.amount), 0);
+  const { error } = await c.supabase.from('appointments').update({ price: Math.round((paid + due) * 100) / 100 }).eq('id', id);
+  return error ? { ok: false, error: dbError(error) } : { ok: true };
+}
