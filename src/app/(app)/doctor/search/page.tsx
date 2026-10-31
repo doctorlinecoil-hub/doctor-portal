@@ -28,7 +28,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (/^\d{3,9}$/.test(q)) ors.push(`case_no.eq.${q}`);
     const ids = (firms ?? []).map((f) => f.id as string);
     if (ids.length) ors.push(`firm_id.in.(${ids.join(',')})`);
-    const { data } = await supabase.from('appointments').select(COLS).or(ors.join(',')).order('starts_at', { ascending: false }).limit(200);
+    const { data } = await supabase.from('appointments').select(COLS).eq('provisional', false).or(ors.join(',')).order('starts_at', { ascending: false }).limit(200);
     rows = (data as unknown as Row[] | null) ?? [];
   }
   // group by patient (ID number), so each person appears once with all their visits
