@@ -4,6 +4,7 @@ import { mailEnabled } from '@/lib/mail';
 import { PageHead } from '@/components/ui';
 import SettingsForm from './SettingsForm';
 import ResetData from './ResetData';
+import BackupNow from './BackupNow';
 import { smsChannel, smsEnabled } from '@/lib/sms';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,7 @@ export default async function AdminSettingsPage() {
     <>
       <PageHead title="הגדרות" sub="זמני קבלה, אישור תורים, זימונים ומיילים, מחירים, נייר מכתבים ואבטחה" />
       <SettingsForm initial={settings} morning={morningEnabled()} mail={mailEnabled()} cron={!!process.env.CRON_SECRET} sms={smsEnabled() ? smsChannel() : ''} />
+      <BackupNow />
       <ResetData />
     </>
   );

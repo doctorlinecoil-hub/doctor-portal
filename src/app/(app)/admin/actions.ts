@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { deliverLetter } from '@/lib/notify';
+import { sendBackup } from '@/lib/backup';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { tempPassword } from '@/lib/password';
@@ -343,4 +344,12 @@ export async function resetTestData(confirm: string): Promise<Result & { cases?:
   revalidatePath('/', 'layout');
   const r = (data ?? {}) as { cases?: number; referrers?: number };
   return { ok: true, cases: r.cases ?? 0, referrers: r.referrers ?? 0 };
+}
+
+/** Sends the backup email to the admin right now. */
+export async function backupNow(): Promise<Result> {
+  const supabase = await assertAdmin().catch(() => null);
+  if (!supabase) return { ok: false, error: 'אין הרשאה.' };
+  const r = await sendBackup({ force: true });
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
