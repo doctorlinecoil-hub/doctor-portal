@@ -32,7 +32,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
-  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<'all' | ReferralType, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
+  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<string, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -48,8 +48,8 @@ export async function saveSettings(input: {
   if (badMail) return { ok: false, error: `כתובת המייל להתראות לא תקינה: ${badMail}` };
   if (notifyParts.length > 5) return { ok: false, error: 'אפשר עד 5 כתובות מייל להתראות.' };
   const notifyEmail = [...new Set(notifyParts)].join(', ');
-  const aiStyle = Object.fromEntries((['all', 'legal', 'nii', 'summary', 'referral'] as const)
-    .map((k) => [k, clean(input.ai_style?.[k] ?? '', 3000)]).filter(([, v]) => v));
+  const styleKeys = Object.keys(input.ai_style ?? {}).filter((k) => ['all', 'legal', 'nii', 'summary', 'referral'].includes(k) || /^svc:[0-9a-f-]{36}$/i.test(k)).slice(0, 60);
+  const aiStyle = Object.fromEntries(styleKeys.map((k) => [k, clean(input.ai_style?.[k] ?? '', 6000)]).filter(([, v]) => v));
   const prices = Object.fromEntries((Object.keys(TYPES) as ReferralType[]).map((k) => [k, Math.max(0, Math.min(999999, money(input.prices?.[k] || 0)))]));
   const { error } = await supabase.from('settings').update({
     weekly,

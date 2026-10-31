@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Icon from '@/components/Icon';
-import { SETTINGS_DEFAULTS, payLines, type Settings, type WeekDay } from '@/lib/constants';
+import { SETTINGS_DEFAULTS, payLines, type ReferralType, type Settings, type WeekDay } from '@/lib/constants';
 import { DAYS, dayNum, fmtDate, fromDayNum, todayIL, weekday } from '@/lib/dates';
 import { policyLines } from '@/lib/policy';
+import { AI_STYLE_DEFAULTS } from '@/lib/aiStyle';
 import { digestNow, saveSettings } from './actions';
 
 /* ---------- small building blocks ---------- */
@@ -61,15 +62,8 @@ function Section({ id, icon, title, sub, children, tone }: { id: string; icon: s
   );
 }
 
-type AiKind = 'all' | 'legal' | 'nii' | 'summary' | 'referral';
-const AI_KINDS: [AiKind, string][] = [['all', 'כל המסמכים'], ['legal', 'חוות דעת משפטית'], ['nii', 'ביטוח לאומי'], ['summary', 'סיכום ביקור'], ['referral', 'הפניה']];
-const AI_HINTS: Record<AiKind, string> = {
-  all: 'למשל: לכתוב בגוף ראשון, משפטים קצרים וענייניים. בלי סופרלטיבים. להשתמש במונחים רפואיים מקובלים בעברית, ובסוגריים באנגלית כשצריך.',
-  legal: 'למשל: לפתוח בתמצית המסקנה. לדון בקשר הסיבתי בסעיף נפרד. לציין אחוזי נכות לפי תקנות המל״ל עם מספר הסעיף. לסיים בהצהרה ובחתימה.',
-  nii: 'למשל: להתמקד בהגבלה התפקודית ובהשפעה על כושר העבודה. לפרט ממצאים אובייקטיביים מהבדיקה ומהדימות. להמליץ על אחוזי נכות לפי הסעיפים.',
-  summary: 'למשל: מבנה קבוע – תלונה עיקרית, רקע, בדיקה, הדמיה, אבחנה, המלצות. המלצות כרשימה ממוספרת. קצר, עד עמוד.',
-  referral: 'למשל: שורה אחת של סיבת ההפניה, שאלה ברורה לגורם המקבל, ודחיפות. בלי פירוט מיותר.',
-};
+type AiKind = string;
+const BASE_KINDS: [ReferralType, string][] = [['legal', 'חוות דעת משפטית'], ['nii', 'ביטוח לאומי'], ['summary', 'סיכום ביקור'], ['referral', 'הפניה']];
 
 const NAV: [string, string, string][] = [
   ['notify', 'bell', 'התראות לרופא'],
@@ -90,7 +84,7 @@ function exampleStart() {
   return { iso: new Date(`${d}T10:00:00+02:00`).toISOString(), date: d };
 }
 
-export default function SettingsForm({ initial, morning, mail, preview, sms = '' }: { initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean; sms?: '' | 'sms' | 'whatsapp' }) {
+export default function SettingsForm({ initial, morning, mail, preview, sms = '', services = [] }: { services?: { id: string; label: string; base_type: ReferralType }[]; initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean; sms?: '' | 'sms' | 'whatsapp' }) {
   const start = useMemo(() => ({ ...SETTINGS_DEFAULTS, ...initial, prices: Object.assign({ referral: 0, summary: 0, nii: 0, legal: 0 }, initial.prices) }) as Settings, [initial]);
   const [s, setS] = useState<Settings>(start);
   const [saved, setSaved] = useState(() => JSON.stringify(start));
@@ -101,6 +95,15 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
   const [digestMsg, setDigestMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const dirty = JSON.stringify(s) !== saved;
   const [aiKind, setAiKind] = useState<AiKind>('all');
+  // every document the doctor offers (his services) gets its own instructions; base types without a service too
+  const AI_KINDS: { key: string; label: string; base: 'all' | ReferralType }[] = [
+    { key: 'all', label: 'כל המסמכים', base: 'all' },
+    ...services.map((x) => ({ key: `svc:${x.id}`, label: x.label, base: x.base_type })),
+    ...BASE_KINDS.filter(([k]) => !services.some((x) => x.base_type === k)).map(([k, l]) => ({ key: k, label: l, base: k })),
+  ];
+  const kind = AI_KINDS.find((k) => k.key === aiKind) ?? AI_KINDS[0];
+  // what the AI gets when this tab is left as is: the type's text (the doctor's, or the built-in one)
+  const fallback = kind.key === 'all' ? AI_STYLE_DEFAULTS.all : kind.key.startsWith('svc:') ? (s.ai_style?.[kind.base]?.trim() || AI_STYLE_DEFAULTS[kind.base]) : AI_STYLE_DEFAULTS[kind.base];
   const [newMail, setNewMail] = useState('');
   const [mailErr, setMailErr] = useState('');
   const mails = String(s.notify_email || '').split(/[\s,;]+/).filter(Boolean);
@@ -129,9 +132,13 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
     if (preview) return setMsg({ ok: false, text: 'זו תצוגה מקדימה. במערכת האמיתית ההגדרות נשמרות.' });
     setBusy(true);
     setMsg(null);
-    const r = await saveSettings(s);
+    // an address typed but not yet added is saved too
+    const typed = newMail.trim().toLowerCase();
+    const toSave = typed && /^[^@\s,]+@[^@\s,]+\.[^@\s,]+$/.test(typed) && !mails.includes(typed) ? { ...s, notify_email: [...mails, typed].join(', ') } : s;
+    if (toSave !== s) { setS(toSave); setNewMail(''); }
+    const r = await saveSettings(toSave);
     setBusy(false);
-    if (r.ok) setSaved(JSON.stringify(s));
+    if (r.ok) setSaved(JSON.stringify(toSave));
     setMsg(r.ok ? { ok: true, text: 'ההגדרות נשמרו' } : { ok: false, text: r.error || 'השמירה נכשלה' });
   }
 
@@ -334,19 +341,24 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
 
       <Section id="ai" icon="sparkles" title="סגנון הכתיבה של ה־AI" sub="הנחיות קבועות שה־AI מקבל בכל ניסוח ושיפור של מסמך. כותבים כמו שמסבירים למתמחה: מה חשוב, מה להימנע, באיזה מבנה.">
         <div className="st-seg st-ai-tabs" role="tablist" aria-label="סוג המסמך">
-          {AI_KINDS.map(([k, l]) => (
-            <button key={k} type="button" role="tab" aria-selected={aiKind === k} className={aiKind === k ? 'on' : ''} onClick={() => setAiKind(k)}>
-              {l}{(s.ai_style?.[k] || '').trim() && <i className="st-dot" aria-label="יש הנחיות" />}
+          {AI_KINDS.map(({ key, label }) => (
+            <button key={key} type="button" role="tab" aria-selected={aiKind === key} className={aiKind === key ? 'on' : ''} onClick={() => setAiKind(key)}>
+              {label}{(s.ai_style?.[key] || '').trim() && <i className="st-dot" aria-label="נוסח אישי" />}
             </button>
           ))}
         </div>
         <label className="st-field" htmlFor="aiStyle">
-          <b>{aiKind === 'all' ? 'הנחיות לכל המסמכים' : `הנחיות ל${AI_KINDS.find(([k]) => k === aiKind)?.[1]}`}</b>
-          <small>{aiKind === 'all' ? 'חלות על כל סוגי המסמכים. הנחיות של סוג מסוים מתווספות אליהן.' : 'מתווספות להנחיות הכלליות, רק במסמכים מהסוג הזה.'}</small>
-          <textarea id="aiStyle" rows={7} value={s.ai_style?.[aiKind] ?? ''} placeholder={AI_HINTS[aiKind]}
-            onChange={(e) => setS({ ...s, ai_style: { ...(s.ai_style || {}), [aiKind]: e.target.value } })} />
+          <b>{kind.key === 'all' ? 'סגנון הכתיבה לכל המסמכים' : `המבנה של ${kind.label}`}</b>
+          <small>{aiKind === 'all' ? 'זה הטקסט שה־AI מקבל על סגנון הכתיבה בכל מסמך. אפשר לשנות כאן הכול ולשמור.' : 'זה הטקסט שה־AI מקבל על המבנה של המסמך הזה (סעיפים וסדר). אפשר לשנות כאן הכול ולשמור.'}</small>
+          <textarea id="aiStyle" rows={14} value={s.ai_style?.[aiKind]?.trim() ? s.ai_style[aiKind] : fallback}
+            onChange={(e) => setS({ ...s, ai_style: { ...(s.ai_style || {}), [aiKind]: e.target.value === fallback ? '' : e.target.value } })} />
         </label>
-        <div className="callout info"><div><Icon name="info" />ההנחיות נשמרות בלחיצה על ״שמירה״ ונכנסות לתוקף מהניסוח הבא. בתוך כל מסמך אפשר עדיין לתת הנחיות חד־פעמיות.</div></div>
+        <div className="st-inline" style={{ borderBottom: 0 }}>
+          {s.ai_style?.[aiKind]?.trim()
+            ? <><span className="badge b-booked">נוסח אישי</span><button type="button" className="btn btn-sm btn-ghost" onClick={() => setS({ ...s, ai_style: { ...(s.ai_style || {}), [aiKind]: '' } })}><Icon name="undo" size={14} />חזרה לנוסח המקורי</button></>
+            : <span className="muted" style={{ fontSize: 13 }}>הנוסח המקורי של המערכת</span>}
+        </div>
+        <div className="callout info"><div><Icon name="info" />ההנחיות נשמרות בלחיצה על ״שמירה״ ונכנסות לתוקף מהניסוח הבא. כל סוג שירות חדש שתוסיף יופיע כאן אוטומטית, ובתוך כל מסמך אפשר עדיין לתת הנחיות חד־פעמיות.</div></div>
       </Section>
 
       <Section id="docs" icon="file" title="מסמכים ונייר מכתבים" sub="כל מסמך שהמערכת מפיקה יוצא על נייר המכתבים הרשמי, עם החתימה והחותמת.">
