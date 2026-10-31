@@ -3439,3 +3439,37 @@ details[open] > summary::after { transform: translateY(-30%) rotate(135deg); }
 .st-ai-tabs button { position: relative; }
 .st-dot { display: inline-block; width: 7px; height: 7px; margin-inline-start: 6px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
 #notify .xchip { font-size: 14px; }
+/* sign in: password / code by email */
+.seg-login { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg-login button { flex: 1; border: 0; background: transparent; padding: 9px 10px; border-radius: 9px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg-login button.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+
+/* ================= system map ================= */
+.sm { display: flex; flex-direction: column; gap: 16px; max-width: 1100px; }
+.sm-sum { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-radius: 16px; border: 1px solid; }
+.sm-sum div { display: flex; flex-direction: column; } .sm-sum b { font-size: 17px; } .sm-sum small { color: var(--muted); }
+.sm-sum.ok { background: var(--ok-soft); border-color: #BFE6D4; color: var(--ok); }
+.sm-sum.warn { background: var(--warn-soft); border-color: #F5DDB0; color: var(--warn); }
+.sm-sum.bad { background: var(--bad-soft); border-color: #F8C9C4; color: var(--bad); }
+.sm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: 14px; }
+.sm-card { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.sm-card.bad { border-color: #F8C9C4; box-shadow: 0 0 0 3px rgba(180,35,24,.08); }
+.sm-card header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.sm-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.sm-card h3 { font-size: 16px; } .sm-card header p { margin: 2px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.sm-st { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.sm-st i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.sm-st.ok { background: var(--ok-soft); color: var(--ok); } .sm-st.warn { background: var(--warn-soft); color: var(--warn); }
+.sm-st.bad { background: var(--bad-soft); color: var(--bad); } .sm-st.off { background: var(--surface-2); color: var(--muted); }
+.sm-live { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13.5px; color: var(--fg-2); }
+.sm-live svg { color: var(--accent); flex: none; }
+.sm-notes { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+.sm-notes dt { color: var(--muted); } .sm-notes dd { margin: 0; font-weight: 600; }
+.sm-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sm-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); } .sm-form .wide, .sm-form .row { grid-column: 1 / -1; }
+.sm-card footer { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+.sm-ren { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sm-ren li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 14px; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+.sm-ren li em { font-style: normal; font-weight: 700; color: var(--muted); } .sm-ren li.warn em { color: var(--warn); } .sm-ren li.bad em { color: var(--bad); }
+@media (max-width: 640px) { .sm-form { grid-template-columns: 1fr; } .sm-ren li { grid-template-columns: 1fr auto; } }
+.st-nav a.st-nav-map { background: var(--fg); color: var(--surface); border-color: var(--fg); } .st-nav a.st-nav-map svg { color: #5EEAD4; }
