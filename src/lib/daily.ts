@@ -1,8 +1,8 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from './supabase/admin';
-import { SETTINGS_DEFAULTS, type Settings } from './constants';
-import { ilParts, todayIL } from './dates';
+import { SETTINGS_DEFAULTS, notifyList, type Settings } from './constants';
+import { dayNum, fromDayNum, ilParts, todayIL } from './dates';
 import { appUrl, sendMail } from './mail';
 import { loadAppointments } from './queries';
 import { released } from './types';
@@ -16,7 +16,7 @@ async function settingsOf(db: SupabaseClient): Promise<Settings> {
 }
 
 async function staffTo(db: SupabaseClient, s: Settings) {
-  if (s.notify_email) return [s.notify_email];
+  if (notifyList(s).length) return notifyList(s);
   const { data } = await db.from('profiles').select('email, role').in('role', ['doctor', 'admin']).eq('active', true);
   const rows = (data ?? []) as { email: string; role: string }[];
   const doctors = rows.filter((r) => r.role === 'doctor').map((r) => r.email);
@@ -30,7 +30,7 @@ async function waitingPayment(db: SupabaseClient, s: Settings) {
   return rows.filter((r) => r.status === 'done' && !released(r, gate));
 }
 
-/** The doctor's morning summary: today's schedule and what waits for him. Once a day. */
+/** The doctor's evening summary (21:00): tomorrow's schedule, what happened today and what waits for him. Once a day. */
 export async function sendDailyDigest(opts: { force?: boolean } = {}): Promise<{ ok: boolean; info: string }> {
   const db = createAdminClient();
   const s = await settingsOf(db);
@@ -44,9 +44,17 @@ export async function sendDailyDigest(opts: { force?: boolean } = {}): Promise<{
   const to = await staffTo(db, s);
   if (!to.length) return { ok: false, info: 'אין מייל לרופא' };
 
+  const tomorrow = fromDayNum(dayNum(today) + 1);
   const from = new Date(`${today}T00:00:00+02:00`).getTime() - 2 * 3600_000;
-  const day = await loadAppointments(db, { from: new Date(from).toISOString(), to: new Date(from + 30 * 3600_000).toISOString(), slotsOnly: true });
-  const todays = day.filter((r) => ilParts(r.starts_at).date === today && (r.status === 'booked' || r.status === 'draft' || r.status === 'done'));
+  const span = await loadAppointments(db, { from: new Date(from).toISOString(), to: new Date(from + 54 * 3600_000).toISOString(), slotsOnly: true });
+  const live = (r: { status: string }) => r.status === 'booked' || r.status === 'draft' || r.status === 'done';
+  const todays = span.filter((r) => ilParts(r.starts_at).date === tomorrow && live(r));
+  const seenToday = span.filter((r) => ilParts(r.starts_at).date === today && live(r)).length;
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const [{ count: newToday }, { count: paidToday }] = await Promise.all([
+    db.from('appointments').select('id', { count: 'exact', head: true }).gte('created_at', since),
+    db.from('payments').select('id', { count: 'exact', head: true }).gte('created_at', since),
+  ]);
   const [{ count: pending }, { count: moves }, waiting, { count: proofs }] = await Promise.all([
     db.from('appointments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     db.from('reschedule_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -54,7 +62,8 @@ export async function sendDailyDigest(opts: { force?: boolean } = {}): Promise<{
     db.from('appointments').select('id', { count: 'exact', head: true }).eq('status', 'done').not('pay_proof_at', 'is', null).is('payment_ok_at', null),
   ]);
   const d: DigestData = {
-    date: today,
+    date: tomorrow,
+    seenToday, newToday: newToday ?? 0, paidToday: paidToday ?? 0,
     today: todays.map((r) => ({ time: ilParts(r.starts_at).time, patient: r.patient_name, service: labelOf(r), referrer: r.firm_name || '', phone: r.mode === 'phone', caseNo: r.case_no })),
     pending: pending ?? 0,
     moves: moves ?? 0,
@@ -63,7 +72,7 @@ export async function sendDailyDigest(opts: { force?: boolean } = {}): Promise<{
     proofs: proofs ?? 0,
     link: `${appUrl()}/doctor`,
   };
-  if (!d.today.length && !d.pending && !d.moves && !d.waitingCount && !opts.force) return { ok: true, info: 'אין מה לדווח' };
+
   const r = await sendMail(db, null, kind, { to, ...dailyDigestEmail(s, d) });
   return r.ok ? { ok: true, info: 'נשלח' } : { ok: false, info: r.error || 'השליחה נכשלה' };
 }

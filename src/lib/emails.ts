@@ -437,32 +437,73 @@ export type DigestData = {
   date: string;
   today: { time: string; patient: string; service: string; referrer: string; phone: boolean; caseNo: number }[];
   pending: number; moves: number; waitingCount: number; waitingSum: number; proofs: number; link: string;
+  seenToday?: number; newToday?: number; paidToday?: number;
 };
 
-/** The doctor's morning summary. */
+/** The doctor's evening summary: tomorrow's schedule and what waits for him. */
 export function dailyDigestEmail(s: Settings, d: DigestData): Rendered {
   const n = d.today.length;
-  const subject = `היום במרפאה · ${n ? `${n} ${n === 1 ? 'תור' : 'תורים'}` : 'אין תורים'} · ${fmtDate(d.date)}`;
+  const subject = `סיכום יומי · מחר ${n ? `${n} ${n === 1 ? 'תור' : 'תורים'}` : 'אין תורים'} · ${fmtDate(d.date)}`;
   const tile = (v: string, l: string, warn = false) =>
     `<td style="width:25%;padding:4px"><div style="padding:12px 8px;border-radius:12px;background:${warn ? '#FFF8EB' : '#F6F8FB'};border:1px solid ${warn ? '#F5DDB0' : '#E3E8EF'};text-align:center"><div style="font-size:22px;font-weight:700;color:${warn ? '#7A4B0B' : ACCENT}">${v}</div><div style="font-size:12px;color:${MUTED}">${l}</div></div></td>`;
   const tiles = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>${
-    tile(String(n), 'תורים היום') + tile(String(d.pending), 'בקשות לאישור', d.pending > 0) + tile(String(d.waitingCount), 'ממתינים לתשלום', d.proofs > 0) + tile(d.waitingSum ? ils(d.waitingSum) : '0', 'יתרה לגבייה')}</tr></table>`;
+    tile(String(n), 'תורים מחר') + tile(String(d.pending), 'בקשות לאישור', d.pending > 0) + tile(String(d.waitingCount), 'ממתינים לתשלום', d.proofs > 0) + tile(d.waitingSum ? ils(d.waitingSum) : '0', 'יתרה לגבייה')}</tr></table>`;
   const rows = d.today.map((t) =>
     `<tr><td style="padding:10px 12px;border-bottom:1px solid #EEF1F5;font-weight:700;color:${ACCENT};white-space:nowrap;direction:ltr;text-align:right">${esc(t.time)}</td>` +
     `<td style="padding:10px 12px;border-bottom:1px solid #EEF1F5"><b style="color:${INK}">${esc(t.patient)}</b><br><span style="font-size:12.5px;color:${MUTED}">${esc(t.service)}${t.referrer ? ` · ${esc(t.referrer)}` : ''}${t.phone ? ' · שיחה טלפונית' : ''} · תיק ${t.caseNo}</span></td></tr>`).join('');
   const agenda = n
-    ? `<h2 style="margin:4px 0 8px;font-size:16px;color:${INK}">לוח הזמנים להיום</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border:1px solid #E3E8EF;border-radius:12px;border-collapse:separate;overflow:hidden">${rows}</table>`
-    : p('אין תורים היום.');
+    ? `<h2 style="margin:4px 0 8px;font-size:16px;color:${INK}">לוח הזמנים למחר</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border:1px solid #E3E8EF;border-radius:12px;border-collapse:separate;overflow:hidden">${rows}</table>`
+    : p('אין תורים מחר.');
   const todo = [
     d.pending ? `${d.pending} ${d.pending === 1 ? 'בקשת תור ממתינה' : 'בקשות תור ממתינות'} לאישור` : '',
     d.moves ? `${d.moves} ${d.moves === 1 ? 'בקשה' : 'בקשות'} לשינוי מועד` : '',
     d.proofs ? `${d.proofs} ${d.proofs === 1 ? 'אישור העברה ממתין' : 'אישורי העברה ממתינים'} לבדיקה שלך` : '',
   ].filter(Boolean);
-  const body = tiles + agenda + (todo.length ? `<h2 style="margin:4px 0 8px;font-size:16px;color:${INK}">מחכה לך</h2>` + list(todo) : '') +
+  const day = [d.seenToday ? `${d.seenToday} ביקורים היום` : '', d.newToday ? `${d.newToday} תיקים חדשים` : '', d.paidToday ? `${d.paidToday} תשלומים נרשמו` : ''].filter(Boolean);
+  const body = tiles + (day.length ? p(`<b>היום במרפאה:</b> ${day.map(esc).join(' · ')}`) : '') + agenda + (todo.length ? `<h2 style="margin:4px 0 8px;font-size:16px;color:${INK}">מחכה לך</h2>` + list(todo) : '') +
     `<div style="margin:10px 0">${button(d.link, 'כניסה ליומן')}</div>`;
   return {
     subject,
-    html: layout(s, { preheader: n ? `${n} תורים היום, הראשון ב־${d.today[0].time}` : 'סיכום הבוקר', title: `בוקר טוב · ${fmtDate(d.date)}`, body }),
+    html: layout(s, { preheader: n ? `מחר ${n} תורים, הראשון ב־${d.today[0].time}` : 'סיכום יומי', title: `סיכום יומי · מחר ${fmtDate(d.date)}`, body }),
     text: textOf([subject, ...d.today.map((t) => `${t.time} ${t.patient} · ${t.service}`), d.pending ? `בקשות לאישור: ${d.pending}` : '', d.waitingCount ? `ממתינים לתשלום: ${d.waitingCount}` : '', d.link]),
   };
+}
+
+/** To the doctor: a referrer cancelled an appointment (the attached calendar file removes it from the calendar). */
+export function cancelledStaffEmail(s: Settings, a: ApptInfo, link: string, by: string): Rendered {
+  const w = when(a.startsAt);
+  const subject = `תור בוטל · ${a.patientName} · ${w.label}`;
+  const body =
+    `<div style="margin:0 0 16px;padding:14px 16px;border-radius:12px;background:#FDF0EE;border:1px solid #F8C9C4;color:#9B1C12;font-size:16px;font-weight:700">✕ התור בוטל</div>` +
+    p(`<b>${esc(by)}</b> ביטלו את התור. השעה ביומן התפנתה, ואפשר לקבוע בה תור אחר.`) +
+    card([['מטופל', esc(a.patientName)], ['מועד שבוטל', esc(w.label)], ['סוג', esc(a.label || typeOf(a.type).label)], ['תיק', String(a.caseNo)]]) +
+    p('מצורף קובץ יומן: פתיחה שלו מסירה את התור מהיומן שלך.') +
+    `<div style="margin:6px 0 10px">${button(link, 'פתיחת התיק')}</div>`;
+  return { subject, html: layout(s, { preheader: `${a.patientName} · ${w.label}`, title: 'תור בוטל', body }), text: textOf([subject, `בוטל ע״י ${by}`, link]) };
+}
+
+/** To the doctor: a referrer asked to move an appointment. */
+export function rescheduleStaffEmail(s: Settings, a: ApptInfo, link: string, by: string, requested: string, reason: string): Rendered {
+  const from = when(a.startsAt), to = when(requested);
+  const subject = `בקשה לשינוי מועד · ${a.patientName}`;
+  const body =
+    p(`<b>${esc(by)}</b> מבקשים להעביר את התור של <b>${esc(a.patientName)}</b> למועד אחר. הבקשה ממתינה לאישור שלך.`) +
+    card([['המועד הנוכחי', esc(from.label)], ['המועד המבוקש', `<b>${esc(to.label)}</b>`], ...(reason ? ([['סיבה', esc(reason)]] as [string, string][]) : []), ['תיק', String(a.caseNo)]]) +
+    `<div style="margin:6px 0 10px">${button(link, 'לאישור או דחייה')}</div>`;
+  return { subject, html: layout(s, { preheader: `${from.label} ← ${to.label}`, title: 'בקשה לשינוי מועד', body }), text: textOf([subject, `${from.label} -> ${to.label}`, reason, link]) };
+}
+
+/** To the patient and the referrer: the clinic cancelled the appointment. */
+export function cancelledByClinicEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean; link?: string }): Rendered {
+  const w = when(a.startsAt);
+  const c = clinicOf(s);
+  const subject = `${a.phone ? 'השיחה' : 'התור'} בוטל · ${o.forReferrer ? `${a.patientName} · ` : ''}${w.label}`;
+  const body =
+    `<div style="margin:0 0 16px;padding:14px 16px;border-radius:12px;background:#FDF0EE;border:1px solid #F8C9C4;color:#9B1C12;font-size:16px;font-weight:700">✕ ${a.phone ? 'השיחה בוטלה' : 'התור בוטל'}</div>` +
+    p(o.forReferrer ? `המרפאה ביטלה את ${a.phone ? 'השיחה' : 'התור'} של <b>${esc(a.patientName)}</b> אצל ${esc(s.lh_name)}.` : `שלום ${esc(a.patientName)},<br>${a.phone ? 'השיחה' : 'התור'} שלך אצל ${esc(s.lh_name)} בוטל.`) +
+    card([['המועד שבוטל', esc(w.label)], ['סוג הביקור', esc(a.label || typeOf(a.type).label)], ...(o.forReferrer ? ([['תיק', String(a.caseNo)]] as [string, string][]) : [])]) +
+    p(`לקביעת מועד חדש${c.phone ? ` אפשר להתקשר למרפאה: <span dir="ltr">${esc(c.phone)}</span>, או` : ''} לקבוע באתר.`) +
+    p('מצורף קובץ יומן: פתיחה שלו מסירה את התור מהיומן.') +
+    (o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'קביעת מועד חדש')}</div>` : '');
+  return { subject, html: layout(s, { preheader: w.label, title: a.phone ? 'השיחה בוטלה' : 'התור בוטל', body }), text: textOf([subject, w.label, c.phone ? `טלפון: ${c.phone}` : '']) };
 }

@@ -3,12 +3,12 @@ import { createHash, randomBytes } from 'node:crypto';
 import { sendSms, smsEnabled, smsReminderText } from './sms';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from './supabase/admin';
-import { BUCKET, SETTINGS_DEFAULTS, ils, isPatientKind, type ReferralType, type Settings } from './constants';
+import { BUCKET, SETTINGS_DEFAULTS, notifyList, ils, isPatientKind, type ReferralType, type Settings } from './constants';
 import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, cancelledByClinicEmail, cancelledStaffEmail, rescheduleStaffEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
@@ -60,7 +60,7 @@ async function firmEmails(db: SupabaseClient, firmId: string, office?: string | 
 }
 
 async function staffEmails(db: SupabaseClient, s: Settings) {
-  if (s.notify_email) return [s.notify_email];
+  if (notifyList(s).length) return notifyList(s);
   const { data } = await db.from('profiles').select('email, role').in('role', ['doctor', 'admin']).eq('active', true);
   const rows = data ?? [];
   const doctors = rows.filter((r) => r.role === 'doctor').map((r) => r.email as string);
@@ -151,7 +151,9 @@ export async function notifyNewRequest(id: string): Promise<NotifyResult> {
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
   if (await alreadySent(db, id, 'new_request')) return { ok: true, sent: 0, info: 'כבר נשלח' };
   const m = newRequestEmail(s, info(a), caseLink(id, true), a.status === 'pending');
-  const r = await sendMail(db, id, 'new_request', { to: await staffEmails(db, s), ...m });
+  // a calendar file for the doctor's own calendar
+  const ics = icsFile(info(a), clinicOf(s), `doc-${a.id}@doctor-portal`, { doctor: true });
+  const r = await sendMail(db, id, 'new_request', { to: await staffEmails(db, s), ...m, attachments: [{ filename: 'הוספה ליומן.ics', content: ics, contentType: 'text/calendar; charset=utf-8; method=PUBLISH' }] });
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
 
@@ -418,4 +420,52 @@ export async function sendRx(rxId: string, emails: string[]): Promise<NotifyResu
   });
   if (r.ok) await db.from('prescriptions').update({ sent_at: new Date().toISOString() }).eq('id', rxId);
   return r.ok ? { ok: true, sent: to.length, info: `המרשם נשלח ל־${to.join(', ')}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
+}
+
+/** To the doctor: a referrer cancelled; the calendar file takes the appointment out of the doctor's calendar. */
+export async function notifyCancelled(id: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a || a.status !== 'cancelled') return { ok: false, sent: 0, info: '' };
+  if (await alreadySent(db, id, 'cancelled_staff')) return { ok: true, sent: 0, info: 'כבר נשלח' };
+  const ics = icsFile(info(a), clinicOf(s), `doc-${a.id}@doctor-portal`, { doctor: true, cancel: true });
+  const r = await sendMail(db, id, 'cancelled_staff', {
+    to: await staffEmails(db, s), ...cancelledStaffEmail(s, info(a), caseLink(id, true), a.firm?.name || 'המפנה'),
+    attachments: [{ filename: 'הסרה מהיומן.ics', content: ics, contentType: 'text/calendar; charset=utf-8; method=CANCEL' }],
+  });
+  return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
+}
+
+/** To the doctor: a referrer asked to move an appointment. */
+export async function notifyRescheduleRequest(id: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a) return { ok: false, sent: 0, info: '' };
+  const { data: rq } = await db.from('reschedule_requests').select('id, requested_starts_at, reason, created_at').eq('appointment_id', id).eq('status', 'pending').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (!rq || Date.now() - new Date(rq.created_at).getTime() > 15 * 60_000) return { ok: false, sent: 0, info: '' };
+  if (await alreadySent(db, id, `reschedule_${rq.id}`)) return { ok: true, sent: 0, info: 'כבר נשלח' };
+  const r = await sendMail(db, id, `reschedule_${rq.id}`, { to: await staffEmails(db, s), ...rescheduleStaffEmail(s, info(a), caseLink(id, true), a.firm?.name || 'המפנה', rq.requested_starts_at, rq.reason || '') });
+  return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
+}
+
+/** The clinic cancelled a confirmed appointment: tell the patient and the referrer, with a calendar file that removes it. */
+export async function sendClinicCancel(id: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a || a.status !== 'cancelled') return { ok: false, sent: 0, info: '' };
+  // only appointments whose summons went out (a declined request gets its own email)
+  if (!(await alreadySent(db, id, 'summons_firm')) && !(await alreadySent(db, id, 'summons_patient'))) return { ok: true, sent: 0, info: '' };
+  const ics = icsFile(info(a), clinicOf(s), `appt-${a.id}@doctor-portal`, { cancel: true });
+  const attachments = [{ filename: 'הסרה מהיומן.ics', content: ics, contentType: 'text/calendar; charset=utf-8; method=CANCEL' }];
+  const who = await audience(db, a);
+  let sent = 0;
+  if (who.patient.length && !(await alreadySent(db, id, 'cancel_patient'))) {
+    const r = await sendMail(db, id, 'cancel_patient', { to: who.patient, ...cancelledByClinicEmail(s, info(a), { forReferrer: false, link: `${appUrl()}/book` }), attachments });
+    if (r.ok) sent++;
+  }
+  if (who.referrer.length && !(await alreadySent(db, id, 'cancel_firm'))) {
+    const r = await sendMail(db, id, 'cancel_firm', { to: who.referrer, ...cancelledByClinicEmail(s, info(a), { forReferrer: true, link: `${appUrl()}/firm/book` }), attachments });
+    if (r.ok) sent++;
+  }
+  return { ok: true, sent, info: '' };
 }

@@ -57,7 +57,10 @@ export type Settings = {
   letter_requires_payment: boolean;
   invoice_item: string;
   require_approval: boolean;
+  /** the clinic's notification addresses, comma separated (empty = the doctor's account email) */
   notify_email: string;
+  /** the doctor's standing instructions for the AI, per document type ('all' applies to every document) */
+  ai_style: Partial<Record<'all' | ReferralType, string>>;
   bring_items: string;
   summons_note: string;
   reminders_on: boolean;
@@ -147,6 +150,7 @@ export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export const SETTINGS_DEFAULTS = {
   require_approval: true,
   notify_email: '',
+  ai_style: {},
   bring_items: 'תעודת זהות\nכל המסמכים הרפואיים הרלוונטיים, גם אם כבר הועלו למערכת\nרשימת תרופות עדכנית\nבדיקות הדמיה (דיסק או קישור לצפייה)',
   summons_note: '',
   reminders_on: true,
@@ -191,4 +195,9 @@ export function payLines(s: Pick<Settings, 'bank_details' | 'bit_phone' | 'pay_n
   const extra = lines.filter((l) => !bank.includes(l) && !/^(נא לבצע|יש לבצע|פרטי העברה|📢)/.test(l));
   const note = [String(s.pay_note || '').split('\n').map(plain).filter(Boolean).join('\n'), ...extra.filter((l) => !/^תודה/.test(l))].filter(Boolean).join('\n');
   return { bank, bit: plain(String(s.bit_phone || '')), note };
+}
+
+/** The clinic's notification addresses (the settings field may hold several, separated by commas). */
+export function notifyList(s: Pick<Settings, 'notify_email'>): string[] {
+  return [...new Set(String(s.notify_email || '').split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^@\s,]+@[^@\s,]+\.[^@\s,]+$/.test(e)))];
 }

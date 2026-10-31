@@ -2,7 +2,7 @@ import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { headers } from 'next/headers';
 import { createAdminClient } from './supabase/admin';
-import { EMAIL_RE, KIND, SETTINGS_DEFAULTS, type Settings } from './constants';
+import { EMAIL_RE, KIND, SETTINGS_DEFAULTS, notifyList, type Settings } from './constants';
 import { appUrl, mailEnabled, sendMail } from './mail';
 import { accountApprovedEmail, accountRejectedEmail, signupReceivedEmail, signupStaffEmail, resetLinkEmail } from './emails';
 
@@ -44,7 +44,7 @@ async function limited(db: ReturnType<typeof createAdminClient>, action: string,
 }
 
 async function staffEmails(db: ReturnType<typeof createAdminClient>, s: Settings) {
-  if (s.notify_email) return [s.notify_email];
+  if (notifyList(s).length) return notifyList(s);
   const { data } = await db.from('profiles').select('email, role').in('role', ['doctor', 'admin']).eq('active', true);
   return (data ?? []).map((r) => r.email as string);
 }

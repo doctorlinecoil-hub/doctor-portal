@@ -87,7 +87,7 @@ export function letterReadyText(a: ApptInfo, c: ClinicInfo) {
 }
 
 /** A calendar invite (.ics) for the appointment. */
-export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string) {
+export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string, o: { cancel?: boolean; doctor?: boolean } = {}) {
   const start = new Date(a.startsAt);
   const end = new Date(start.getTime() + a.minutes * 60000);
   const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -104,16 +104,18 @@ export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string) {
   };
   const desc = [`${(a.label || typeOf(a.type).label)} · תיק ${a.caseNo}`, bringList(c).length ? `מה להביא: ${bringList(c).join(', ')}` : '', c.phone ? `טלפון המרפאה: ${c.phone}` : ''].filter(Boolean).join('\n');
   return [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//doctor-portal//HE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//doctor-portal//HE', 'CALSCALE:GREGORIAN', o.cancel ? 'METHOD:CANCEL' : 'METHOD:PUBLISH',
     'BEGIN:VEVENT',
     `UID:${uid}`,
+    o.cancel ? 'STATUS:CANCELLED' : 'STATUS:CONFIRMED',
+    `SEQUENCE:${o.cancel ? 1 : 0}`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
-    `SUMMARY:${esc(`${a.phone ? 'שיחה טלפונית עם' : 'תור אצל'} ${c.name} – ${a.patientName}`)}`,
+    `SUMMARY:${esc(o.doctor ? `${o.cancel ? 'בוטל: ' : ''}${a.patientName} · ${a.label || typeOf(a.type).label}${a.phone ? ' (טלפוני)' : ''}` : `${o.cancel ? 'בוטל: ' : ''}${a.phone ? 'שיחה טלפונית עם' : 'תור אצל'} ${c.name} – ${a.patientName}`)}`,
     a.phone ? `LOCATION:${esc(`שיחה טלפונית${a.patientPhone ? ` (${a.patientPhone})` : ''}`)}` : c.address ? `LOCATION:${esc(c.address)}` : '',
     `DESCRIPTION:${esc(desc)}`,
-    'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', `DESCRIPTION:${esc('תזכורת לתור')}`, 'END:VALARM',
+    ...(o.cancel ? [] : ['BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', `DESCRIPTION:${esc('תזכורת לתור')}`, 'END:VALARM']),
     'END:VEVENT', 'END:VCALENDAR',
   ].filter(Boolean).map(fold).join('\r\n') + '\r\n';
 }

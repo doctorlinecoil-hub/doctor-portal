@@ -61,7 +61,7 @@ const STRUCT: Record<ReferralType, string> = {
 export type PromptInput = {
   letterType: ReferralType;
   exam: string;
-  settings: Pick<Settings, 'lh_name' | 'lh_titles' | 'lh_education'>;
+  settings: Pick<Settings, 'lh_name' | 'lh_titles' | 'lh_education'> & { ai_style?: Settings['ai_style'] };
   visitDate: string;
   patient: { name: string; idNumber: string; dob: string | null };
   firmName: string;
@@ -108,6 +108,7 @@ export function buildPrompt(p: PromptInput) {
     docs + skipped,
     p.visits?.length ? `ביקור חוזר: המטופל/ת ביקר/ה במרפאה בעבר בתאריכים: ${[...new Set(p.visits.map((v) => fmtDate(v.date)))].join(', ')}. ציין זאת במשפט אחד קצר בפתיחה בלבד, בדיוק בנוסח: "מוכר/ת לי מביקור קודם מתאריך DD.MM.YYYY" (ואם יש כמה: "מוכר/ת לי מביקורים קודמים מתאריך DD.MM.YYYY ומתאריך DD.MM.YYYY", כל התאריכים לפי הסדר). אל תפרט מה היה בביקורים הקודמים, מה נמצא או מה הומלץ בהם, ואל תציין את סוג הביקור, אלא אם הרופא ביקש זאת במפורש או סימן ״רקע מביקור קודם״.` : '',
     p.history?.length ? `הרופא ביקש לשלב את הרקע מהביקורים הקודמים. המסמכים מהביקורים הקודמים במרפאה:\n${p.history.map((h) => `--- ${h.label} מיום ${fmtDate(h.date)} ---\n${h.text}`).join('\n\n')}\nכתוב בתחילת גוף המסמך סעיף "רקע מביקורים קודמים:" שמסכם בקצרה ובעניינית (3–6 משפטים) את הרקע, הממצאים וההמלצות מהביקורים האלה, עם התאריכים, ואחריו המשך המסמך על הביקור הנוכחי.` : '',
+    styleOf(p.settings, p.letterType),
     p.instructions?.trim() ? `הנחיות הרופא לניסוח הזה (חשובות מאוד; כשיש סתירה הן גוברות על המבנה):\n"""\n${p.instructions.trim()}\n"""` : '',
     p.length && LENGTH[p.length] ? LENGTH[p.length] : '',
     p.intake ? `סיכום מקדים של התיק שהוכן בסריקה אוטומטית (עזר בלבד – המקור הקובע הוא המסמכים עצמם):\n"""\n${p.intake}\n"""` : '',
@@ -190,10 +191,11 @@ const REFINE: Record<RefineAction, string> = {
 };
 
 /** Rewrite an existing letter body by the doctor's request. Returns only the new body. */
-export function buildRefinePrompt(p: { action: RefineAction; body: string; instructions?: string; letterType: ReferralType; doctor: string }) {
+export function buildRefinePrompt(p: { action: RefineAction; body: string; instructions?: string; letterType: ReferralType; doctor: string; style?: Settings['ai_style'] }) {
   return [
     `אתה עורך מסמכים רפואיים בכיר. לפניך גוף של ${typeOf(p.letterType).label} שכתב ${p.doctor}. המשימה:`,
     REFINE[p.action],
+    styleOf({ ai_style: p.style }, p.letterType),
     p.instructions?.trim() ? `הנחיות הרופא (חשובות מאוד):\n"""\n${p.instructions.trim()}\n"""` : '',
     `כללים:
 1. אל תמציא עובדות, ממצאים, תאריכים, מינונים, אבחנות או אחוזי נכות שלא מופיעים במסמך או בהנחיות.
@@ -203,4 +205,12 @@ export function buildRefinePrompt(p: { action: RefineAction; body: string; instr
 5. החזר רק את גוף המסמך המעודכן, בלי הקדמה, בלי הסבר ובלי שורות "לכבוד" או "הנדון".`,
     `גוף המסמך:\n"""\n${p.body}\n"""`,
   ].filter(Boolean).join('\n\n');
+}
+
+/** The doctor's standing instructions for the AI (settings): for every document, and for this document type. */
+function styleOf(s: { ai_style?: Partial<Record<string, string>> } | undefined, type: string) {
+  const all = s?.ai_style?.all?.trim();
+  const own = s?.ai_style?.[type]?.trim();
+  if (!all && !own) return '';
+  return `הנחיות הקבועות של הרופא לסגנון הכתיבה (חשובות מאוד; פועלים לפיהן בכל ניסוח, אלא אם ההנחיות לניסוח הזה אומרות אחרת):\n"""\n${[all, own].filter(Boolean).join('\n')}\n"""`;
 }

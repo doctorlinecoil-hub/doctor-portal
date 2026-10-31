@@ -1,7 +1,7 @@
 import 'server-only';
 import { gzipSync } from 'node:zlib';
 import { createAdminClient } from './supabase/admin';
-import { SETTINGS_DEFAULTS, type Settings } from './constants';
+import { SETTINGS_DEFAULTS, type Settings, notifyList } from './constants';
 import { appUrl, sendMail } from './mail';
 import { backupEmail } from './emails';
 import { ilParts, todayIL } from './dates';
@@ -48,8 +48,9 @@ export async function sendBackup(opts: { force?: boolean } = {}): Promise<{ ok: 
   const { data: s0 } = await db.from('settings').select('*').eq('id', 1).single();
   const s = { ...SETTINGS_DEFAULTS, ...(s0 as Settings) } as Settings;
   const { data: admins } = await db.from('profiles').select('email').eq('role', 'admin').eq('active', true);
-  const to = ((admins as { email: string }[] | null) ?? []).map((a) => a.email).filter(Boolean);
-  if (!to.length) return { ok: false, info: 'אין מנהל עם מייל' };
+  // the system admin, and the doctor's notification addresses (so a copy of everything is always in his mailbox)
+  const to = [...new Set([...((admins as { email: string }[] | null) ?? []).map((a) => a.email), ...notifyList(s)].filter(Boolean).map((e) => e.toLowerCase()))];
+  if (!to.length) return { ok: false, info: 'אין כתובת מייל לגיבוי' };
 
   const data: Record<string, Record<string, unknown>[]> = {};
   for (const [t, cols] of TABLES) data[t] = await all(db, t, cols);
