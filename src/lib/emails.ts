@@ -508,6 +508,28 @@ export function cancelledByClinicEmail(s: Settings, a: ApptInfo, o: { forReferre
   return { subject, html: layout(s, { preheader: w.label, title: a.phone ? 'השיחה בוטלה' : 'התור בוטל', body }), text: textOf([subject, w.label, c.phone ? `טלפון: ${c.phone}` : '']) };
 }
 
+/** To the patient and the referrer: the clinic moved the appointment to a new time. */
+export function movedEmail(s: Settings, a: ApptInfo, oldStart: string, o: { forReferrer: boolean; link?: string }): Rendered {
+  const w = when(a.startsAt), was = when(oldStart);
+  const c = clinicOf(s);
+  const what = a.phone ? 'השיחה' : 'התור';
+  const subject = `עדכון מועד ${a.phone ? 'השיחה' : 'התור'} · ${o.forReferrer ? `${a.patientName} · ` : ''}${w.label}`;
+  const body =
+    `<div style="margin:0 0 16px;padding:14px 16px;border-radius:12px;background:#FFF7E6;border:1px solid #F5D9A0;color:#8A5300;font-size:16px;font-weight:700">↻ מועד ${what} עודכן</div>` +
+    p(o.forReferrer ? `המרפאה העבירה את ${what} של <b>${esc(a.patientName)}</b> אצל ${esc(s.lh_name)} למועד חדש.` : `שלום ${esc(a.patientName)},<br>${what} שלך אצל ${esc(s.lh_name)} הועבר למועד חדש.`) +
+    card([
+      ['המועד החדש', `<b style="font-size:17px">${esc(w.label)}</b>`],
+      ['במקום', `<span style="text-decoration:line-through;color:${MUTED}">${esc(was.label)}</span>`],
+      a.phone ? ['סוג הפגישה', '<b>שיחה טלפונית</b>'] : ['כתובת', esc(c.address || '—')],
+      ['סוג הביקור', esc(a.label || typeOf(a.type).label)],
+      ...(o.forReferrer ? ([['תיק', String(a.caseNo)]] as [string, string][]) : []),
+    ]) +
+    (!a.phone && c.address ? `<div style="margin:0 0 14px">${button(wazeLink(c.address), 'ניווט ב־Waze')}${button(mapsLink(c.address), 'Google Maps', false)}</div>` : '') +
+    p(`מצורף קובץ יומן מעודכן: פתיחה שלו מעבירה את ${what} ביומן למועד החדש.${c.phone ? ` אם המועד לא מתאים: <span dir="ltr">${esc(c.phone)}</span>.` : ''}`) +
+    (o.forReferrer && o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'צפייה בתיק')}</div>` : '');
+  return { subject, html: layout(s, { preheader: `${was.label} ← ${w.label}`, title: `מועד ${what} עודכן`, body }), text: textOf([subject, `המועד החדש: ${w.label}`, `במקום: ${was.label}`, c.phone ? `טלפון: ${c.phone}` : '']) };
+}
+
 /** A one-time sign-in code (and a one-click sign-in link). */
 export function loginCodeEmail(s: Settings, name: string, code: string, link: string): Rendered {
   const subject = `קוד כניסה: ${code} · ${s.lh_name}`;

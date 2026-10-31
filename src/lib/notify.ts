@@ -8,7 +8,7 @@ import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, cancelledByClinicEmail, cancelledStaffEmail, rescheduleStaffEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, cancelledByClinicEmail, movedEmail, cancelledStaffEmail, rescheduleStaffEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
@@ -485,4 +485,28 @@ export async function sendClinicCancel(id: string): Promise<NotifyResult> {
     if (r.ok) sent++;
   }
   return { ok: true, sent, info: '' };
+}
+
+/** The clinic moved an appointment: the patient and the referrer get the new time and a calendar file that updates it. */
+export async function sendMoved(id: string, oldStart: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a || !['booked', 'draft', 'pending'].includes(a.status)) return { ok: false, sent: 0, info: '' };
+  // SEQUENCE grows with the time, so the calendar takes the newer one
+  const seq = Math.max(2, Math.floor(Date.now() / 1000) - 1_700_000_000);
+  const ics = icsFile(info(a), clinicOf(s), `appt-${a.id}@doctor-portal`, { seq });
+  const attachments = [{ filename: 'עדכון ביומן.ics', content: ics, contentType: 'text/calendar; charset=utf-8; method=PUBLISH' }];
+  const who = await audience(db, a);
+  const tag = `moved_${Date.now()}`;
+  let sent = 0;
+  const errors: string[] = [];
+  if (who.patient.length) {
+    const r = await sendMail(db, id, `${tag}_p`, { to: who.patient, ...movedEmail(s, info(a), oldStart, { forReferrer: false }), attachments });
+    if (r.ok) sent++; else if (r.error) errors.push(r.error);
+  }
+  if (who.referrer.length) {
+    const r = await sendMail(db, id, `${tag}_f`, { to: who.referrer, ...movedEmail(s, info(a), oldStart, { forReferrer: true, link: caseLink(id, false) }), attachments });
+    if (r.ok) sent++; else if (r.error) errors.push(r.error);
+  }
+  return { ok: sent > 0, sent, info: errors[0] || (who.patient.length ? '' : 'למטופל אין מייל') };
 }

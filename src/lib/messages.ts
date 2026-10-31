@@ -87,7 +87,7 @@ export function letterReadyText(a: ApptInfo, c: ClinicInfo) {
 }
 
 /** A calendar invite (.ics) for the appointment. */
-export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string, o: { cancel?: boolean; doctor?: boolean } = {}) {
+export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string, o: { cancel?: boolean; doctor?: boolean; seq?: number } = {}) {
   const start = new Date(a.startsAt);
   const end = new Date(start.getTime() + a.minutes * 60000);
   const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -108,7 +108,7 @@ export function icsFile(a: ApptInfo, c: ClinicInfo, uid: string, o: { cancel?: b
     'BEGIN:VEVENT',
     `UID:${uid}`,
     o.cancel ? 'STATUS:CANCELLED' : 'STATUS:CONFIRMED',
-    `SEQUENCE:${o.cancel ? 1 : 0}`,
+    `SEQUENCE:${o.seq ?? (o.cancel ? 1 : 0)}`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
