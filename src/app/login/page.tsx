@@ -10,7 +10,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <AuthFrame>
       <div className="panel">
-        <div><h1>כניסה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>כניסה עם המייל והסיסמה שלכם</p></div>
+        <div><h1>כניסה למערכת</h1><p className="muted" style={{ marginTop: 4 }}>כניסה עם סיסמה, או עם קוד שנשלח למייל</p></div>
+        {e === 'link' && <div className="callout bad"><div>הקישור מהמייל כבר שומש או שפג תוקפו. בקשו קוד חדש.</div></div>}
         {e === 'noaccess' && <div className="callout bad"><div>לחשבון הזה אין גישה למערכת. פנו למרפאה.</div></div>}
         <LoginForm />
       </div>
