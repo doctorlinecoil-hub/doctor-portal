@@ -363,55 +363,119 @@ export function FirmCaseView({ c, notes, docs, payments, paid, letter, actions, 
   c: CaseDetail; notes: NoteRow[]; docs: DocRow[]; payments: PaymentRow[]; paid: number;
   letter: { ready: boolean; awaitingPayment: boolean; finalizedAt: string | null }; actions: React.ReactNode; forward?: React.ReactNode; payBox?: React.ReactNode;
 }) {
-  const incomplete = !c.details_at && c.status !== 'cancelled';
+  const p = ilParts(c.starts_at);
+  const a = age(c.patient_dob);
+  const cancelled = c.status === 'cancelled';
+  const done = c.status === 'done';
+  // details are still missing only while the visit is ahead (a finished case is never "waiting for details")
+  const incomplete = !c.details_at && !cancelled && !done;
+  // where the case stands: request → approved → visit → document ready → released
+  const steps = ['בקשה נשלחה', 'התור אושר', 'הביקור', 'המסמך מוכן', 'נשלח אליכם'];
+  const at = cancelled ? -1 : letter.ready ? 4 : done ? 3 : c.status === 'draft' ? 2 : c.status === 'booked' ? 1 : 0;
+  const when = c.walk_in ? fmtDate(p.date) : `${fmtDay(p.date)} · ${p.time}`;
+
+  // the one thing to do (or know) now
+  let next: React.ReactNode = null;
+  if (cancelled) {
+    next = (
+      <div className="fcv-next bad">
+        <span className="fcv-next-ic"><Icon name="x" /></span>
+        <div><b>{c.decline_reason ? 'הבקשה לא אושרה' : 'התור בוטל'}</b><small>{c.decline_reason || 'אפשר לקבוע מועד חדש בכל עת.'}</small></div>
+        <a className="btn btn-primary" href="/firm/book"><Icon name="calendarPlus" />מועד חדש</a>
+      </div>
+    );
+  } else if (letter.ready) {
+    next = (
+      <div className="fcv-next ok">
+        <span className="fcv-next-ic"><Icon name="fileCheck" /></span>
+        <div><b>המסמך של הרופא מוכן</b><small>{letter.finalizedAt ? `נחתם ${fmtStamp(letter.finalizedAt)} · ` : ''}נשלח גם אליכם במייל כ־PDF.</small></div>
+        <div className="fcv-next-a">
+          <a className="btn btn-primary" href={`/letters/${c.id}/pdf`} download><Icon name="download" size={16} />הורדת PDF</a>
+          <a className="btn" href={`/letters/${c.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={16} />צפייה</a>
+          {forward}
+        </div>
+      </div>
+    );
+  } else if (letter.awaitingPayment) {
+    next = (
+      <div className="fcv-next warn">
+        <span className="fcv-next-ic"><Icon name="wallet" /></span>
+        <div><b>המסמך מוכן · ממתין לתשלום</b><small>אחרי ההעברה העלו כאן את צילום האישור. מיד כשהמרפאה תאשר, המסמך ייפתח להורדה ויישלח אליכם במייל.</small></div>
+      </div>
+    );
+  } else if (incomplete) {
+    next = (
+      <div className="fcv-next warn">
+        <span className="fcv-next-ic"><Icon name="upload" /></span>
+        <div><b>נשאר להשלים את התיק</b><small>מעלים מסמכים, והמערכת ממלאת לבד את פרטי המטופל. הרופא מקבל את התיק אחרי השלב הזה.</small></div>
+        <a className="btn btn-primary" href={`/firm/cases/${c.id}/details`}><Icon name="sparkles" />השלמת התיק</a>
+      </div>
+    );
+  } else if (c.status === 'pending') {
+    next = (
+      <div className="fcv-next">
+        <span className="fcv-next-ic"><Icon name="clock" /></span>
+        <div><b>ממתין לאישור הרופא</b><small>מיד אחרי האישור יישלח זימון במייל{c.patient_email ? ' לכם ולמטופל' : ' אליכם'}.</small></div>
+      </div>
+    );
+  } else if (c.status === 'booked' || c.status === 'draft') {
+    next = (
+      <div className="fcv-next ok">
+        <span className="fcv-next-ic"><Icon name="checkCircle" /></span>
+        <div><b>{c.status === 'booked' ? 'התור מאושר' : 'הרופא עובד על המסמך'}</b><small>{c.status === 'booked' ? `${when}${c.mode === 'phone' ? ' · הרופא יתקשר למטופל' : ''}. תזכורת תישלח לפני המועד.` : 'תקבלו הודעה ומייל ברגע שהמסמך מוכן.'}</small></div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <PageHead title="" crumbs={[{ href: '/firm/cases', label: 'התיקים שלי' }]} />
-      <CaseHero c={c} />
-      {incomplete && (
-        <section className="complete-bar">
-          <span className="complete-ic"><Icon name="upload" /></span>
-          <div><b>התור נשמר. נשאר להעלות מסמכים ולאשר את פרטי המטופל</b><span>המערכת קוראת את הפרטים מהמסמכים וממלאת בשבילכם. הרופא מקבל את התיק רק אחרי השלב הזה.</span></div>
-          <a className="btn btn-primary" href={`/firm/cases/${c.id}/details`}><Icon name="sparkles" />השלמת התיק</a>
-        </section>
-      )}
-      {c.status === 'pending' && !incomplete && (
-        <div className="callout warn"><div><Icon name="clock" />הבקשה ממתינה לאישור הרופא. מיד אחרי האישור יישלח זימון במייל{c.patient_email ? ' לכם ולמטופל' : ' אליכם'}.</div></div>
-      )}
-      {c.status === 'cancelled' && c.decline_reason && (
-        <div className="callout bad"><div><Icon name="x" />הבקשה לא אושרה: {c.decline_reason}</div><a className="btn" href="/firm/book"><Icon name="calendarPlus" />בחירת מועד אחר</a></div>
-      )}
-      {payBox}
-      <RequestsCallout notes={notes} />
-      {letter.ready && (
-        <div className="callout">
-          <div><Icon name="checkCircle" />המכתב של הרופא מוכן{letter.finalizedAt ? ` · ${fmtStamp(letter.finalizedAt)}` : ''}</div>
-          <div className="row" style={{ gap: 8 }}>
-            <a className="btn btn-ok" href={`/letters/${c.id}/pdf`} download><Icon name="download" size={16} />הורדת PDF</a>
-            <a className="btn" href={`/letters/${c.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={16} />צפייה</a>
-            {forward}
+    <div className="fcv">
+      <a className="fcv-back" href="/firm/cases"><Icon name="chevron" size={15} />התיקים שלי</a>
+      <section className="fcv-hero">
+        <div className="fcv-id">
+          <span className="fcv-k">תיק <span className="num">{c.case_no}</span> · {labelOf(c)}</span>
+          <h1>{c.patient_name || 'פרטי המטופל עוד לא הושלמו'}</h1>
+          <div className="fcv-facts">
+            <span><Icon name="calendar" size={15} />{when}</span>
+            {c.mode === 'phone' && <span><Icon name="phone" size={15} />שיחה טלפונית</span>}
+            {c.patient_id_number && <span><Icon name="idcard" size={15} /><span className="num">{c.patient_id_number}</span></span>}
+            {a != null && <span><Icon name="cake" size={15} />גיל {a}</span>}
           </div>
         </div>
-      )}
-      {letter.awaitingPayment && (
-        <div className="callout warn"><div><Icon name="clock" /><b>המסמך מוכן · ממתין לתשלום.</b> הוא ייפתח כאן להורדה וישלח אליכם במייל מיד אחרי שהמרפאה תאשר את התשלום.</div></div>
-      )}
-      <div className="cols-side">
+        {!cancelled && (
+          <ol className="fcv-steps" aria-label="מצב התיק">
+            {steps.map((t, i) => <li key={t} className={i < at ? 'past' : i === at ? 'now' : ''}><i>{i < at ? <Icon name="check" size={12} /> : i + 1}</i><span>{t}</span></li>)}
+          </ol>
+        )}
+      </section>
+
+      {next}
+      <RequestsCallout notes={notes} />
+      {payBox}
+
+      <div className="fcv-grid">
         <div className="stack">
-          <NotesPanel notes={c.notes} extra={notes} />
           <DocsPanel docs={docs} />
+          <NotesPanel notes={c.notes} extra={notes} />
           {actions}
         </div>
-        <div className="stack">
+        <aside className="stack">
+          <section className="panel fcv-pt">
+            <div className="panel-head"><h2><Icon name="user" />פרטי המטופל</h2>{c.details_at && !done && !cancelled && <a className="btn btn-sm btn-ghost" href={`/firm/cases/${c.id}/details`}>עריכה</a>}</div>
+            <dl>
+              <dt>שם</dt><dd>{c.patient_name || '—'}</dd>
+              <dt>ת.ז.</dt><dd className="num">{c.patient_id_number || '—'}</dd>
+              <dt>טלפון</dt><dd className="num" dir="ltr">{c.patient_phone || '—'}</dd>
+              <dt>מייל</dt><dd dir="ltr">{c.patient_email || '—'}</dd>
+              {c.patient_dob && <><dt>תאריך לידה</dt><dd className="num">{fmtDate(c.patient_dob)}</dd></>}
+            </dl>
+          </section>
           {payments.length > 0 && <PaymentSummary price={c.price} paid={paid} payer={c.payer} payments={payments} />}
-          <section className="panel">
-            <div className="panel-head"><h2><Icon name="calendarPlus" />זימון נוסף למטופל</h2></div>
-            <p className="muted">צריך ביקור נוסף או מסמך נוסף לאותו מטופל? קובעים תור חדש בכמה קליקים.</p>
+          <section className="panel fcv-more">
             <a className="btn btn-primary" href="/firm/book"><Icon name="calendarPlus" />זימון חדש</a>
             <a className="btn btn-ghost" href={`/firm/cases?open=${c.id}`}><Icon name="list" />כל ההפניות של המטופל</a>
           </section>
-        </div>
+        </aside>
       </div>
-    </>
+    </div>
   );
 }
