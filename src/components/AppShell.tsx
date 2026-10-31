@@ -26,6 +26,7 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
   return [doctor, { title: 'ניהול', items: [
     { href: '/admin/users', label: 'מפנים ומשתמשים', icon: 'users' },
     { href: '/admin', label: 'הגדרות', icon: 'settings' },
+    { href: '/admin/system', label: 'מפת המערכת', icon: 'activity' },
   ] }];
 }
 
