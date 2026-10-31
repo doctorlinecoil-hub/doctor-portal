@@ -27,7 +27,7 @@ const EMPTY_PT = { name: '', idNumber: '', dob: '', phone: '', email: '' };
  * The public booking page, one step at a time:
  * 1. what is needed  2. date and time  3. documents (read automatically)  4. check the details found, emails, send.
  */
-export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true, preselect, embedded }: {
+export default function PublicBooking({ open, clinic, services, slots, code, firm, demo, phoneOk = true, preselect, embedded, initialSlot }: {
   open: boolean; clinic: { name: string; address: string; phone: string; needsApproval: boolean };
   services: Service[]; slots: DaySlots[]; code: string; firm: { name: string; kind: string } | null;
   /** the design previews only: open on a given step */
@@ -37,15 +37,19 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
   preselect?: string;
   /** inside an office's portal: no page header, links back to the portal */
   embedded?: boolean;
+  /** a time chosen on the dashboard: skip straight past the calendar */
+  initialSlot?: string;
 }) {
   const [mode, setMode] = useState<Mode>('clinic');
   const pre = preselect ? services.find((x) => x.id === preselect) ?? null : null;
-  const [step, setStep] = useState(demo?.step ?? (services.length === 1 || pre ? 2 : 1));
+  const preDay = initialSlot ? slots.find((d) => d.times.some((t) => t.iso === initialSlot)) : undefined;
+  const preSlot = preDay ? initialSlot! : null;
+  const [step, setStep] = useState(demo?.step ?? (services.length === 1 || pre ? (preSlot ? 3 : 2) : 1));
   const [svc, setSvc] = useState<Service | null>(demo ? services[0] : pre ?? (services.length === 1 ? services[0] : null));
   const [taken, setTaken] = useState<Set<string>>(new Set());
   const visible = useMemo(() => slots.map((d) => ({ ...d, times: d.times.filter((t) => !taken.has(t.iso)) })).filter((d) => d.times.length), [slots, taken]);
-  const [day, setDay] = useState<string | null>(visible[0]?.date ?? null);
-  const [slot, setSlot] = useState<string | null>(demo && demo.step > 2 ? slots[0]?.times[1]?.iso ?? null : null);
+  const [day, setDay] = useState<string | null>(preDay?.date ?? visible[0]?.date ?? null);
+  const [slot, setSlot] = useState<string | null>(demo && demo.step > 2 ? slots[0]?.times[1]?.iso ?? null : preSlot);
 
   const [files, setFiles] = useState<File[]>([]);
   const [fileErr, setFileErr] = useState('');
@@ -308,7 +312,7 @@ export default function PublicBooking({ open, clinic, services, slots, code, fir
             {firm && <div className="pbw-note ok"><Icon name="briefcase" /><div>קביעת תור עבור <b>{firm.name}</b></div></div>}
             <h2 className="pbw-h" style={{ marginTop: firm ? 0 : 22 }}>במה הרופא יכול לעזור?</h2>
             <p className="pbw-lead">בחרו את סוג השירות. בשלב הבא בוחרים מועד.</p>
-            <ServicePicker services={services} value={svc?.id ?? null} onChange={(s) => { setSvc(s); setTimeout(() => go(2), 180); }} />
+            <ServicePicker services={services} value={svc?.id ?? null} onChange={(s) => { setSvc(s); setTimeout(() => go(slot ? 3 : 2), 180); }} />
           </div>
         )}
 
