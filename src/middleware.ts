@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_PATHS = ['/login', '/auth/confirm', '/auth/verify', '/setup', '/book', '/brand', '/register', '/forgot', '/terms', '/privacy', '/accessibility', '/pay', '/lawyers', '/patients', '/sitemap.xml', '/contact', ...(process.env.PREVIEW === '1' ? ['/preview'] : [])];
+const PUBLIC_PATHS = ['/login', '/auth/confirm', '/auth/verify', '/setup', '/book', '/brand', '/register', '/forgot', '/terms', '/privacy', '/accessibility', '/pay', '/d', '/lawyers', '/patients', '/sitemap.xml', '/contact', ...(process.env.PREVIEW === '1' ? ['/preview'] : [])];
 
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
