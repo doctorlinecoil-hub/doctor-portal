@@ -256,3 +256,20 @@ export async function moveAppointment(id: string, startsAt: string, notify = tru
   revalidatePath('/doctor/calendar');
   return { ok: true, info };
 }
+
+/** A document the doctor opened and decided not to make: removed, so it never counts anywhere. */
+export async function discardDraft(id: string): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const admin = createAdminClient();
+  const { data: a } = await admin.from('appointments').select('id, provisional').eq('id', id).maybeSingle();
+  if (!a) return { ok: false, error: 'התיק לא נמצא.' };
+  if (!a.provisional) return { ok: false, error: 'המסמך כבר הונפק, ולכן לא נמחק. אפשר לבטל את התיק.' };
+  const { data: docs } = await admin.from('documents').select('storage_path').eq('appointment_id', id);
+  const { error } = await admin.from('appointments').delete().eq('id', id).eq('provisional', true);
+  if (error) return { ok: false, error: `המחיקה נכשלה: ${error.message}` };
+  const paths = ((docs ?? []) as { storage_path: string }[]).map((d) => d.storage_path).filter(Boolean);
+  if (paths.length) await admin.storage.from(BUCKET).remove(paths).catch(() => undefined);
+  revalidatePath('/doctor');
+  return { ok: true };
+}

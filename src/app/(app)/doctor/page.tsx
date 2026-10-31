@@ -15,6 +15,8 @@ import { CalendarView, monthGridStart, weekStart, type BlockRow } from '@/views/
 import { BlockForm, FreeSlot, RemoveBlock } from './calendar/CalendarTools';
 import { QuickBookProvider } from './calendar/QuickBook';
 import { SERVICE_COLS, type Service } from '@/lib/services';
+import Link from 'next/link';
+import DiscardDraft from './cases/[id]/DiscardDraft';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -96,11 +98,26 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
       </QuickBookProvider>
     );
   }
+  // documents opened without an appointment and not issued yet: not counted anywhere, listed here to finish or drop
+  const { data: drafts } = await supabase.from('appointments').select('id, patient_name, service_label, created_at').eq('provisional', true).neq('status', 'cancelled').order('created_at', { ascending: false }).limit(8);
   const { data: depRows } = await supabase.from('appointments').select('id, deposit_amount, deposit_paid_at, deposit_proof_at').eq('status', 'pending').gt('deposit_amount', 0);
   const deposits: Record<string, DepositState> = Object.fromEntries((depRows ?? []).map((d) => [d.id, { amount: Number(d.deposit_amount), paid: !!d.deposit_paid_at, proof: !!d.deposit_proof_at }]));
   return (
     <>
     <LiveRefresh />
+    {(drafts ?? []).length > 0 && (
+      <section className="pv-strip" aria-label="מסמכים שלא הושלמו">
+        <b>מסמכים שהתחלת ולא הונפקו</b><small>הם לא נספרים במערכת עד שמסיימים אותם</small>
+        <ul>
+          {(drafts as { id: string; patient_name: string; service_label: string | null; created_at: string }[]).map((x) => (
+            <li key={x.id}>
+              <Link href={`/doctor/cases/${x.id}#letter`}><b>{x.patient_name || 'ללא שם'}</b> · {x.service_label || 'מסמך'} · {fmtDate(ilParts(x.created_at).date)}</Link>
+              <DiscardDraft appointmentId={x.id} banner={false} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
     <DoctorAgendaView
       share={<ShareLink path="/book" compact title="קישור לקביעת תור למפנים ולמטופלים" />}
       rows={rows}
