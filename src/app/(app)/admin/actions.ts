@@ -347,8 +347,14 @@ export async function resetTestData(confirm: string): Promise<Result & { cases?:
     paths.push(...((data as { storage_path: string }[] | null) ?? []).map((d) => d.storage_path));
     if (!data || data.length < 1000) break;
   }
+  // the referrers' sign-in accounts (their profiles go with the data below)
+  const { data: firmUsers } = await admin.from('profiles').select('id').eq('role', 'firm');
   const { data, error } = await supabase.rpc('reset_test_data');
-  if (error) return { ok: false, error: error.message.includes('FORBIDDEN') ? 'אין הרשאה.' : 'האיפוס נכשל.' };
+  if (error) {
+    console.error('reset_test_data', error);
+    return { ok: false, error: error.message.includes('FORBIDDEN') ? 'אין הרשאה (נדרשת כניסה עם אימות דו־שלבי).' : `האיפוס נכשל: ${error.message}` };
+  }
+  for (const u of (firmUsers as { id: string }[] | null) ?? []) await admin.auth.admin.deleteUser(u.id).catch(() => undefined);
   for (let i = 0; i < paths.length; i += 100) await admin.storage.from(BUCKET).remove(paths.slice(i, i + 100)).catch(() => undefined);
   revalidatePath('/', 'layout');
   const r = (data ?? {}) as { cases?: number; referrers?: number };
