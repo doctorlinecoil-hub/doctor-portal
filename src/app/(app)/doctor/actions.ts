@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { dbError, type PayMethod } from '@/lib/constants';
 import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
+import { deliverLetter, sendClinicCancel, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
 
 type Result = { ok: boolean; error?: string; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -199,4 +199,12 @@ export async function setDueAmount(id: string, amount: number): Promise<Result> 
   const paid = ((pays as { amount: number }[] | null) ?? []).reduce((x, p) => x + Number(p.amount), 0);
   const { error } = await c.supabase.from('appointments').update({ price: Math.round((paid + due) * 100) / 100 }).eq('id', id);
   return error ? { ok: false, error: dbError(error) } : { ok: true };
+}
+
+/** After the doctor cancelled: the patient and the referrer are told by email. */
+export async function afterClinicCancel(id: string): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const r = await sendClinicCancel(id);
+  return { ok: true, info: r.sent ? 'נשלחה הודעה על הביטול למטופל ולמפנה' : '' };
 }
