@@ -24,6 +24,8 @@ export async function GET(req: Request) {
   }
   if (!ok) return new Response('unauthorized', { status: 401 });
   const r = await runTick();
+  // heartbeat for the system map
+  await createAdminClient().from('settings').update({ last_tick: new Date().toISOString() }).eq('id', 1);
   const minute = new Date().getUTCMinutes();
   const tmpRemoved = minute < 10 ? await cleanupTmpUploads().catch(() => -1) : 0;
   // every evening at 21:00 (Israel time): the backup and the doctor's daily summary, once each
