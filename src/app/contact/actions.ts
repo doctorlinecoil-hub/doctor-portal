@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { SETTINGS_DEFAULTS, type Settings } from '@/lib/constants';
+import { SETTINGS_DEFAULTS, notifyList, type Settings } from '@/lib/constants';
 import { sendMail } from '@/lib/mail';
 import { callbackStaffEmail } from '@/lib/emails';
 
@@ -44,7 +44,7 @@ export async function requestCallback(input: { name: string; phone: string; kind
   if (staff?.length) {
     await db.from('notifications').insert(staff.map((p) => ({ user_id: p.id, kind: 'callback', title: `לחזור אל ${name}`, body: `${kind} · ${phone}${note ? ` · ${note}` : ''}`.slice(0, 500), link: '/doctor' })));
   }
-  const to = s.notify_email ? [s.notify_email] : (staff ?? []).map((p) => p.email as string);
+  const to = notifyList(s).length ? notifyList(s) : (staff ?? []).map((p) => p.email as string);
   if (to.length) await sendMail(db, null, 'callback', { to, ...callbackStaffEmail(s, { name, phone, kind, note, source }) });
   return { ok: true };
 }
