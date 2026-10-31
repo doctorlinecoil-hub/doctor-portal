@@ -12,7 +12,7 @@ import type { PaperInfo } from '@/components/PaperPreview';
 import RichEditor, { type RichHandle } from '@/components/RichEditor';
 import Icon from '@/components/Icon';
 import Dictate from '@/components/Dictate';
-import { approvePayment, sendLetter } from '../../actions';
+import { approvePayment, sendLetter, setDueAmount } from '../../actions';
 import { PAY_METHODS, type PayMethod } from '@/lib/constants';
 import TemplatePicker from './TemplatePicker';
 
@@ -93,7 +93,7 @@ export default function LetterEditor({
   // before sending: the doctor must say whether it was paid (and how much and how) or is free
   const [pay, setPay] = useState<{ choice: '' | 'paid' | 'free' | 'request'; amount: string; method: PayMethod }>({ choice: '', amount: payment?.due ? String(payment.due) : '', method: 'transfer' });
   const payNeeded = !!payment?.needed && !initial?.is_final;
-  const payReady = !payNeeded || pay.choice === 'free' || pay.choice === 'request' || (pay.choice === 'paid' && (payment?.paidInFull || Number(pay.amount) > 0));
+  const payReady = !payNeeded || pay.choice === 'free' || (pay.choice === 'request' && Number(pay.amount) > 0) || (pay.choice === 'paid' && (payment?.paidInFull || Number(pay.amount) > 0));
   const latest = useRef(d);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -295,6 +295,11 @@ export default function LetterEditor({
     if (PLACEHOLDER_RE.test(txt)) return setFinalState({ armed: false, ok: false, msg: 'יש במכתב סימונים להשלמה (מסומנים בצהוב). השלימו ומחקו אותם לפני השליחה.' });
     // first: the exact document, as it will be sent, in a preview window
     if (!confirmed) { await save(); setReview(Date.now()); return; }
+    if (payNeeded && pay.choice === 'request') {
+      // the amount the payer is asked for (what is still owed on the case)
+      const r = await setDueAmount(appointmentId, Number(pay.amount));
+      if (!r.ok) return setFinalState({ armed: false, ok: false, msg: r.error || 'לא הצלחנו לשמור את הסכום.' });
+    }
     if (payNeeded && pay.choice !== 'request') {
       if (!payReady) return;
       const amount = Number(pay.amount);
@@ -563,11 +568,14 @@ export default function LetterEditor({
                       </div>
                     </>)}
                   {pay.choice === 'free' && <p className="hint">המסמך יישלח בלי חיוב.</p>}
-                  {pay.choice === 'request' && <p className="hint">המסמך נחתם ונשמר. נשלחת בקשת תשלום, והמסמך יישלח אוטומטית ברגע שתאשר את התשלום ב״אישור תשלומים״.</p>}
+                  {pay.choice === 'request' && <>
+                    <label className="field"><span>סכום לתשלום (₪) <small>יופיע בבקשת התשלום, עם פרטי החשבון</small></span><input inputMode="decimal" dir="ltr" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0" autoFocus /></label>
+                    <p className="hint">המסמך נחתם ונשמר. נשלחת בקשת תשלום על הסכום הזה, והמסמך יישלח אוטומטית ברגע שתאשר את התשלום ב״אישור תשלומים״.</p>
+                  </>}
                 </div>
               )}
               <div className="review-actions">
-                <button type="button" className="btn btn-ok btn-lg" disabled={!payReady} onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : !payReady ? 'בחרו קודם: שולם, ללא תשלום או בקשת תשלום' : pay.choice === 'request' && payNeeded ? 'חתימה ושליחת בקשת תשלום' : 'אישור, חתימה ושליחה'}</button>
+                <button type="button" className="btn btn-ok btn-lg" disabled={!payReady} onClick={() => finalize(true)}><Icon name="send" />{initial?.is_final ? 'אישור ועדכון' : !payReady ? (pay.choice === 'request' ? 'כתבו את הסכום לתשלום' : 'בחרו קודם: שולם, ללא תשלום או בקשת תשלום') : pay.choice === 'request' && payNeeded ? 'חתימה ושליחת בקשת תשלום' : 'אישור, חתימה ושליחה'}</button>
                 <a className="btn" href={`/letters/${appointmentId}/print?v=preview`} target="_blank" rel="noopener"><Icon name="printer" />פתיחה להדפסה</a>
                 <button type="button" className="btn btn-ghost" onClick={() => setReview(null)}>חזרה לעריכה</button>
               </div>
