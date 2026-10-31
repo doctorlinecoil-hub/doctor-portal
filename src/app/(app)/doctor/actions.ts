@@ -6,7 +6,7 @@ import { BUCKET, dbError, type PayMethod } from '@/lib/constants';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendClinicCancel, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
+import { deliverLetter, sendClinicCancel, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons, sendMoved } from '@/lib/notify';
 
 type Result = { ok: boolean; error?: string; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -237,4 +237,22 @@ export async function deletePatient(id: string, confirmName: string): Promise<Re
   await c.supabase.rpc('log_event', { p_action: 'delete_patient', p_entity: 'patient', p_entity_id: null, p_details: { cases: ids.length } }).then(() => undefined, () => undefined);
   revalidatePath('/doctor');
   return { ok: true, info: `נמחקו ${ids.length} תיקים` };
+}
+
+/** The doctor moves an appointment; the patient and the referrer get an update email with a calendar file. */
+export async function moveAppointment(id: string, startsAt: string, notify = true): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const d = new Date(startsAt);
+  if (Number.isNaN(d.getTime())) return { ok: false, error: 'מועד לא תקין.' };
+  const { data: old, error } = await c.supabase.rpc('doctor_move_appointment', { p_id: id, p_starts: d.toISOString() });
+  if (error) return { ok: false, error: dbError(error) };
+  let info = 'המועד עודכן';
+  if (notify && c.appt.status !== 'pending') {
+    const r = await sendMoved(id, String(old));
+    info = r.sent ? `המועד עודכן ונשלח עדכון במייל${r.info ? ` (${r.info})` : ''}` : `המועד עודכן. ${r.info || 'המייל לא נשלח'} – אפשר לעדכן בוואטסאפ.`;
+  }
+  done(id);
+  revalidatePath('/doctor/calendar');
+  return { ok: true, info };
 }
