@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 /** New appointment from the office's portal: the same simple wizard as the public page, already tied to the office. */
-export default async function FirmBookingPage() {
+export default async function FirmBookingPage({ searchParams }: { searchParams: Promise<{ slot?: string; service?: string }> }) {
+  const { slot, service } = await searchParams;
   const { supabase, profile, settings } = await requireUser(['firm']);
   const now = new Date();
   const until = new Date(now.getTime() + (settings.horizon_days + 2) * 86400000);
@@ -32,6 +33,8 @@ export default async function FirmBookingPage() {
       code={firm.book_code}
       firm={{ name: firm.name, kind: firm.kind }}
       phoneOk={settings.phone_appointments !== false}
+      initialSlot={slot}
+      preselect={service}
     />
   );
 }
