@@ -239,8 +239,9 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
                 )}
               </label>
               <label className="field"><span>תעודת זהות</span><input inputMode="numeric" dir="ltr" value={f.id} onChange={set('id')} placeholder="000000000" /></label>
+              <label className="field"><span>תאריך לידה <small>לא חובה</small></span><input type="date" dir="ltr" value={f.dob} max={new Date().toISOString().slice(0, 10)} min="1900-01-01" onChange={set('dob')} /></label>
               <label className="field"><span>טלפון <small>לא חובה</small></span><input type="tel" dir="ltr" value={f.phone} onChange={set('phone')} placeholder="050-0000000" /></label>
-              <label className="field"><span>מייל <small>לא חובה · לשליחה</small></span><input type="email" dir="ltr" value={f.email} onChange={set('email')} aria-invalid={!emailOk} placeholder="name@example.com" /></label>
+              <label className="field" style={{ gridColumn: "1 / -1" }}><span>מייל <small>לא חובה · לשליחה</small></span><input type="email" dir="ltr" value={f.email} onChange={set('email')} aria-invalid={!emailOk} placeholder="name@example.com" /></label>
               </div>
             )}
           </section>
