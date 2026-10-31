@@ -59,7 +59,8 @@ export async function POST(req: Request) {
       intake: intake?.status === 'done' ? intakeForPrompt(intake.data as IntakeData) : '',
       instructions,
       length,
-      visits: await priorVisits(supabase, a),
+      // earlier visits are mentioned only when the doctor added them to the document
+      visits: input?.withVisits ? await priorVisits(supabase, a) : undefined,
       history: input?.withHistory ? await priorLetters(supabase, a) : undefined,
     }),
   });
