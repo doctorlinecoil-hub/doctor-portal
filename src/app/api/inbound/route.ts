@@ -11,7 +11,7 @@ export const maxDuration = 60;
 const EXT: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 type Received = { email_id: string; from: string; to: string[]; cc?: string[]; received_for?: string[]; subject: string; attachments?: { id: string; filename: string; content_type: string }[] };
 
-// reading received mail needs a Resend key with full access (a sending-only key gets 401): RESEND_RECEIVE_KEY, or the main key
+// reading received mail needs a Resend key with full access (a sending-only key gets 401): RESEND_RECEIVE_KEY (Vercel env), or the main key
 const readKey = () => process.env.RESEND_RECEIVE_KEY || process.env.RESEND_API_KEY;
 const api = (path: string) => fetch(`https://api.resend.com${path}`, { headers: { Authorization: `Bearer ${readKey()}` }, signal: AbortSignal.timeout(20_000) });
 
