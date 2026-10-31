@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!UUID.test(id)) return new Response('לא נמצא', { status: 404 });
   const { supabase, settings } = await requireUser();
   const [{ data: a }, { data: rows }] = await Promise.all([
-    supabase.from('appointments').select('id, patient_name, patient_id_number, patient_dob, starts_at, service_label, referral_type').eq('id', id).maybeSingle(),
+    supabase.from('appointments').select('id, firm_id, patient_name, patient_id_number, patient_dob, starts_at, service_label, referral_type').eq('id', id).maybeSingle(),
     supabase.rpc('final_letter', { p_id: id }),
   ]);
   const letter = Array.isArray(rows) && rows.length ? (rows[0] as L) : null;
