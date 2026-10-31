@@ -8,12 +8,13 @@ import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, paymentReminderEmail, paymentProofEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
 import { rxHtml } from './rx';
 import { priorVisits } from './visits';
+import { payReplyAddress } from './inbound';
 import type { RxItem } from './rxTypes';
 
 /*
@@ -101,7 +102,7 @@ async function balanceOf(db: SupabaseClient, id: string, price: number) {
 }
 
 /** The payer sent a transfer confirmation: email the clinic with the file attached. */
-export async function notifyPaymentProof(id: string, path: string): Promise<NotifyResult> {
+export async function notifyPaymentProof(id: string, path: string, reply?: { from: string; text: string }): Promise<NotifyResult> {
   const db = createAdminClient();
   const { a, s } = await load(db, id);
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
@@ -110,10 +111,33 @@ export async function notifyPaymentProof(id: string, path: string): Promise<Noti
   const ext = path.split('.').pop() || 'pdf';
   const r = await sendMail(db, id, 'payment_proof', {
     to: await staffEmails(db, s),
-    ...paymentProofEmail(s, info(a), `${appUrl()}/doctor/payments`),
+    ...paymentProofEmail(s, info(a), `${appUrl()}/doctor/payments`, reply),
     attachments: buf && buf.length < 20_000_000 ? [{ filename: `אישור העברה - תיק ${a.case_no}.${ext}`, content: buf }] : undefined,
   });
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
+}
+
+/** A reply to a payment email without a file: the doctor gets the text. */
+export async function notifyPaymentReply(id: string, reply: { from: string; subject: string; text: string }): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  const r = await sendMail(db, id, 'payment_reply', { to: await staffEmails(db, s), ...paymentReplyEmail(s, info(a), `${appUrl()}/doctor/payments`, reply), replyTo: reply.from });
+  return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
+}
+
+/** The doctor checked the confirmation and it is not right (or the money did not arrive): his own words go to whoever pays, with a new upload link. */
+export async function sendPaymentRejected(id: string, message: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  const due = await balanceOf(db, id, Number(a.price));
+  const patientPays = a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient';
+  const to = patientPays ? (a.patient_email ? [a.patient_email] : await firmEmails(db, a.firm_id, a.firm?.email, null)) : await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails);
+  if (!to.length) return { ok: false, sent: 0, info: patientPays ? 'אין מייל למטופל. אפשר לשלוח בוואטסאפ.' : 'אין מייל למפנה.' };
+  const r = await sendMail(db, id, 'payment_rejected', { to, ...paymentRejectedEmail(s, info(a), message, due, caseLink(id, false), await payLinkFor(db, id)), replyTo: payReplyAddress(a.case_no) });
+  if (r.ok) await db.from('appointments').update({ pay_proof_at: null }).eq('id', id);
+  return r.ok ? { ok: true, sent: 1, info: `ההודעה נשלחה ל${patientPays ? 'מטופל' : 'מפנה'}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
 }
 
 /** To the doctor, when a referrer books. */
@@ -289,7 +313,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
     if (!(await alreadySent(db, id, 'letter_awaiting_payment'))) {
       const m = awaitingPaymentEmail(s, ai, await balanceOf(db, id, price), caseLink(id, false), await payLinkFor(db, id));
       const payTo = (a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient') && a.patient_email ? [a.patient_email] : firmTo;
-      await sendMail(db, id, 'letter_awaiting_payment', { to: payTo, ...m });
+      await sendMail(db, id, 'letter_awaiting_payment', { to: payTo, ...m, replyTo: payReplyAddress(a.case_no) });
     }
     return { ok: true, sent: 0, info: 'המסמך ממתין לאישור התשלום. הוא יישלח למפנה לבד ברגע שתאשר תשלום.' };
   }
@@ -333,7 +357,7 @@ export async function sendPaymentReminder(id: string): Promise<NotifyResult> {
   const patientPays = a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient';
   const to = patientPays ? (a.patient_email ? [a.patient_email] : await firmEmails(db, a.firm_id, a.firm?.email, null)) : await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails);
   if (!to.length) return { ok: false, sent: 0, info: patientPays ? 'אין מייל למטופל. אפשר לשלוח בוואטסאפ.' : 'אין מייל למפנה. אפשר לשלוח בוואטסאפ.' };
-  const r = await sendMail(db, id, 'payment_reminder', { to, ...paymentReminderEmail(s, info(a), due, caseLink(id, false), await payLinkFor(db, id)) });
+  const r = await sendMail(db, id, 'payment_reminder', { to, ...paymentReminderEmail(s, info(a), due, caseLink(id, false), await payLinkFor(db, id)), replyTo: payReplyAddress(a.case_no) });
   return r.ok ? { ok: true, sent: 1, info: `נשלחה תזכורת ל${patientPays ? 'מטופל' : 'מפנה'}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
 }
 

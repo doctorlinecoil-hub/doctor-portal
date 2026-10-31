@@ -337,12 +337,37 @@ export function paymentReminderEmail(s: Settings, a: ApptInfo, amount: number, l
 }
 
 /** To the clinic: the payer sent a transfer confirmation (attached). */
-export function paymentProofEmail(s: Settings, a: ApptInfo, link: string): Rendered {
+export function paymentProofEmail(s: Settings, a: ApptInfo, link: string, reply?: { from: string; text: string }): Rendered {
   const subject = `התקבל אישור העברה · ${a.patientName} · תיק ${a.caseNo}`;
-  const body = p(`התקבל צילום אישור העברה עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}). הקובץ מצורף ונשמר בתיק.`) +
-    p('אחרי שבדקתם שהכסף התקבל, אשרו את התשלום, והמסמך יישלח אוטומטית כ־PDF.') +
+  const body = p(`התקבל צילום אישור העברה עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo})${reply ? ` בתשובה למייל, מאת ${esc(reply.from)}` : ''}. הקובץ מצורף ונשמר בתיק.`) +
+    (reply?.text ? `<div style="margin:0 0 14px;padding:12px 14px;border-radius:10px;background:#F4F6FA;color:${INK};font-size:14px;white-space:pre-wrap">${esc(reply.text)}</div>` : '') +
+    p('אחרי שבדקתם שהכסף התקבל, אשרו את התשלום, והמסמך יישלח אוטומטית כ־PDF. אם האסמכתא לא תקינה, אפשר לשלוח למשלם הודעה מאותו מסך.') +
     `<div style="margin:6px 0 10px">${button(link, 'לאישור התשלום')}</div>`;
-  return { subject, html: layout(s, { preheader: 'אישור העברה התקבל', title: 'התקבל אישור העברה', body }), text: textOf([subject, link]) };
+  return { subject, html: layout(s, { preheader: 'אישור העברה התקבל', title: 'התקבל אישור העברה', body }), text: textOf([subject, reply?.text || '', link]) };
+}
+
+/** To the clinic: a reply to a payment email, without a file. */
+export function paymentReplyEmail(s: Settings, a: ApptInfo, link: string, reply: { from: string; subject: string; text: string }): Rendered {
+  const subject = `תשובה לבקשת התשלום · ${a.patientName} · תיק ${a.caseNo}`;
+  const body = p(`התקבלה תשובה מ־${esc(reply.from)} לבקשת התשלום של <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}), בלי קובץ מצורף.`) +
+    `<div style="margin:0 0 14px;padding:12px 14px;border-radius:10px;background:#F4F6FA;color:${INK};font-size:14px;white-space:pre-wrap">${esc(reply.text || '(ללא טקסט)')}</div>` +
+    p('אפשר להשיב ישירות למייל הזה, והתשובה תגיע לשולח.') +
+    `<div style="margin:6px 0 10px">${button(link, 'לאישור תשלומים')}</div>`;
+  return { subject, html: layout(s, { preheader: 'תשובה לבקשת התשלום', title: 'תשובה לבקשת התשלום', body }), text: textOf([subject, reply.text, link]) };
+}
+
+/** To whoever pays: the confirmation was not right or the money did not arrive, in the doctor's own words. */
+export function paymentRejectedEmail(s: Settings, a: ApptInfo, message: string, due: number, link: string, payLink?: string): Rendered {
+  const label = (a.label || typeOf(a.type).label);
+  const subject = `בעניין התשלום · ${label} · ${a.patientName} · תיק ${a.caseNo}`;
+  const body =
+    p(`שלום,<br>בעניין התשלום עבור ${esc(label)} של <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}):`) +
+    `<div style="margin:0 0 14px;padding:14px 16px;border-radius:12px;background:#FFF8EB;border:1px solid #F5DDB0;color:#7A4B0B;font-size:15px;white-space:pre-wrap">${esc(message)}</div>` +
+    payBlock(s, due, 'לתשלום') +
+    proofBlock(payLink) +
+    p('מיד כשהרופא יאשר את התשלום, המסמך יישלח אליכם למייל כקובץ PDF.') +
+    `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק', false)}</div>`;
+  return { subject, html: layout(s, { preheader: message.slice(0, 90), title: 'בעניין התשלום', body }), text: textOf([subject, message, payText(s, due), payLink && `העלאת אישור העברה: ${payLink}`, link]) };
 }
 
 export function rxEmail(s: Settings, patientName: string): Rendered {

@@ -18,6 +18,8 @@ export type ApptRow = {
   service_label?: string;
   mode?: 'clinic' | 'phone';
   payment_ok_at?: string | null;
+  /** a document without a slot in the calendar (no real appointment time) */
+  walk_in?: boolean;
 };
 
 export type FirmInfo = { id: string; name: string; kind: ReferrerKind; contact_name: string; phone: string; email: string; tax_id: string };
