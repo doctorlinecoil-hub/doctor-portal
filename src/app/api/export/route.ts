@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   if (what === 'cases') {
     type R = { case_no: number; starts_at: string; status: ApptStatus; referral_type: ReferralType; patient_name: string; patient_id_number: string; patient_phone: string; patient_email: string; price: number; payer: string; id: string; firms: { name: string } | null };
     const [data, pays] = await Promise.all([
-      fetchAll<R>((x, y) => supabase.from('appointments').select('case_no, starts_at, status, referral_type, patient_name, patient_id_number, patient_phone, patient_email, price, payer, id, firms(name)').order('starts_at', { ascending: false }).range(x, y)),
+      fetchAll<R>((x, y) => supabase.from('appointments').select('case_no, starts_at, status, referral_type, patient_name, patient_id_number, patient_phone, patient_email, price, payer, id, firms(name)').eq('provisional', false).order('starts_at', { ascending: false }).range(x, y)),
       fetchAll<{ appointment_id: string; amount: number }>((x, y) => supabase.from('payments').select('appointment_id, amount').order('created_at').range(x, y)),
     ]);
     const paid = new Map<string, number>();
