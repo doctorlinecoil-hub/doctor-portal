@@ -1,6 +1,8 @@
 import { runTick } from '@/lib/notify';
 import { cleanupTmpUploads } from '@/lib/tmpUploads';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendBackup } from '@/lib/backup';
+import { ilParts } from '@/lib/dates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,5 +25,8 @@ export async function GET(req: Request) {
   const r = await runTick();
   const minute = new Date().getUTCMinutes();
   const tmpRemoved = minute < 10 ? await cleanupTmpUploads().catch(() => -1) : 0;
-  return Response.json({ ...r, tmpRemoved });
+  // the daily backup to the admin, once, in the quiet hours (03:00–04:00 Israel time)
+  const hour = Number(ilParts(new Date()).time.slice(0, 2));
+  const backup = hour === 3 ? await sendBackup().catch((e) => ({ ok: false, info: String((e as Error)?.message ?? e) })) : null;
+  return Response.json({ ...r, tmpRemoved, backup });
 }
