@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { tempPassword } from '@/lib/password';
 import { approveSignup, rejectSignup } from '@/lib/accounts';
 import { issueReceipt, morningEnabled, type ChequeInfo } from '@/lib/morning';
-import { EMAIL_RE, PAY_METHODS, TYPES, type Payer, type PayMethod, type ReferralType, type ReferrerKind, type WeekDay } from '@/lib/constants';
+import { BUCKET, EMAIL_RE, PAY_METHODS, TYPES, type Payer, type PayMethod, type ReferralType, type ReferrerKind, type WeekDay } from '@/lib/constants';
 
 type Result = { ok: boolean; error?: string; email?: string; password?: string; info?: string };
 
@@ -319,4 +319,28 @@ export async function setFirmPrices(firmId: string, entries: { serviceId: string
   }
   revalidatePath('/admin/users');
   return { ok: true, info: 'המחירון נשמר. תורים חדשים של המפנה יתומחרו לפיו.' };
+}
+
+/**
+ * Wipes the trial data (cases, patients, documents, payments, referrers and their accounts) and the uploaded files.
+ * Admin only, with two-step sign-in, and only with the typed confirmation.
+ */
+export async function resetTestData(confirm: string): Promise<Result & { cases?: number; referrers?: number }> {
+  const supabase = await assertAdmin().catch(() => null);
+  if (!supabase) return { ok: false, error: 'אין הרשאה.' };
+  if (String(confirm || '').trim() !== 'מחק הכל') return { ok: false, error: 'כדי לאשר, הקלידו בדיוק: מחק הכל' };
+  const admin = createAdminClient();
+  // the stored files, before their rows are gone
+  const paths: string[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await admin.from('documents').select('storage_path').range(from, from + 999);
+    paths.push(...((data as { storage_path: string }[] | null) ?? []).map((d) => d.storage_path));
+    if (!data || data.length < 1000) break;
+  }
+  const { data, error } = await supabase.rpc('reset_test_data');
+  if (error) return { ok: false, error: error.message.includes('FORBIDDEN') ? 'אין הרשאה.' : 'האיפוס נכשל.' };
+  for (let i = 0; i < paths.length; i += 100) await admin.storage.from(BUCKET).remove(paths.slice(i, i + 100)).catch(() => undefined);
+  revalidatePath('/', 'layout');
+  const r = (data ?? {}) as { cases?: number; referrers?: number };
+  return { ok: true, cases: r.cases ?? 0, referrers: r.referrers ?? 0 };
 }
