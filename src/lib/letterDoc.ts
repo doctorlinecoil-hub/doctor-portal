@@ -82,7 +82,7 @@ export function docHtml(d: DocInput) {
   ${d.baseType === 'legal' ? `<div class="doc-decl">${esc(LEGAL_DECLARATION)}</div>` : ''}
   <div class="of-sign">
     <div class="of-doc"><div class="of-regards">בברכה,</div><b>${esc(s.lh_name)}</b>${d.signature ? '' : `${titles[0] ? `<div>${esc(titles[0])}</div>` : ''}${s.lh_licenses ? `<div>${esc(s.lh_licenses)}</div>` : ''}`}</div>
-    ${d.signature ? '<div class="of-signed">חתום דיגיטלית · החתימה והחותמת בתחתית כל עמוד</div>' : '<div class="of-stamp"><div class="of-sigspace"></div><div class="of-line">חתימה וחותמת הרופא</div></div>'}
+    ${d.signature ? `<div class="of-sigblock"><img class="of-sigimg" src="${esc(d.signature)}" alt="חתימה וחותמת הרופא"><div class="of-sigrule"></div><div class="of-sigcap">${esc(s.lh_name)}${titles[0] ? ` · ${esc(titles[0])}` : ''}</div></div>` : '<div class="of-stamp"><div class="of-sigspace"></div><div class="of-line">חתימה וחותמת הרופא</div></div>'}
   </div>
 </td></tr></tbody>
 <tfoot><tr><td><div class="doc-foot-space"></div></td></tr></tfoot></table>
@@ -204,7 +204,11 @@ ${p}.doc-signline { margin-top: 10mm; }
 ${p}.doc-foot-space { height: 30mm; }
 ${p}.doc-foot { font-size: 9pt; line-height: 1.45; color: #1d2433; border-top: 1px solid #C9A43A; padding-top: 2mm; text-align: right; display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; }
 ${p}.foot-sig { height: 22mm; width: auto; flex: none; }
-${p}.of-signed { font-size: 8.5pt; color: #6b7385; align-self: flex-end; }
+${p}.of-sigblock { display: flex; flex-direction: column; align-items: center; min-width: 62mm; }
+${p}.of-sigimg { display: block; height: 30mm; width: auto; max-width: 70mm; object-fit: contain; }
+${p}.of-sigrule { width: 62mm; height: 0; border-top: 1.2px solid #B8955A; margin-top: 1mm; position: relative; }
+${p}.of-sigrule::after { content: ''; position: absolute; left: 50%; top: -2.2px; width: 4px; height: 4px; margin-left: -2px; background: #B8955A; transform: rotate(45deg); }
+${p}.of-sigcap { margin-top: 1.6mm; font-size: 8.5pt; letter-spacing: .02em; color: #33415C; text-align: center; }
 ${p}.doc-foot .f1 { font-weight: 700; }
 ${p}table.rx { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
 ${p}table.rx th { background: #F1F3F8; font-weight: 700; font-size: 10pt; text-align: right; }
