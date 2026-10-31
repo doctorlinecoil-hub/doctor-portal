@@ -14,12 +14,14 @@ export default function MoveAppointment({ appointmentId, startsAt, pending }: { 
   const [notify, setNotify] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [wa, setWa] = useState<string | null>(null);
 
   if (!open) {
     return (
       <div className="row">
         <button type="button" className="btn btn-sm" onClick={() => { setOpen(true); setMsg(null); }}>הזזת התור למועד אחר</button>
         {msg && <span className={msg.ok ? 'ok-msg' : 'err'}>{msg.text}</span>}
+        {wa && <a className="btn btn-sm btn-wa" href={wa} target="_blank" rel="noopener">עדכון המטופל בוואטסאפ</a>}
       </div>
     );
   }
@@ -43,11 +45,12 @@ export default function MoveAppointment({ appointmentId, startsAt, pending }: { 
           disabled={busy || !valid || same}
           onClick={async () => {
             setBusy(true);
-            const r = await moveAppointment(appointmentId, ilToUtc(date, time).toISOString(), notify).catch(() => ({ ok: false, error: 'הפעולה נכשלה. נסו שוב.' }) as { ok: boolean; error?: string; info?: string });
+            const r = await moveAppointment(appointmentId, ilToUtc(date, time).toISOString(), notify).catch(() => ({ ok: false, error: 'הפעולה נכשלה. נסו שוב.' }) as { ok: boolean; error?: string; info?: string; wa?: string | null });
             setBusy(false);
             if (!r.ok) return setMsg({ ok: false, text: r.error || 'הפעולה נכשלה' });
             setOpen(false);
             setMsg({ ok: true, text: r.info || 'המועד עודכן' });
+            setWa(r.wa ?? null);
             router.refresh();
           }}
         >
