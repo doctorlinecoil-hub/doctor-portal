@@ -75,8 +75,8 @@ async function graph(path: string, body?: unknown, method = body ? 'POST' : 'GET
 
 type Sent = { ok: boolean; error?: string };
 
-async function deliver(db: SupabaseClient, o: { appointmentId: string | null; phone: string; kind: string; text: string; payload: Record<string, unknown> }): Promise<Sent> {
-  const row = { appointment_id: o.appointmentId, phone: o.phone, direction: 'out', kind: o.kind, body: o.text };
+async function deliver(db: SupabaseClient, o: { appointmentId: string | null; phone: string; kind: string; text: string; payload: Record<string, unknown>; bot?: boolean }): Promise<Sent> {
+  const row = { appointment_id: o.appointmentId, phone: o.phone, direction: 'out', kind: o.kind, body: o.text, bot: !!o.bot };
   try {
     const j = await graph(`${process.env.WHATSAPP_PHONE_ID}/messages`, { messaging_product: 'whatsapp', recipient_type: 'individual', to: o.phone, ...o.payload });
     await db.from('wa_messages').insert({ ...row, wa_id: j?.messages?.[0]?.id ?? null, status: 'sent' });
@@ -104,6 +104,32 @@ export async function sendTemplate(db: SupabaseClient, s: Settings, appointmentI
 export async function sendText(db: SupabaseClient, appointmentId: string | null, phone: string, text: string): Promise<Sent> {
   if (!waEnabled()) return { ok: false, error: 'וואטסאפ לא מחובר' };
   return deliver(db, { appointmentId, phone, kind: 'text', text, payload: { type: 'text', text: { preview_url: true, body: text.slice(0, 4000) } } });
+}
+
+export type Btn = { id: string; title: string };
+export type Row = { id: string; title: string; description?: string };
+const cut = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
+
+/** A bot reply with up to 3 buttons (inside the 24-hour window that the patient's message opened). */
+export async function sendButtons(db: SupabaseClient, appointmentId: string | null, phone: string, body: string, buttons: Btn[], bot = true): Promise<Sent> {
+  if (!waEnabled()) return { ok: false, error: 'וואטסאפ לא מחובר' };
+  const b = buttons.slice(0, 3).map((x) => ({ type: 'reply', reply: { id: x.id.slice(0, 256), title: cut(x.title, 20) } }));
+  return deliver(db, { appointmentId, phone, kind: 'interactive', bot, text: `${body}\n${buttons.map((x) => `[${x.title}]`).join(' ')}`,
+    payload: { type: 'interactive', interactive: { type: 'button', body: { text: body.slice(0, 1024) }, action: { buttons: b } } } });
+}
+
+/** A bot reply with a list to choose from (up to 10 rows). */
+export async function sendList(db: SupabaseClient, appointmentId: string | null, phone: string, body: string, button: string, rows: Row[], bot = true): Promise<Sent> {
+  if (!waEnabled()) return { ok: false, error: 'וואטסאפ לא מחובר' };
+  const r = rows.slice(0, 10).map((x) => ({ id: x.id.slice(0, 200), title: cut(x.title, 24), ...(x.description ? { description: cut(x.description, 72) } : {}) }));
+  return deliver(db, { appointmentId, phone, kind: 'interactive', bot, text: `${body}\n${rows.slice(0, 10).map((x) => `• ${x.title}`).join('\n')}`,
+    payload: { type: 'interactive', interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: cut(button, 20), sections: [{ title: cut(button, 24), rows: r }] } } } });
+}
+
+/** A plain bot reply. */
+export async function sendBotText(db: SupabaseClient, appointmentId: string | null, phone: string, text: string): Promise<Sent> {
+  if (!waEnabled()) return { ok: false, error: 'וואטסאפ לא מחובר' };
+  return deliver(db, { appointmentId, phone, kind: 'text', bot: true, text, payload: { type: 'text', text: { preview_url: true, body: text.slice(0, 4000) } } });
 }
 
 /** The latest case of a phone number (by earlier messages), so replies show up with the right patient. */

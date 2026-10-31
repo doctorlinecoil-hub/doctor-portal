@@ -530,6 +530,16 @@ export function movedEmail(s: Settings, a: ApptInfo, oldStart: string, o: { forR
   return { subject, html: layout(s, { preheader: `${was.label} ← ${w.label}`, title: `מועד ${what} עודכן`, body }), text: textOf([subject, `המועד החדש: ${w.label}`, `במקום: ${was.label}`, c.phone ? `טלפון: ${c.phone}` : '']) };
 }
 
+/** To the clinic: a patient on WhatsApp asked to talk to a person (the bot stepped aside). */
+export function waHandoffEmail(s: Settings, o: { name: string; phone: string; text: string; link: string }): Rendered {
+  const subject = `וואטסאפ: ${o.name || o.phone} מבקש/ת לדבר עם המרפאה`;
+  const body =
+    p(`<b>${esc(o.name || 'מטופל')}</b> (<span dir="ltr">${esc(o.phone)}</span>) ביקש/ה בוואטסאפ לדבר עם המרפאה. הבוט הפסיק לענות בשיחה הזו.`) +
+    (o.text ? card([['ההודעה האחרונה', esc(o.text)]]) : '') +
+    `<div style="margin:6px 0 10px">${button(o.link, 'לשיחה במערכת')}</div>`;
+  return { subject, html: layout(s, { preheader: o.text || subject, title: 'פנייה בוואטסאפ', body }), text: textOf([subject, o.text, o.link]) };
+}
+
 /** A one-time sign-in code (and a one-click sign-in link). */
 export function loginCodeEmail(s: Settings, name: string, code: string, link: string): Rendered {
   const subject = `קוד כניסה: ${code} · ${s.lh_name}`;

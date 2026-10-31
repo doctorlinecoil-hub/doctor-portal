@@ -102,6 +102,7 @@ export type Settings = {
   phone_appointments: boolean;
   sms_reminders: boolean;
   whatsapp_on?: boolean;
+  whatsapp_bot?: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -185,6 +186,7 @@ export const SETTINGS_DEFAULTS = {
   phone_appointments: true,
   sms_reminders: true,
   whatsapp_on: true,
+  whatsapp_bot: true,
 } as const;
 
 /** Emoji and decorations pasted from WhatsApp, removed so the details read cleanly everywhere. */

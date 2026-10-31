@@ -9,7 +9,7 @@ import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, summonsText, waLink, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, cancelledByClinicEmail, movedEmail, cancelledStaffEmail, rescheduleStaffEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, cancelledByClinicEmail, movedEmail, waHandoffEmail, cancelledStaffEmail, rescheduleStaffEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
@@ -555,4 +555,14 @@ export async function summonsWaLink(id: string): Promise<string | null> {
   const { a, s } = await load(db, id);
   if (!a || !a.patient_phone || !['booked', 'draft'].includes(a.status)) return null;
   return waLink(a.patient_phone, summonsText(info(a), clinicOf(s)));
+}
+
+/** To the clinic: a patient on WhatsApp wants a person. */
+export async function notifyWaHandoff(o: { name: string; phone: string; text: string }): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const s = await settingsOf(db);
+  const to = await staffEmails(db, s);
+  if (!to.length) return { ok: false, sent: 0, info: '' };
+  const r = await sendMail(db, null, 'wa_handoff', { to, ...waHandoffEmail(s, { ...o, link: `${appUrl()}/doctor/whatsapp?p=${o.phone}` }) });
+  return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
