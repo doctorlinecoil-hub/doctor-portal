@@ -48,6 +48,7 @@ export async function POST(req: Request) {
     type: 'text',
     text: buildPrompt({
       letterType,
+      serviceId: a.referral_type === letterType ? a.service_id : null,
       exam,
       settings: s,
       visitDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date(a.starts_at)),
