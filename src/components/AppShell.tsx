@@ -20,6 +20,7 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
     { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'plus' },
     { href: '/doctor/services', label: 'סוגי שירות ומחירים', icon: 'receipt' },
     { href: '/doctor/payments', label: 'אישור תשלומים', icon: 'wallet' },
+    { href: '/doctor/whatsapp', label: 'שיחות וואטסאפ', icon: 'message' },
     { href: '/admin/reports', label: 'דוחות וגבייה', icon: 'chart' },
   ] };
   if (role === 'doctor') return [doctor];
