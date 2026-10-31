@@ -11,8 +11,8 @@ export type PayLine = { amount: number; method: PayMethod; paid_on: string };
  * Documents that are ready and wait for the doctor's payment approval. The doctor sees what was paid
  * (amount and method), notes a payment if needed, and approves: the document opens and goes out by email.
  */
-export function PendingPayView({ waiting, approved, gate, pays = {}, action, remind }: {
-  waiting: ApptRow[]; approved: ApptRow[]; gate: boolean; pays?: Record<string, PayLine[]>;
+export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}, action, remind }: {
+  waiting: ApptRow[]; approved: ApptRow[]; gate: boolean; pays?: Record<string, PayLine[]>; proofs?: Record<string, { url: string; at: string }>;
   remind?: (r: ApptRow) => React.ReactNode;
   action: (r: ApptRow, undo?: boolean) => React.ReactNode;
 }) {
@@ -59,6 +59,11 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, action, rem
                 <a className="btn btn-sm btn-ghost" href={`/letters/${r.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={14} />המסמך</a>
               </header>
               <Paid r={r} />
+              {proofs[r.id] && (
+                <a className="pp-proof" href={proofs[r.id].url} target="_blank" rel="noopener">
+                  <Icon name="fileCheck" size={16} /><span><b>התקבל אישור העברה</b><small className="num">{proofs[r.id].at}</small></span><em>צפייה<Icon name="externalLink" size={13} /></em>
+                </a>
+              )}
               {remind?.(r)}
               <footer>
                 <span className="pp-to"><Icon name="mail" size={14} />יישלח ל{to(r)}</span>
