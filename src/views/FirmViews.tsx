@@ -44,7 +44,6 @@ export function FirmDashboardView({ firmName, clinicName, rows, gate = true, fre
   const active = rows.filter((r) => r.status === 'booked' || r.status === 'draft');
   const ready = rows.filter((r) => r.status === 'done').sort((a, b) => b.starts_at.localeCompare(a.starts_at));
   const todo = live.filter((r) => !r.patient_name && r.starts_at >= now).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const patients = new Set(live.map((r) => (r.patient_id_number || r.patient_name || r.id).replace(/\s/g, ''))).size;
   const next = upcoming.find((r) => r.starts_at >= now && r.status !== 'pending');
   const np = next ? ilParts(next.starts_at) : null;
   const hour = Number(ilParts(now).time.slice(0, 2));
@@ -53,7 +52,6 @@ export function FirmDashboardView({ firmName, clinicName, rows, gate = true, fre
   const metrics: { href: string; v: number; l: string; tone?: string }[] = [
     { href: '/firm/cases?f=pending', v: pending.length, l: 'ממתינים לאישור', tone: pending.length ? 'warn' : '' },
     { href: '/firm/cases?f=upcoming', v: upcoming.length, l: 'תורים קרובים' },
-    { href: '/firm/cases?f=open', v: active.length + pending.length, l: 'תיקים בטיפול' },
     { href: '/firm/cases?f=done', v: ready.length, l: 'מסמכים מוכנים', tone: ready.length ? 'ok' : '' },
   ];
   const Row = ({ r }: { r: ApptRow }) => {
@@ -165,7 +163,6 @@ export function FirmDashboardView({ firmName, clinicName, rows, gate = true, fre
           )}
         </section>
       </div>
-      <p className="fx-foot"><Icon name="users" size={14} />{patients === 1 ? 'מטופל אחד' : `${patients} מטופלים`} הופנו עד היום</p>
     </div>
   );
 }
