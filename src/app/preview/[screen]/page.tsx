@@ -180,7 +180,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
     case 'admin-users':
       return staffShell('/admin/users', <><PageHead title="מפנים ומשתמשים" sub="רק מי שמופיע כאן יכול להיכנס. כל מפנה רואה רק את התיקים שלו." /><UsersAdmin firms={fx.firms} users={fx.users} me="u0" preview services={SVC.map((x) => ({ id: x.id, label: x.label, price: Number(x.price), active: true }))} prices={{ [fx.firms[0].id]: { [SVC[1].id]: 2000 } }} /></>);
     case 'admin-settings':
-      return staffShell('/admin', <SettingsForm initial={fx.settings} morning mail cron preview />);
+      return staffShell('/admin', <SettingsForm services={SVC.map((x) => ({ id: x.id, label: x.label, base_type: x.base_type }))} initial={fx.settings} morning mail cron preview />);
     case 'letter':
       return <LetterPaper settings={fx.settings} letter={{ ...fx.letter, letter_date: todayIL() }} patient={{ name: c.patient_name, idNumber: c.patient_id_number, dob: c.patient_dob }} backHref={`/doctor/cases/${c.id}`} draft printButton={<PrintButton />} />;
     case 'admin-log':
