@@ -5,7 +5,7 @@ import type { ApptRow, CaseDetail, DocRow, NoteRow, PaymentRow } from '@/lib/typ
 import type { IntakeRow } from '@/lib/intakeTypes';
 
 export const settings: Settings = {
-  slot_minutes: 30, horizon_days: 30, notice_hours: 24, max_open_per_firm: 30, require_staff_mfa: true,
+  slot_minutes: 30, horizon_days: 30, notice_hours: 24, max_open_per_firm: 30, change_business_days: 5, require_staff_mfa: true,
   weekly: {
     0: { on: true, from: '09:00', to: '14:00' }, 1: { on: true, from: '09:00', to: '14:00' }, 2: { on: true, from: '09:00', to: '14:00' },
     3: { on: true, from: '09:00', to: '14:00' }, 4: { on: true, from: '09:00', to: '13:00' }, 5: { on: false, from: '09:00', to: '12:00' }, 6: { on: false, from: '09:00', to: '12:00' },
