@@ -315,6 +315,7 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
         </Row>
         <Toggle id="rem" on={s.reminders_on} set={set('reminders_on')} title="תזכורות לפני תור: 3 ימים ושעתיים לפני" desc="במייל למטופל, למפנה ולך." />
         <Toggle id="wa" on={s.whatsapp_on !== false} set={set('whatsapp_on')} title="הודעות וואטסאפ אוטומטיות למטופל" desc={wa ? 'מחובר. זימון, תזכורות, הזזת תור, ביטול ומסמך מוכן (קישור מאובטח) – גם בוואטסאפ. השיחות מופיעות ב״שיחות וואטסאפ״.' : 'עוד לא מחובר לוואטסאפ של מטא.'} />
+        <Toggle id="wabot" on={s.whatsapp_bot !== false} set={set('whatsapp_bot')} title="עוזר דיגיטלי בוואטסאפ (בוט)" desc="מטופל שכותב לוואטסאפ של המרפאה יכול לקבוע תור, לראות את התורים שלו, לבטל או להעביר (לפי מדיניות השינויים), ולקבל כתובת ושעות. ״נציג״ מעביר אליך את השיחה." />
         <WaPanel connected={wa} />
         <Toggle id="sms" on={s.sms_reminders} set={set('sms_reminders')} title={`תזכורת גם ב${sms === 'whatsapp' ? 'וואטסאפ' : 'SMS'} למטופל`} desc={sms ? 'מחובר. נשלחת באותם מועדים.' : 'דורש חיבור Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM ב־Vercel). עד אז נשלח רק מייל.'} />
         <Toggle id="emailLetters" on={s.email_letters} set={set('email_letters')} title="שליחת המסמך הסופי במייל כ־PDF" desc="למפנה, ולמטופל אם יש מייל. כשהמסמך נפתח רק אחרי תשלום, הוא נשלח אחרי אישור התשלום." />

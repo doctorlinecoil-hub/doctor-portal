@@ -32,7 +32,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
-  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<string, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean; whatsapp_on?: boolean;
+  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<string, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean; whatsapp_on?: boolean; whatsapp_bot?: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -93,6 +93,7 @@ export async function saveSettings(input: {
     phone_appointments: !!input.phone_appointments,
     sms_reminders: input.sms_reminders !== false,
     whatsapp_on: input.whatsapp_on !== false,
+    whatsapp_bot: input.whatsapp_bot !== false,
   }).eq('id', 1);
   if (error) return { ok: false, error: 'השמירה נכשלה.' };
   revalidatePath('/', 'layout');
