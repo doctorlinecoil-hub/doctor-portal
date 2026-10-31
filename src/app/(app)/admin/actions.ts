@@ -381,3 +381,22 @@ export async function digestNow(): Promise<Result> {
   const r = await sendDailyDigest({ force: true });
   return r.ok ? { ok: true, info: 'הסיכום היומי נשלח לכתובות ההתראות' } : { ok: false, error: r.info };
 }
+
+/** The admin's notes on each service in the system map (plan, renewal date, cost, account). No secrets. */
+export async function saveInfraNotes(notes: Record<string, Record<string, string>>): Promise<Result> {
+  const supabase = await assertAdmin().catch(() => null);
+  if (!supabase) return { ok: false, error: 'אין הרשאה.' };
+  const out: Record<string, Record<string, string>> = {};
+  for (const [k, v] of Object.entries(notes || {}).slice(0, 30)) {
+    if (!/^[a-z]{2,20}$/.test(k)) continue;
+    const n: Record<string, string> = {};
+    for (const f of ['plan', 'renews', 'account', 'cost', 'note']) {
+      const val = clean(String(v?.[f] ?? ''), 300);
+      if (f === 'renews' && val && !DATE.test(val)) continue;
+      if (val) n[f] = val;
+    }
+    if (Object.keys(n).length) out[k] = n;
+  }
+  const { error } = await supabase.from('admin_notes').upsert({ id: 1, data: out, updated_at: new Date().toISOString() });
+  return error ? { ok: false, error: 'השמירה נכשלה.' } : { ok: true };
+}

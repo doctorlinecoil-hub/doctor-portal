@@ -187,6 +187,7 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
       <nav className="st-nav" aria-label="קטגוריות">
         {NAV.map(([id, ic, l]) => <a key={id} href={`#${id}`}><Icon name={ic} size={15} />{l}</a>)}
         <a href="#maintenance"><Icon name="key" size={15} />גיבוי ותחזוקה</a>
+        <a href="/admin/system" className="st-nav-map"><Icon name="activity" size={15} />מפת המערכת</a>
       </nav>
 
       <Section id="notify" icon="bell" title="התראות לרופא במייל" sub="לאן נשלחות ההתראות של המרפאה. אפשר כמה כתובות, למשל המייל הפרטי של הרופא ושל המזכירה.">
