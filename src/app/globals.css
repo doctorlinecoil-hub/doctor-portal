@@ -3062,3 +3062,13 @@ a.fx-next:hover { text-decoration: none; background: rgba(255,255,255,.1); }
 .pp-proof span { flex: 1; display: flex; flex-direction: column; line-height: 1.3; }
 .pp-proof b { font-size: 14px; } .pp-proof small { font-size: 12px; opacity: .8; }
 .pp-proof em { font-style: normal; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.pp-rej-btn { color: #B54708; border-color: #F5DDB0; background: #FFF8EB; }
+.pp-rej-btn:hover, .pp-rej-btn[aria-expanded="true"] { background: #FDEFD3; }
+.pp-rej { flex-basis: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: #FFFBF3; border: 1px solid #F5DDB0; }
+.pp-rej b { font-size: 13.5px; }
+.pp-rej-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-rej-quick button { font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 999px; border: 1px solid #F0D49E; background: #fff; color: #7A4B0B; cursor: pointer; }
+.pp-rej-quick button[aria-pressed="true"] { background: #7A4B0B; border-color: #7A4B0B; color: #fff; }
+.pp-rej textarea { width: 100%; font: inherit; font-size: 14px; }
+.pp-rej-a { display: flex; gap: 8px; }
+.fx-okpay { color: var(--ok); font-weight: 600; }
