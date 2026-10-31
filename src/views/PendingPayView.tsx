@@ -2,7 +2,8 @@ import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { PAY_METHODS, ils, type PayMethod } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
-import { fmtDate, ilParts } from '@/lib/dates';
+import { dayNum, fmtDate, ilParts, todayIL } from '@/lib/dates';
+import PayBoard, { type PayCard } from '@/components/PayBoard';
 import type { ApptRow } from '@/lib/types';
 import type { ProofCheck } from '@/lib/payCheck';
 
@@ -12,13 +13,20 @@ export type PayLine = { amount: number; method: PayMethod; paid_on: string };
  * Documents that are ready and wait for the doctor's payment approval. The doctor sees what was paid
  * (amount and method), notes a payment if needed, and approves: the document opens and goes out by email.
  */
-export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}, action, remind }: {
+export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}, action, remind, month = 0 }: {
+  /** collected this month */
+  month?: number;
   waiting: ApptRow[]; approved: ApptRow[]; gate: boolean; pays?: Record<string, PayLine[]>; proofs?: Record<string, { url: string; at: string; check?: ProofCheck | null }>;
   remind?: (r: ApptRow) => React.ReactNode;
   action: (r: ApptRow, undo?: boolean) => React.ReactNode;
 }) {
   const to = (r: ApptRow) => (r.firm_kind === 'private' || r.payer === 'patient' ? 'המטופל' : r.firm_name || 'המפנה');
   const due = waiting.reduce((s, r) => s + Math.max(0, r.price - r.paid), 0);
+  const today = dayNum(todayIL());
+  const age = (r: ApptRow) => Math.max(0, today - dayNum(ilParts(r.starts_at).date));
+  const nProofs = waiting.filter((r) => proofs[r.id]).length;
+  // what needs the doctor first: a confirmation to check, then the oldest
+  const ordered = [...waiting].sort((a, b) => Number(!!proofs[b.id]) - Number(!!proofs[a.id]) || age(b) - age(a));
   const Paid = ({ r }: { r: ApptRow }) => {
     const list = pays[r.id] ?? [];
     return (
@@ -26,7 +34,6 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}
         {list.length ? list.map((p, i) => (
           <span key={i} className="pp-chip ok"><Icon name="checkCircle" size={13} /><b className="num">{ils(p.amount)}</b>{PAY_METHODS[p.method]}<small className="num">{fmtDate(p.paid_on)}</small></span>
         )) : <span className="pp-chip none"><Icon name="clock" size={13} />לא נרשם תשלום</span>}
-        {r.price > 0 && <span className="pp-price">מחיר <b className="num">{ils(r.price)}</b>{r.paid > 0 && r.paid + 0.001 < r.price && <> · נותר <b className="num">{ils(r.price - r.paid)}</b></>}</span>}
       </div>
     );
   };
@@ -39,8 +46,9 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}
           <p>אחרי האישור המסמך נפתח לצפייה ונשלח במייל למפנה או למטופל.</p>
         </div>
         <div className="pp-hero-k">
-          <span><b className="num">{waiting.length}</b>ממתינים</span>
-          {due > 0 && <span><b className="num">{ils(due)}</b>פתוח לגבייה</span>}
+          <span><b className="num">{ils(due)}</b>פתוח לגבייה</span>
+          <span className={nProofs ? 'hot' : ''}><b className="num">{nProofs}</b>אסמכתאות לבדיקה</span>
+          <span><b className="num">{ils(month)}</b>נגבה החודש</span>
         </div>
       </section>
       {!gate && <p className="pp-info"><Icon name="info" size={16} />שחרור מסמכים לפי תשלום כבוי בהגדרות: כל מסמך סופי נפתח ונשלח מיד.</p>}
@@ -48,34 +56,44 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}
       {waiting.length === 0 ? (
         <section className="pp-card"><div className="pp-zero"><Icon name="checkCircle" size={22} />אין מסמכים שמחכים לתשלום.</div></section>
       ) : (
-        <div className="pp-grid">
-          {waiting.map((r) => (
-            <article key={r.id} className="pp-item">
-              <header>
-                <span className="fc-av">{(r.patient_name || '?').trim().slice(0, 1)}</span>
-                <Link href={`/doctor/cases/${r.id}`} className="pp-m">
-                  <b>{r.patient_name || 'ממתין לפרטים'}</b>
-                  <small>{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)} · תיק <span className="num">{r.case_no}</span></small>
-                </Link>
-                <a className="btn btn-sm btn-ghost" href={`/letters/${r.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={14} />המסמך</a>
-              </header>
-              <Paid r={r} />
-              {proofs[r.id] && (
-                <div className="pp-proofw">
-                  <a className="pp-proof" href={proofs[r.id].url} target="_blank" rel="noopener">
-                    <Icon name="fileCheck" size={16} /><span><b>התקבל אישור העברה</b><small className="num">{proofs[r.id].at}</small></span><em>צפייה<Icon name="externalLink" size={13} /></em>
-                  </a>
-                  {proofs[r.id].check && <ProofCheckBox c={proofs[r.id].check!} />}
+        <PayBoard cards={ordered.map((r): PayCard => {
+          const d = age(r);
+          const left = Math.max(0, r.price - r.paid);
+          return {
+            id: r.id, proof: !!proofs[r.id], days: d,
+            search: [r.patient_name, r.firm_name, String(r.case_no), r.patient_id_number].filter(Boolean).join(' ').toLowerCase(),
+            node: (
+              <article className={`pp-item${proofs[r.id] ? ' has-proof' : ''}`}>
+                <header>
+                  <span className="fc-av">{(r.patient_name || '?').trim().slice(0, 1)}</span>
+                  <Link href={`/doctor/cases/${r.id}`} className="pp-m">
+                    <b>{r.patient_name || 'ממתין לפרטים'}</b>
+                    <small>{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)} · תיק <span className="num">{r.case_no}</span></small>
+                  </Link>
+                  <a className="btn btn-sm btn-ghost" href={`/letters/${r.id}/print`} target="_blank" rel="noopener"><Icon name="eye" size={14} />המסמך</a>
+                </header>
+                <div className="pp-due">
+                  <div><small>לגבייה מ{to(r)}</small><b className="num">{left > 0 ? ils(left) : r.price > 0 ? 'שולם במלואו' : 'ללא מחיר'}</b>{r.paid > 0 && left > 0 && <em className="num">מתוך {ils(r.price)}</em>}</div>
+                  <span className={`pp-age${d >= 30 ? ' bad' : d >= 14 ? ' warn' : ''}`}><Icon name="clock" size={13} />{d === 0 ? 'היום' : d === 1 ? 'מאתמול' : `ממתין ${d} ימים`}</span>
                 </div>
-              )}
-              {remind?.(r)}
-              <footer>
-                <span className="pp-to"><Icon name="mail" size={14} />יישלח ל{to(r)}</span>
-                {action(r)}
-              </footer>
-            </article>
-          ))}
-        </div>
+                <Paid r={r} />
+                {proofs[r.id] && (
+                  <div className="pp-proofw">
+                    <a className="pp-proof" href={proofs[r.id].url} target="_blank" rel="noopener">
+                      <Icon name="fileCheck" size={16} /><span><b>התקבל אישור העברה</b><small className="num">{proofs[r.id].at}</small></span><em>צפייה<Icon name="externalLink" size={13} /></em>
+                    </a>
+                    {proofs[r.id].check && <ProofCheckBox c={proofs[r.id].check!} />}
+                  </div>
+                )}
+                {remind?.(r)}
+                <footer>
+                  <span className="pp-to"><Icon name="mail" size={14} />המסמך יישלח ל{to(r)}</span>
+                  {action(r)}
+                </footer>
+              </article>
+            ),
+          };
+        })} />
       )}
 
       {approved.length > 0 && (
