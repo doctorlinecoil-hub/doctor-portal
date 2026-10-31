@@ -47,6 +47,7 @@ import RegisterForm from '@/app/register/RegisterForm';
 import DepositBox from '@/components/DepositBox';
 import PendingSignups from '@/app/(app)/admin/users/PendingSignups';
 import { payLines } from '@/lib/constants';
+import WaScreen from '@/app/(app)/doctor/whatsapp/WaScreen';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,6 +118,39 @@ export default async function PreviewPage({ params }: { params: Promise<{ screen
         rows={fx.rows.map((r) => ({ ...r, ends_at: new Date(new Date(r.starts_at).getTime() + 1800000).toISOString() }))}
         tools={<div className="row"><BlockForm today={todayIL()} /></div>}
         slotAction={(iso, label) => <FreeSlot iso={iso} label={label} minutes={30} />} blockAction={(b) => <RemoveBlock id={b.id} />} />);
+    }
+    case 'doctor-whatsapp':
+    case 'doctor-whatsapp-list': {
+      const ago = (m: number) => new Date(Date.now() - m * 60000).toISOString();
+      const T = (phone: string, name: string, body: string, at: number, o: Partial<{ out: boolean; bot: boolean; unread: number; human: boolean; waiting: boolean; caseId: string }>) =>
+        ({ phone, local: `0${phone.slice(3, 5)}-${phone.slice(5)}`, name, last: { body, at: ago(at), out: !!o.out, bot: !!o.bot }, unread: o.unread ?? 0, caseId: o.caseId ?? null, human: !!o.human, waiting: !!o.waiting });
+      const list = [
+        T('972521234567', 'ישראל ישראלי', '✅ התור נקבע! 📅 יום שלישי 3.11.2026 בשעה 10:00', 3, { out: true, bot: true, caseId: fx.rows[0].id }),
+        T('972549876543', 'מירב כהן', 'אפשר לדבר עם הרופא לגבי התוצאות?', 12, { unread: 2, human: true, waiting: true }),
+        T('972503334444', 'דוד לוי', 'תודה רבה!', 55, { unread: 1, waiting: true }),
+        T('972587776655', 'נועה גבאי', 'תזכורת לתור', 180, { out: true }),
+        T('972526665544', 'אבי מזרחי', 'מה הכתובת המדויקת?', 60 * 26, {}),
+      ];
+      const M = (i: number, dir: 'in' | 'out', body: string, at: number, o: Partial<{ bot: boolean; kind: string; status: string }> = {}) =>
+        ({ id: `m${i}`, appointment_id: null, phone: '972521234567', name: 'ישראל', direction: dir, kind: o.kind ?? (dir === 'in' ? 'text' : 'interactive'), body, status: o.status ?? (dir === 'in' ? 'received' : 'read'), error: '', seen_at: ago(1), created_at: ago(at), bot: !!o.bot });
+      const msgs = [
+        M(1, 'in', 'היי, אפשר לקבוע תור?', 9),
+        M(2, 'out', 'שלום ישראל 👋\nכאן העוזר הדיגיטלי של מרפאת ד״ר אלרן חנוך.\nבמה אפשר לעזור?\n• 📅 קביעת תור\n• 🗓️ התורים שלי\n• 📍 כתובת ושעות פעילות\n• 💬 לדבר עם המרפאה', 9, { bot: true }),
+        M(3, 'in', '📅 קביעת תור', 8, { kind: 'interactive' }),
+        M(4, 'out', 'איזה סוג ביקור?\n• סיכום ביקור\n• חוות דעת לביטוח לאומי\n• הפניה לבדיקות', 8, { bot: true }),
+        M(5, 'in', 'סיכום ביקור', 7, { kind: 'interactive' }),
+        M(6, 'out', 'באיזה יום נוח לך?\n• יום שלישי 3.11.2026\n• יום רביעי 4.11.2026\n• יום חמישי 5.11.2026', 7, { bot: true }),
+        M(7, 'in', 'יום שלישי 3.11.2026', 6, { kind: 'interactive' }),
+        M(8, 'in', '10:00', 5, { kind: 'interactive' }),
+        M(9, 'out', 'מעולה, יום שלישי 3.11.2026 בשעה 10:00 ✔️\n\nמה השם המלא של המטופל/ת?', 5, { bot: true, kind: 'text' }),
+        M(10, 'in', 'ישראל ישראלי', 4),
+        M(11, 'out', '✅ התור נקבע!\n\n📅 יום שלישי 3.11.2026 בשעה 10:00\n📍 עזריאלי שרונה, תל אביב\n\nנשלח לך תזכורת לפני התור.', 3, { bot: true, kind: 'text' }),
+        M(12, 'out', 'שלום ישראל ישראלי, התור שלך אצל מרפאת ד״ר אלרן חנוך נקבע ליום שלישי, 3.11.2026 בשעה 10:00.', 3, { kind: 'clinic_appointment_confirmed', status: 'delivered' }),
+      ];
+      const sel = screen === 'doctor-whatsapp' ? list[0] : null;
+      return staffShell('/doctor/whatsapp', <WaScreen live={false} list={list} sel={sel} msgs={sel ? msgs : []} tags={{ clinic_appointment_confirmed: 'זימון לתור' }}
+        upcoming={sel ? [{ id: fx.rows[0].id, starts_at: new Date(Date.now() + 3 * 86400000).toISOString(), status: 'booked', service_label: 'סיכום ביקור' }] : []}
+        waiting={2} today={4} booked={7} connected botOn open leftMs={20 * 3600_000} clinic={{ address: 'עזריאלי שרונה, תל אביב', phone: '03-1234567' }} />);
     }
     case 'admin-money': {
       const done = fx.rows.map((r, i) => ({ ...r, status: 'done' as const, payment_ok_at: i < 2 ? new Date().toISOString() : null }));
