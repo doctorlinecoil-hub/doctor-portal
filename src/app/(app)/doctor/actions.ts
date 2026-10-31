@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { dbError, type PayMethod } from '@/lib/constants';
 import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
-import { deliverLetter, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
+import { deliverLetter, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
 
 type Result = { ok: boolean; error?: string; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -176,5 +176,15 @@ export async function remindPayment(id: string): Promise<Result> {
   const c = await staffCase(id);
   if (!c) return { ok: false, error: 'אין הרשאה.' };
   const r = await sendPaymentReminder(id);
+  return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
+}
+
+/** The confirmation is not right / the money did not arrive: the doctor's message goes to whoever pays. */
+export async function rejectPayment(id: string, message: string): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const text = String(message || '').trim().slice(0, 2000);
+  if (text.length < 3) return { ok: false, error: 'כתבו מה לא תקין.' };
+  const r = await sendPaymentRejected(id, text);
   return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
 }
