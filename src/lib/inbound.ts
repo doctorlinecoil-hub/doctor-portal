@@ -8,7 +8,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * from guessing another case's address. Off until INBOUND_EMAIL_DOMAIN is set.
  */
 
-const secret = () => process.env.INBOUND_SECRET || process.env.RESEND_WEBHOOK_SECRET || process.env.RESEND_API_KEY || '';
+const secret = () => process.env.INBOUND_SECRET || process.env.RESEND_API_KEY || '';
 const tokenFor = (caseNo: number) => createHmac('sha256', secret()).update(`pay:${caseNo}`).digest('hex').slice(0, 12);
 
 export function inboundEnabled() {
