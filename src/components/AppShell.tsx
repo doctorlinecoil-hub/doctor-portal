@@ -18,7 +18,6 @@ export function navFor(role: Role): { title: string; items: NavItem[] }[] {
   const doctor = { title: 'מרפאה', items: [
     { href: '/doctor', label: 'דשבורד ויומן', icon: 'home' },
     { href: '/doctor/new', label: 'מסמך / מרשם חדש', icon: 'plus' },
-    { href: '/doctor/templates', label: 'תבניות למכתבים', icon: 'template' },
     { href: '/doctor/services', label: 'סוגי שירות ומחירים', icon: 'receipt' },
     { href: '/doctor/payments', label: 'אישור תשלומים', icon: 'wallet' },
     { href: '/admin/reports', label: 'דוחות וגבייה', icon: 'chart' },
