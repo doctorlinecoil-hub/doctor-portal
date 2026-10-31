@@ -4,6 +4,7 @@ import { PAY_METHODS, ils, type PayMethod } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
 import { fmtDate, ilParts } from '@/lib/dates';
 import type { ApptRow } from '@/lib/types';
+import type { ProofCheck } from '@/lib/payCheck';
 
 export type PayLine = { amount: number; method: PayMethod; paid_on: string };
 
@@ -12,7 +13,7 @@ export type PayLine = { amount: number; method: PayMethod; paid_on: string };
  * (amount and method), notes a payment if needed, and approves: the document opens and goes out by email.
  */
 export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}, action, remind }: {
-  waiting: ApptRow[]; approved: ApptRow[]; gate: boolean; pays?: Record<string, PayLine[]>; proofs?: Record<string, { url: string; at: string }>;
+  waiting: ApptRow[]; approved: ApptRow[]; gate: boolean; pays?: Record<string, PayLine[]>; proofs?: Record<string, { url: string; at: string; check?: ProofCheck | null }>;
   remind?: (r: ApptRow) => React.ReactNode;
   action: (r: ApptRow, undo?: boolean) => React.ReactNode;
 }) {
@@ -60,9 +61,12 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}
               </header>
               <Paid r={r} />
               {proofs[r.id] && (
-                <a className="pp-proof" href={proofs[r.id].url} target="_blank" rel="noopener">
-                  <Icon name="fileCheck" size={16} /><span><b>התקבל אישור העברה</b><small className="num">{proofs[r.id].at}</small></span><em>צפייה<Icon name="externalLink" size={13} /></em>
-                </a>
+                <div className="pp-proofw">
+                  <a className="pp-proof" href={proofs[r.id].url} target="_blank" rel="noopener">
+                    <Icon name="fileCheck" size={16} /><span><b>התקבל אישור העברה</b><small className="num">{proofs[r.id].at}</small></span><em>צפייה<Icon name="externalLink" size={13} /></em>
+                  </a>
+                  {proofs[r.id].check && <ProofCheckBox c={proofs[r.id].check!} />}
+                </div>
               )}
               {remind?.(r)}
               <footer>
@@ -96,6 +100,25 @@ export function PendingPayView({ waiting, approved, gate, pays = {}, proofs = {}
           </ul>
         </section>
       )}
+    </div>
+  );
+}
+
+/** What the system read in the transfer confirmation; the doctor decides. */
+function ProofCheckBox({ c }: { c: ProofCheck }) {
+  const label = c.verdict === 'ok' ? 'נראה תקין' : c.verdict === 'bad' ? 'נראה לא תקין' : 'כדאי לבדוק';
+  const facts = [
+    c.amount != null ? `סכום ${ils(c.amount)}` : '',
+    c.date ? `תאריך ${fmtDate(c.date)}` : '',
+    c.recipient || c.account ? `מוטב ${[c.recipient, c.account].filter(Boolean).join(' · ')}` : '',
+    c.reference ? `אסמכתא ${c.reference}` : '',
+  ].filter(Boolean);
+  return (
+    <div className={`pp-check ${c.verdict}`}>
+      <div className="pp-check-h"><Icon name={c.verdict === 'ok' ? 'checkCircle' : 'alert'} size={15} /><b>בדיקת המערכת: {label}</b></div>
+      {c.summary && <p>{c.summary}</p>}
+      {c.issues.length > 0 && <ul>{c.issues.map((i) => <li key={i}>{i}</li>)}</ul>}
+      {facts.length > 0 && <small className="num">{facts.join(' · ')}</small>}
     </div>
   );
 }
