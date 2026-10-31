@@ -3,7 +3,6 @@ import { morningEnabled } from '@/lib/morning';
 import { mailEnabled } from '@/lib/mail';
 import SettingsForm from './SettingsForm';
 import type { ReferralType } from '@/lib/constants';
-import ResetData from './ResetData';
 import BackupNow from './BackupNow';
 import { smsChannel, smsEnabled } from '@/lib/sms';
 
@@ -17,7 +16,6 @@ export default async function AdminSettingsPage() {
       <SettingsForm services={((svc ?? []) as { id: string; label: string; base_type: ReferralType; active: boolean }[]).filter((x) => x.active)} initial={settings} morning={morningEnabled()} mail={mailEnabled()} cron={!!process.env.CRON_SECRET} sms={smsEnabled() ? smsChannel() : ''} />
       <div className="st-maint" id="maintenance">
         <BackupNow />
-        <ResetData />
       </div>
     </>
   );
