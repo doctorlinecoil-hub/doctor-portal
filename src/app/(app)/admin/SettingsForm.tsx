@@ -292,7 +292,7 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
         <Toggle id="banner" on={s.use_banner} set={set('use_banner')} title="כותרת רשמית (הבאנר) בראש כל עמוד" desc="בלי זה תופיע כותרת טקסט פשוטה." />
         <Toggle id="signFinal" on={s.sign_final} set={set('sign_final')} title="חתימה וחותמת על מסמכים סופיים" desc="רק על מסמך שסימנת כסופי." />
         <Toggle id="cv" on={s.cv_in_opinions} set={set('cv_in_opinions')} title="קורות חיים בתחילת כל חוות דעת" desc="״פרטי השכלתי ותפקידי״, כמו בתבנית חוות הדעת." />
-        <label className="st-field" htmlFor="lhFoot"><b>שורות בתחתית כל עמוד</b><small>שם, רישיונות, התמחות, כתובת</small><textarea id="lhFoot" rows={4} value={s.lh_footer} onChange={text('lh_footer')} /></label>
+        <label className="st-field" htmlFor="lhFoot"><b>שורות בתחתית כל עמוד</b><small>שם, רישיונות, התמחות, כתובת</small><textarea id="lhFoot" rows={6} value={s.lh_footer} onChange={text('lh_footer')} /></label>
         <details className="st-more">
           <summary>קורות חיים לחוות דעת</summary>
           <label className="st-field" htmlFor="lhCv"><small>שורה שנגמרת בנקודתיים = כותרת</small><textarea id="lhCv" rows={10} value={s.lh_cv} onChange={text('lh_cv')} /></label>
