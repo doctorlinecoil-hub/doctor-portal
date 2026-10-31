@@ -54,7 +54,7 @@ export default async function FirmCasePage({ params }: { params: Promise<{ id: s
   const payBox = c.status === 'pending' && dep > 0 && !depPaid
     ? <FirmPayBox appointmentId={id} firmId={profile.firm_id!} mode="deposit" amount={dep} pay={pay} holdHours={settings.deposit_hold_hours} sent={proof} />
     : (c.status === 'booked' || c.status === 'draft' || c.status === 'done') && due > 0 && (pay.bank.length > 0 || !!pay.bit)
-      ? <FirmPayBox appointmentId={id} firmId={profile.firm_id!} mode="balance" amount={due} pay={pay} />
+      ? <FirmPayBox appointmentId={id} firmId={profile.firm_id!} mode="balance" amount={due} pay={pay} sent={!!(a as { pay_proof_at?: string | null }).pay_proof_at} />
       : null;
   const canCancel = (c.status === 'pending' || c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now() && !late;
   const showRule = days > 0 && (c.status === 'booked' || c.status === 'draft') && new Date(c.starts_at).getTime() > Date.now();
