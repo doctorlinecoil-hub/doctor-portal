@@ -162,7 +162,7 @@ export const firms = [
 ];
 
 export const users = [
-  { id: 'u0', role: 'admin' as const, firm_id: null, full_name: 'אלי', email: 'admin@example.co.il', must_change_password: false, active: true },
+  { id: 'u0', role: 'admin' as const, firm_id: null, full_name: 'ד״ר אלרן חנוך', email: 'admin@example.co.il', must_change_password: false, active: true },
   { id: 'u1', role: 'doctor' as const, firm_id: null, full_name: 'ד״ר אלרן חנוך', email: 'doctor@example.co.il', must_change_password: false, active: true },
   { id: 'u2', role: 'firm' as const, firm_id: 'f1', full_name: 'עו״ד דנה לוי', email: 'dana@example.co.il', must_change_password: false, active: true },
   { id: 'u3', role: 'firm' as const, firm_id: 'f1', full_name: 'עו״ד רון כהן', email: 'ron@example.co.il', must_change_password: true, active: true },
@@ -173,7 +173,7 @@ export const users = [
 export const log = [
   { id: 6, user_id: 'u1', who: 'ד״ר אלרן חנוך', action: 'ai_draft', entity: 'appointment', entity_id: caseDetail.id, details: null, at: at(0, '10:05') },
   { id: 5, user_id: 'u1', who: 'ד״ר אלרן חנוך', action: 'view_case', entity: 'appointment', entity_id: caseDetail.id, details: null, at: at(0, '10:02') },
-  { id: 4, user_id: 'u0', who: 'אלי', action: 'payment', entity: 'appointment', entity_id: caseDetail.id, details: { amount: 1000, method: 'transfer' }, at: at(-3, '12:00') },
+  { id: 4, user_id: 'u0', who: 'ד״ר אלרן חנוך', action: 'payment', entity: 'appointment', entity_id: caseDetail.id, details: { amount: 1000, method: 'transfer' }, at: at(-3, '12:00') },
   { id: 3, user_id: 'u2', who: 'עו״ד דנה לוי', action: 'upload', entity: 'document', entity_id: null, details: null, at: at(-1, '16:21') },
   { id: 2, user_id: 'u2', who: 'עו״ד דנה לוי', action: 'note', entity: 'case_note', entity_id: null, details: null, at: at(-1, '16:20') },
   { id: 1, user_id: 'u2', who: 'עו״ד דנה לוי', action: 'book', entity: 'appointment', entity_id: caseDetail.id, details: null, at: at(-5, '09:12') },
