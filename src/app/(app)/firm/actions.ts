@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { SETTINGS_DEFAULTS, type Settings } from '@/lib/constants';
 import { rescanIfNeeded, runIntake } from '@/lib/intake';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { notifyFirmUpdate, notifyNewRequest, notifyPaymentProof, sendDepositRequest, sendLetterTo, sendSummons } from '@/lib/notify';
+import { notifyCancelled, notifyFirmUpdate, notifyNewRequest, notifyRescheduleRequest, notifyPaymentProof, sendDepositRequest, sendLetterTo, sendSummons } from '@/lib/notify';
 import { appUrl } from '@/lib/mail';
 import { extractDetails, type Extracted } from '@/lib/extract';
 
@@ -113,5 +113,13 @@ export async function firmPaymentProof(id: string): Promise<{ ok: boolean }> {
   const { error } = await supabase.rpc('payment_proof_sent', { p_id: id });
   if (error) return { ok: false };
   after(async () => { await notifyPaymentProof(id, doc.storage_path as string).catch(() => undefined); });
+  return { ok: true };
+}
+
+/** Right after a referrer cancelled or asked for a new date: email the doctor (once). */
+export async function afterChange(id: string, what: 'cancel' | 'reschedule'): Promise<{ ok: boolean }> {
+  const c = await ownCase(id);
+  if (!c) return { ok: false };
+  after(() => (what === 'cancel' ? notifyCancelled(id) : notifyRescheduleRequest(id)).then(() => undefined, () => undefined));
   return { ok: true };
 }
