@@ -393,3 +393,18 @@ export function rxEmail(s: Settings, patientName: string): Rendered {
   const body = p(`שלום ${esc(patientName)},<br>מצורף המרשם מ${esc(s.lh_name)} כקובץ PDF.`) + p('את המרשם יש להציג בבית המרקחת כשהוא חתום. בכל שאלה אפשר לפנות למרפאה.');
   return { subject, html: layout(s, { preheader: 'המרשם מצורף', title: 'מרשם', body }), text: textOf([subject, 'המרשם מצורף כ־PDF.']) };
 }
+
+/** To the admin: the daily backup of all the data. */
+export function backupEmail(s: Settings, o: { date: string; counts: [string, number][]; files: number; filesMb: number; attached: boolean; link: string }): Rendered {
+  const subject = `גיבוי יומי · ${s.lh_name} · ${fmtDate(o.date)}`;
+  const body =
+    p(`מצורף הגיבוי היומי של המערכת מ־${esc(fmtDate(o.date))}.`) +
+    card(o.counts.map(([k, v]) => [esc(k), String(v)] as [string, string])) +
+    p(o.attached
+      ? '<b>הקבצים המצורפים:</b><br>• <b>תיקים.csv</b> – רשימת כל התיקים, נפתחת באקסל.<br>• <b>backup.json.gz</b> – כל הנתונים במלואם (תיקים, מכתבים, תשלומים, מפנים, הגדרות), לשחזור במקרה הצורך.'
+      : 'הגיבוי המלא גדול מדי למייל, ולכן מצורפת רק רשימת התיקים. הנתונים המלאים שמורים במסד הנתונים.') +
+    p(`המסמכים שהועלו (${o.files} קבצים, כ־${o.filesMb} MB) שמורים בנפרד באחסון המאובטח, ואינם מצורפים למייל.`) +
+    p('<b>שמרו את המייל הזה.</b> הוא מכיל מידע רפואי אישי: אל תעבירו אותו הלאה.') +
+    `<div style="margin:6px 0 10px">${button(o.link, 'כניסה למערכת', false)}</div>`;
+  return { subject, html: layout(s, { preheader: 'הגיבוי היומי מצורף', title: 'גיבוי יומי', body }), text: textOf([subject, ...o.counts.map(([k, v]) => `${k}: ${v}`)]) };
+}
