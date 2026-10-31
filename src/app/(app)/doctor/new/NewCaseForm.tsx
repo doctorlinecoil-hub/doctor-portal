@@ -61,7 +61,7 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
     const n = ++lookup.current;
     const t = setTimeout(async () => {
       const ids = [...new Set([id, id.padStart(9, '0'), id.replace(/^0+/, '')])];
-      const { data } = await supabase.from('appointments').select(COLS).in('patient_id_number', ids).order('starts_at', { ascending: false }).limit(50);
+      const { data } = await supabase.from('appointments').select(COLS).eq('provisional', false).in('patient_id_number', ids).order('starts_at', { ascending: false }).limit(50);
       if (n !== lookup.current) return;
       const k = fold((data as Omit<Known, 'visits'>[] | null) ?? [])[0] ?? null;
       setKnown(k);
@@ -78,7 +78,7 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
     const num = digits(term);
     setSearching(true);
     const t = setTimeout(async () => {
-      let req = supabase.from('appointments').select(COLS).neq('patient_name', '').order('starts_at', { ascending: false }).limit(60);
+      let req = supabase.from('appointments').select(COLS).eq('provisional', false).neq('patient_name', '').order('starts_at', { ascending: false }).limit(60);
       if (term.length >= 2) req = num.length >= 3 && num.length === term.replace(/[\s-]/g, '').length
         ? req.or(`patient_id_number.ilike.%${num}%,patient_phone.ilike.%${num}%`)
         : req.ilike('patient_name', `%${term}%`);
@@ -96,7 +96,7 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
     const q = f.name.trim();
     if (preview || q.length < 2 || known) { setHits([]); return; }
     const t = setTimeout(async () => {
-      const { data } = await supabase.from('appointments').select(COLS).ilike('patient_name', `%${q.replace(/[%_,()]/g, '')}%`).order('starts_at', { ascending: false }).limit(40);
+      const { data } = await supabase.from('appointments').select(COLS).eq('provisional', false).ilike('patient_name', `%${q.replace(/[%_,()]/g, '')}%`).order('starts_at', { ascending: false }).limit(40);
       setHits(fold((data as Omit<Known, 'visits'>[] | null) ?? []).slice(0, 5));
     }, 300);
     return () => clearTimeout(t);
@@ -133,7 +133,7 @@ export default function NewCaseForm({ firms, services, initial, preview }: {
       firm_id: firmId, walk_in: true, starts_at: ilToUtc(now.date, now.time.slice(0, 5)).toISOString(), service_id: svc!.id, referral_type: svc!.base_type,
       payer: 'patient',
       patient_name: f.name.trim(), patient_id_number: f.id.trim(), patient_dob: f.dob || null, patient_phone: f.phone.trim(),
-      patient_email: f.email.trim().toLowerCase(), notes: '',
+      patient_email: f.email.trim().toLowerCase(), notes: '', provisional: true,
     }).select('id').single();
     if (error || !data) { setBusy(false); return setErr(dbError(error)); }
     const brief = f.brief.trim();
