@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { SETTINGS_DEFAULTS, type Settings } from '@/lib/constants';
 import { rescanIfNeeded, runIntake } from '@/lib/intake';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { notifyFirmUpdate, notifyNewRequest, sendDepositRequest, sendLetterTo, sendSummons } from '@/lib/notify';
+import { notifyFirmUpdate, notifyNewRequest, notifyPaymentProof, sendDepositRequest, sendLetterTo, sendSummons } from '@/lib/notify';
 import { appUrl } from '@/lib/mail';
 import { extractDetails, type Extracted } from '@/lib/extract';
 
@@ -99,4 +99,19 @@ export async function forwardLetter(id: string, email: string): Promise<{ ok: bo
   if (!c) return { ok: false, info: 'התיק לא נמצא.' };
   const r = await sendLetterTo(id, String(email || '').split(/[,;\s]+/), { byReferrer: true });
   return { ok: r.ok, info: r.info };
+}
+
+/** A referrer uploaded the transfer confirmation in the case page: mark it, and send it to the doctor by email. */
+export async function firmPaymentProof(id: string): Promise<{ ok: boolean }> {
+  const c = await ownCase(id);
+  if (!c) return { ok: false };
+  const supabase = await createClient();
+  const since = new Date(Date.now() - 10 * 60_000).toISOString();
+  const { data: doc } = await supabase.from('documents').select('storage_path').eq('appointment_id', id).like('file_name', 'אישור העברה%')
+    .gte('created_at', since).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (!doc) return { ok: false };
+  const { error } = await supabase.rpc('payment_proof_sent', { p_id: id });
+  if (error) return { ok: false };
+  after(async () => { await notifyPaymentProof(id, doc.storage_path as string).catch(() => undefined); });
+  return { ok: true };
 }
