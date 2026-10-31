@@ -11,6 +11,7 @@ type N = { id: number; kind: string; title: string; body: string; link: string; 
 const ICON: Record<string, string> = {
   new_request: 'inbox', approved: 'checkCircle', declined: 'x', cancelled: 'x', letter_ready: 'fileCheck', moved: 'calendar',
   new_document: 'upload', new_note: 'info', doc_request: 'flag', reschedule: 'calendar', reschedule_declined: 'x', booked_by_clinic: 'calendarPlus',
+  payment_proof: 'wallet', deposit_proof: 'wallet', payment_reply: 'mail',
 };
 
 /** In-app notifications: new requests, approvals, documents, letters. Refreshes every 45 seconds. */
@@ -63,7 +64,8 @@ function Bell({ dark }: { dark?: boolean }) {
       setList((l) => l.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
       await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', n.id);
     }
-    if (n.link) router.push(n.link);
+    const to = target(n);
+    if (to) router.push(to);
   }
   async function readAll() {
     const now = new Date().toISOString();
@@ -148,4 +150,21 @@ function dayLabel(iso: string) {
   if (key(d) === key(today)) return 'היום';
   if (key(d) === key(y)) return 'אתמול';
   return 'מוקדם יותר';
+}
+
+/**
+ * Where a notification leads. A referrer lands on the case window in "my cases" (status, document, download),
+ * or on the full case page when something has to be added; the doctor lands on the screen that acts on it.
+ */
+function target(n: N): string {
+  const m = /^\/(firm|doctor)\/cases\/([0-9a-f-]{36})/i.exec(n.link || '');
+  if (!m) return n.link || '';
+  const [, who, id] = m;
+  if (who === 'firm') {
+    if (n.kind === 'doc_request') return `/firm/cases/${id}`;
+    return `/firm/cases?open=${id}`;
+  }
+  if (n.kind === 'payment_proof' || n.kind === 'deposit_proof') return n.kind === 'payment_proof' ? '/doctor/payments' : `/doctor#approvals`;
+  if (n.kind === 'new_request' || n.kind === 'reschedule') return `/doctor/cases/${id}`;
+  return n.link;
 }

@@ -20,6 +20,8 @@ export default function FirmCasesBrowser({ rows, all, initial, gate = true, clin
   const [view, setView] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []); // which letter is shown in the preview
+  // a notification (or a link) asked for another case while this page is open
+  useEffect(() => { if (initial && all.some((r) => r.id === initial)) { setOpenId(initial); setView(null); } }, [initial]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = all.find((r) => r.id === openId) ?? null;
   const history = useMemo(() => (open ? all.filter((r) => idKey(r) === idKey(open)).sort((a, b) => b.starts_at.localeCompare(a.starts_at)) : []), [open, all]);
   const ok = (r: ApptRow) => r.status === 'done' && released(r, gate);
