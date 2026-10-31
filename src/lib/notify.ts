@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { sendSms, smsEnabled, smsReminderText } from './sms';
+import { docLinkFor, sendTemplate, waOn, waWhen, type TemplateName } from './whatsapp';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from './supabase/admin';
 import { BUCKET, SETTINGS_DEFAULTS, notifyList, ils, isPatientKind, type ReferralType, type Settings } from './constants';
@@ -51,6 +52,22 @@ function info(a: Appt): ApptInfo {
   const minutes = Math.max(10, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000));
   return { caseNo: a.case_no, startsAt: a.starts_at, minutes, type: a.referral_type, label: a.service_label || '', patientName: a.patient_name, firmName: a.firm?.name || '', phone: a.mode === 'phone', patientPhone: a.patient_phone || '' };
 }
+
+/** WhatsApp to the patient's mobile (when connected and on). Never throws; the email is the main channel. */
+async function waPatient(db: SupabaseClient, s: Settings, a: Appt, name: TemplateName, params: string[], once = false): Promise<boolean> {
+  if (!waOn(s) || !a.patient_phone) return false;
+  if (once) {
+    const { data } = await db.from('wa_messages').select('id').eq('appointment_id', a.id).eq('kind', name).eq('status', 'sent').limit(1);
+    if (data?.length) return false;
+  }
+  const r = await sendTemplate(db, s, a.id, a.patient_phone, name, params).catch(() => ({ ok: false }));
+  return r.ok;
+}
+async function waAlreadyConfirmed(db: SupabaseClient, id: string) {
+  const { data } = await db.from('wa_messages').select('id').eq('appointment_id', id).eq('kind', 'clinic_appointment_confirmed').eq('status', 'sent').limit(1);
+  return !!data?.length;
+}
+const waAddress = (s: Settings, a: Appt) => (a.mode === 'phone' ? 'שיחה טלפונית – הרופא יתקשר אליך' : s.lh_address || '—');
 
 /** The referrer's addresses, plus the extra addresses typed when booking (they get the summons and the letters too). */
 async function firmEmails(db: SupabaseClient, firmId: string, office?: string | null, extra?: string[] | null) {
@@ -182,6 +199,7 @@ export async function sendSummons(id: string, opts: { force?: boolean } = {}): P
     const r = await sendMail(db, id, 'summons_firm', { to: who.referrer, ...m, attachments });
     if (r.ok) sent++; else if (r.error) errors.push(r.error);
   }
+  if (await waPatient(db, s, a, 'clinic_appointment_confirmed', [a.patient_name, s.lh_name, waWhen(a.starts_at), waAddress(s, a)], !opts.force)) sent++;
   return { ok: sent > 0, sent, info: errors[0] || '' };
 }
 
@@ -269,7 +287,9 @@ export async function runTick(): Promise<NotifyResult> {
         const r = await sendMail(db, a.id, `reminder_${at}_firm`, { to: who.referrer, ...reminderEmail(s, ai, true, at, { link: caseLink(a.id, false) }) });
         if (r.ok) sent++;
       }
-      if (s.sms_reminders !== false && smsEnabled() && a.patient_phone) {
+      const waSent = await waPatient(db, s, a, 'clinic_appointment_reminder', [a.patient_name, s.lh_name, `${at === '2h' ? 'היום' : 'בעוד 3 ימים'}, ${waWhen(a.starts_at)}`, waAddress(s, a)]);
+      if (waSent) sent++;
+      if (!waSent && s.sms_reminders !== false && smsEnabled() && a.patient_phone) {
         const r = await sendSms(db, a.id, `reminder_${at}`, a.patient_phone, smsReminderText(s, ai, at));
         if (r.ok) sent++;
       }
@@ -356,6 +376,11 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   if (a.patient_email && pdf && !firmTo.includes(a.patient_email.trim().toLowerCase())) {
     const r2 = await sendMail(db, id, 'letter_patient', { to: [a.patient_email], ...letterEmail(s, ai, { forReferrer: false, attached: true }), attachments });
     if (r2.ok) sent++;
+  }
+  // the patient's mobile: a personal link to the document (opened with the last 4 digits of the ID number)
+  if (waOn(s) && a.patient_phone && String(a.patient_id_number || '').replace(/\D/g, '').length >= 4) {
+    const link = await docLinkFor(db, id);
+    if (link && (await waPatient(db, s, a, 'clinic_document_ready', [a.patient_name, s.lh_name, link]))) sent++;
   }
   if (sent) await db.from('appointments').update({ letter_sent_at: new Date().toISOString() }).eq('id', id);
   else if (!opts.force) await db.from('appointments').update({ letter_sent_at: null }).eq('id', id);
@@ -459,6 +484,7 @@ export async function notifyCancelled(id: string): Promise<NotifyResult> {
     const pics = icsFile(info(a), clinicOf(s), `appt-${a.id}@doctor-portal`, { cancel: true });
     await sendMail(db, id, 'cancel_patient', { to: who.patient, ...cancelledByClinicEmail(s, info(a), { forReferrer: false, link: `${appUrl()}/book` }), attachments: [{ filename: 'הסרה מהיומן.ics', content: pics, contentType: 'text/calendar; charset=utf-8; method=CANCEL' }] });
   }
+  if (await waAlreadyConfirmed(db, id)) await waPatient(db, s, a, 'clinic_appointment_cancelled', [a.patient_name, s.lh_name, waWhen(a.starts_at), `${appUrl()}/book`], true);
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
 
@@ -493,6 +519,7 @@ export async function sendClinicCancel(id: string): Promise<NotifyResult> {
     const r = await sendMail(db, id, 'cancel_firm', { to: who.referrer, ...cancelledByClinicEmail(s, info(a), { forReferrer: true, link: `${appUrl()}/firm/book` }), attachments });
     if (r.ok) sent++;
   }
+  if (await waPatient(db, s, a, 'clinic_appointment_cancelled', [a.patient_name, s.lh_name, waWhen(a.starts_at), `${appUrl()}/book`], true)) sent++;
   return { ok: true, sent, info: '' };
 }
 
@@ -517,5 +544,7 @@ export async function sendMoved(id: string, oldStart: string): Promise<NotifyRes
     const r = await sendMail(db, id, `${tag}_f`, { to: who.referrer, ...movedEmail(s, info(a), oldStart, { forReferrer: true, link: caseLink(id, false) }), attachments });
     if (r.ok) sent++; else if (r.error) errors.push(r.error);
   }
-  return { ok: sent > 0, sent, info: errors[0] || (who.patient.length ? '' : 'למטופל אין מייל') };
+  const wa = await waPatient(db, s, a, 'clinic_appointment_moved', [a.patient_name, s.lh_name, waWhen(a.starts_at), waWhen(oldStart)]);
+  if (wa) sent++;
+  return { ok: sent > 0, sent, info: errors[0] || (who.patient.length || wa ? '' : 'למטופל אין מייל') };
 }

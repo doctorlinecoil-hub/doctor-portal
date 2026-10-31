@@ -101,6 +101,7 @@ export type Settings = {
   open_registration: boolean;
   phone_appointments: boolean;
   sms_reminders: boolean;
+  whatsapp_on?: boolean;
 };
 
 export const BUCKET = 'case-files';
@@ -183,6 +184,7 @@ export const SETTINGS_DEFAULTS = {
   open_registration: true,
   phone_appointments: true,
   sms_reminders: true,
+  whatsapp_on: true,
 } as const;
 
 /** Emoji and decorations pasted from WhatsApp, removed so the details read cleanly everywhere. */
