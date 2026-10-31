@@ -11,7 +11,9 @@ export const maxDuration = 60;
 const EXT: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 type Received = { email_id: string; from: string; to: string[]; cc?: string[]; received_for?: string[]; subject: string; attachments?: { id: string; filename: string; content_type: string }[] };
 
-const api = (path: string) => fetch(`https://api.resend.com${path}`, { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }, signal: AbortSignal.timeout(20_000) });
+// reading received mail needs a Resend key with full access (a sending-only key gets 401): RESEND_RECEIVE_KEY, or the main key
+const readKey = () => process.env.RESEND_RECEIVE_KEY || process.env.RESEND_API_KEY;
+const api = (path: string) => fetch(`https://api.resend.com${path}`, { headers: { Authorization: `Bearer ${readKey()}` }, signal: AbortSignal.timeout(20_000) });
 
 /**
  * Resend "email.received": a payer answered a payment email. The transfer confirmation attached to the reply
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
   if (process.env.RESEND_WEBHOOK_SECRET && !verifyWebhook(raw, { id: req.headers.get('svix-id'), timestamp: req.headers.get('svix-timestamp'), signature: req.headers.get('svix-signature') })) {
     return new Response('bad signature', { status: 401 });
   }
-  if (!process.env.RESEND_API_KEY) return new Response('receiving is off', { status: 503 });
+  if (!readKey()) return new Response('receiving is off', { status: 503 });
   let event: { type?: string; data?: Received };
   try { event = JSON.parse(raw); } catch { return new Response('bad json', { status: 400 }); }
   if (event.type !== 'email.received' || !event.data?.email_id) return Response.json({ ok: true, skipped: true });
@@ -32,7 +34,19 @@ export async function POST(req: Request) {
   // the real email, from Resend (not from the webhook body)
   const full = await api(`/emails/receiving/${encodeURIComponent(event.data.email_id)}`).catch(() => null);
   const body = full?.ok ? await full.json().catch(() => null) as (Received & { text?: string }) | null : null;
-  if (!body) return Response.json({ ok: true, skipped: 'not found' });
+  if (!body) {
+    // the key can't read received mail: still tell the doctor a reply came in (only for a real case address with its token)
+    const pd = event.data;
+    const n = [...(pd.to ?? []), ...(pd.received_for ?? [])].map(caseFromAddress).find((x) => x != null) ?? null;
+    if (n != null && (full?.status === 401 || full?.status === 403)) {
+      const db0 = createAdminClient();
+      const { data: a0 } = await db0.from('appointments').select('id').eq('case_no', n).maybeSingle();
+      if (a0) after(async () => {
+        await notifyPaymentReply(a0.id, { from: String(pd.from || ''), subject: String(pd.subject || ''), text: `(התקבלה תשובה${pd.attachments?.length ? ` עם ${pd.attachments.length} קבצים מצורפים` : ''}, אבל המערכת לא יכולה לקרוא אותה: מפתח ה־Resend הוא "Sending access" בלבד. יש ליצור מפתח עם Full access ולשמור אותו ב־Vercel בשם RESEND_RECEIVE_KEY, ואז ללחוץ Replay על האירוע ב־Resend.)` }).catch(() => undefined);
+      });
+    }
+    return Response.json({ ok: true, skipped: 'not found', status: full?.status ?? 0 });
+  }
   const d: Received = { ...body, email_id: event.data.email_id };
   const caseNo = [...(d.to ?? []), ...(d.cc ?? []), ...(d.received_for ?? [])].map(caseFromAddress).find((n) => n != null) ?? null;
   if (caseNo == null) return Response.json({ ok: true, skipped: 'no case address' });
