@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { fmtStamp } from '@/lib/dates';
 import Icon from './Icon';
@@ -31,6 +31,9 @@ export default function NotificationBell({ dark, on }: { dark?: boolean; on: 'de
 function Bell({ dark }: { dark?: boolean }) {
   const supabase = useSupabase();
   const router = useRouter();
+  const pathname = usePathname() || '';
+  // referrers see only what is new: a notification disappears once it was opened
+  const inbox = pathname.startsWith('/firm');
   const [list, setList] = useState<N[]>([]);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -38,9 +41,22 @@ function Bell({ dark }: { dark?: boolean }) {
   const unread = list.filter((n) => !n.read_at).length;
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('notifications').select('id, kind, title, body, link, created_at, read_at').order('created_at', { ascending: false }).limit(30);
-    if (data) setList(data as N[]);
-  }, [supabase]);
+    let q = supabase.from('notifications').select('id, kind, title, body, link, created_at, read_at').order('created_at', { ascending: false }).limit(30);
+    if (inbox) q = q.is('read_at', null);
+    const { data } = await q;
+    if (!data) return;
+    let rows = data as N[];
+    if (inbox) {
+      // a case the referrer is already looking at counts as opened
+      const here = caseIdIn(window.location.pathname + window.location.search);
+      const seen = here ? rows.filter((n) => n.link?.includes(here)).map((n) => n.id) : [];
+      if (seen.length) {
+        rows = rows.filter((n) => !seen.includes(n.id));
+        await supabase.from('notifications').update({ read_at: new Date().toISOString() }).in('id', seen);
+      }
+    }
+    setList(rows);
+  }, [supabase, inbox]);
 
   useEffect(() => {
     load();
@@ -48,7 +64,7 @@ function Bell({ dark }: { dark?: boolean }) {
     const f = () => load();
     window.addEventListener('focus', f);
     return () => { clearInterval(t); window.removeEventListener('focus', f); };
-  }, [load]);
+  }, [load, pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +77,7 @@ function Bell({ dark }: { dark?: boolean }) {
   async function go(n: N) {
     setOpen(false);
     if (!n.read_at) {
-      setList((l) => l.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
+      setList((l) => (inbox ? l.filter((x) => x.id !== n.id) : l.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x))));
       await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', n.id);
     }
     const to = target(n);
@@ -69,7 +85,7 @@ function Bell({ dark }: { dark?: boolean }) {
   }
   async function readAll() {
     const now = new Date().toISOString();
-    setList((l) => l.map((x) => ({ ...x, read_at: x.read_at ?? now })));
+    setList((l) => (inbox ? [] : l.map((x) => ({ ...x, read_at: x.read_at ?? now }))));
     await supabase.from('notifications').update({ read_at: now }).is('read_at', null);
   }
 
@@ -98,13 +114,13 @@ function Bell({ dark }: { dark?: boolean }) {
               </div>
               <button type="button" className="ndrawer-x" onClick={() => setOpen(false)} aria-label="סגירה"><Icon name="x" /></button>
             </header>
-            <div className="ndrawer-tabs" role="tablist">
+            {!inbox && <div className="ndrawer-tabs" role="tablist">
               <button type="button" role="tab" aria-selected={filter === 'all'} className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>הכל <span className="num">{list.length}</span></button>
               <button type="button" role="tab" aria-selected={filter === 'unread'} className={filter === 'unread' ? 'on' : ''} onClick={() => setFilter('unread')}>לא נקראו <span className="num">{unread}</span></button>
-            </div>
+            </div>}
             <div className="ndrawer-body">
               {shown.length === 0 ? (
-                <div className="ndrawer-empty"><span><Icon name="checkCircle" /></span><b>{filter === 'unread' ? 'אין התראות חדשות' : 'אין התראות עדיין'}</b><small>כאן יופיעו בקשות חדשות, מסמכים שהועלו ומכתבים מוכנים.</small></div>
+                <div className="ndrawer-empty"><span><Icon name="checkCircle" /></span><b>{inbox || filter === 'unread' ? 'אין התראות חדשות' : 'אין התראות עדיין'}</b><small>כאן יופיעו בקשות חדשות, מסמכים שהועלו ומכתבים מוכנים.</small></div>
               ) : groups.map((g) => (
                 <section key={g.label} className="ngroup">
                   <h4>{g.label}</h4>
@@ -126,13 +142,18 @@ function Bell({ dark }: { dark?: boolean }) {
                 </section>
               ))}
             </div>
-            {unread > 0 && <footer className="ndrawer-foot"><button type="button" className="btn btn-sm" onClick={readAll}><Icon name="check" />סימון הכל כנקרא</button></footer>}
+            {unread > 0 && <footer className="ndrawer-foot"><button type="button" className="btn btn-sm" onClick={readAll}><Icon name="check" />{inbox ? 'ניקוי הכל' : 'סימון הכל כנקרא'}</button></footer>}
           </aside>
         </div>,
         document.body,
       )}
     </div>
   );
+}
+
+/** The case id in a URL: /firm/cases/<id> or ?open=<id>. */
+function caseIdIn(url: string) {
+  return /(?:cases\/|[?&]open=)([0-9a-f-]{36})/i.exec(url)?.[1] ?? null;
 }
 
 function tone(kind: string) {
