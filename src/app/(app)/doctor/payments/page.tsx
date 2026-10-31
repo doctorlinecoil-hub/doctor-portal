@@ -8,6 +8,7 @@ import RemindPay from './RemindPay';
 import { BUCKET, ils, payLines } from '@/lib/constants';
 import { labelOf } from '@/lib/services';
 import { fmtDate, ilParts } from '@/lib/dates';
+import type { ProofCheck } from '@/lib/payCheck';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export default async function PaymentApprovalPage() {
   const { data: p } = ids.length ? await supabase.from('payments').select('appointment_id, amount, method, paid_on').in('appointment_id', ids).order('paid_on') : { data: [] };
   const wids = waiting.map((r) => r.id);
   const [{ data: contacts }, { data: sent }] = wids.length ? await Promise.all([
-    supabase.from('appointments').select('id, patient_phone, firm:firms(phone)').in('id', wids),
+    supabase.from('appointments').select('id, patient_phone, pay_proof_check, firm:firms(phone)').in('id', wids),
     supabase.from('email_log').select('appointment_id, created_at').eq('kind', 'payment_reminder').eq('status', 'sent').in('appointment_id', wids).order('created_at', { ascending: false }),
   ]) : [{ data: [] }, { data: [] }];
   const phoneOf = new Map(((contacts as { id: string; patient_phone: string | null; firm: { phone: string | null } | { phone: string | null }[] | null }[] | null) ?? [])
@@ -37,8 +38,9 @@ export default async function PaymentApprovalPage() {
   const paths = [...newest.values()].map((x) => x.path);
   const { data: signed } = paths.length ? await supabase.storage.from(BUCKET).createSignedUrls(paths, 3600) : { data: [] };
   const urlOf = new Map(((signed as { path: string | null; signedUrl: string }[] | null) ?? []).map((x) => [x.path, x.signedUrl]));
-  const proofs: Record<string, { url: string; at: string }> = {};
-  for (const [id, x] of newest) { const u = urlOf.get(x.path); if (u) proofs[id] = { url: u, at: `${fmtDate(ilParts(x.at).date)} ${ilParts(x.at).time}` }; }
+  const checkOf = new Map(((contacts as { id: string; pay_proof_check: ProofCheck | null }[] | null) ?? []).map((c) => [c.id, c.pay_proof_check]));
+  const proofs: Record<string, { url: string; at: string; check?: ProofCheck | null }> = {};
+  for (const [id, x] of newest) { const u = urlOf.get(x.path); if (u) proofs[id] = { url: u, at: `${fmtDate(ilParts(x.at).date)} ${ilParts(x.at).time}`, check: checkOf.get(id) ?? null }; }
   const lastSent = new Map<string, string>();
   for (const x of (sent as { appointment_id: string; created_at: string }[] | null) ?? []) if (!lastSent.has(x.appointment_id)) lastSent.set(x.appointment_id, x.created_at);
   const pl = payLines(settings);
