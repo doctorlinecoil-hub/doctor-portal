@@ -3049,3 +3049,9 @@ a.fx-next:hover { text-decoration: none; background: rgba(255,255,255,.1); }
   .fx-dl span { display: none; } .fx-dl { width: 38px; padding: 0; justify-content: center; }
   .fx-st { font-size: 0; gap: 0; } .fx-st i { width: 10px; height: 10px; }
 }
+
+/* referrer case: until when the appointment can be changed */
+.change-rule { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; background: var(--surface-2); border: 1px solid var(--line); color: var(--fg-2, var(--fg)); }
+.change-rule svg { flex: none; margin-top: 2px; color: var(--muted); }
+.change-rule.late { background: #FFF8EB; border-color: #F5DDB0; color: #7A4B0B; }
+.change-rule.late svg { color: #B7791F; }
