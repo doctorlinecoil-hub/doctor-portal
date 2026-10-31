@@ -38,7 +38,8 @@ export function FirmDashboardView({ firmName, clinicName, rows, gate = true }: {
   const today = todayIL();
   const now = new Date().toISOString();
   const live = rows.filter((r) => r.status !== 'cancelled');
-  const upcoming = live.filter((r) => ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  // real appointments still ahead (a document without a calendar slot is not an appointment)
+  const upcoming = live.filter((r) => !r.walk_in && r.starts_at >= now && r.status !== 'done').sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const pending = rows.filter((r) => r.status === 'pending').sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const active = rows.filter((r) => r.status === 'booked' || r.status === 'draft');
   const ready = rows.filter((r) => r.status === 'done').sort((a, b) => b.starts_at.localeCompare(a.starts_at));
@@ -121,7 +122,7 @@ export function FirmDashboardView({ firmName, clinicName, rows, gate = true }: {
               {ready.slice(0, 6).map((r) => (
                 <li key={r.id}>
                   <span className="fx-pdf">PDF</span>
-                  <Link href={`/firm/cases?open=${r.id}`} className="fx-rm"><b>{r.patient_name || 'מטופל'}</b><small className="num">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)}</small></Link>
+                  <Link href={`/firm/cases?open=${r.id}`} className="fx-rm"><b>{r.patient_name || 'מטופל'}</b><small className="num">{labelOf(r)} · {fmtDate(ilParts(r.starts_at).date)}{released(r, gate) ? <> · <span className="fx-okpay">{r.paid > 0 ? 'שולם' : 'אושר ע״י הרופא'}</span></> : null}</small></Link>
                   {released(r, gate)
                     ? <a className="fx-dl" href={`/letters/${r.id}/pdf`} download aria-label={`הורדת המסמך של ${r.patient_name}`}><Icon name="download" size={16} /><span>הורדה</span></a>
                     : <span className="fx-wait">ממתין לתשלום</span>}
@@ -174,7 +175,7 @@ const FIRM_FILTERS = [
 export function filterFirmRows(rows: ApptRow[], f: string) {
   const today = todayIL();
   switch (f) {
-    case 'upcoming': return rows.filter((r) => r.status !== 'cancelled' && ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+    case 'upcoming': return rows.filter((r) => r.status !== 'cancelled' && r.status !== 'done' && !r.walk_in && ilParts(r.starts_at).date >= today).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
     case 'pending': return rows.filter((r) => r.status === 'pending');
     case 'open': return rows.filter((r) => r.status === 'pending' || r.status === 'booked' || r.status === 'draft');
     case 'done': return rows.filter((r) => r.status === 'done');
