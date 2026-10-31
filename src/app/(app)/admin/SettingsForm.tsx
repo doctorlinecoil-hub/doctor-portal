@@ -79,7 +79,7 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
 
           <section className="panel" id="pay-details">
             <div className="panel-head"><h2><Icon name="card" />פרטי תשלום</h2></div>
-            <p className="hint">קביעת התור באתר היא בלי מקדמה ובלי תשלום. הפרטים כאן מופיעים רק בתיק של המפנה, אחרי שרשמת לו חיוב, כדי שיוכל להעביר.</p>
+            <p className="hint">הפרטים כאן נשלחים בכל בקשת תשלום, תזכורת תשלום והודעת "אסמכתא לא תקינה", ומופיעים בדף העלאת האסמכתא, כדי שידעו לאן להעביר. אחרי שינוי לוחצים "שמירת ההגדרות" בתחתית הדף.</p>
             <label className="field" htmlFor="bank"><span>פרטי חשבון להעברה <small>שורה לכל פרט: בנק, סניף, חשבון, על שם</small></span>
               <textarea id="bank" rows={4} value={s.bank_details} onChange={text('bank_details')} placeholder={'בנק: הפועלים (12)\nסניף: 532\nחשבון: 123456\nעל שם: ד״ר אלרן חנוך'} /></label>
             <label className="field" htmlFor="bit"><span>מספר לביט / פייבוקס <small>לא חובה</small></span>
