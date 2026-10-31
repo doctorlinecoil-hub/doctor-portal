@@ -3480,3 +3480,4 @@ details[open] > summary::after { transform: translateY(-30%) rotate(135deg); }
 .dp > b { display: flex; align-items: center; gap: 6px; color: var(--bad); }
 .dp p { margin: 0; font-size: 13.5px; color: var(--fg-2); }
 .dp label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.fx-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 640px) { .fx-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } }
