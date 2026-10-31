@@ -180,7 +180,7 @@ export default function DetailsWizard({ c, firmId, docs: initialDocs, services, 
             <p className="muted" style={{ margin: 0 }}>צרפו מסמכים שכדאי שהרופא יראה: הפניה, תוצאות בדיקות, סיכומי ביקור או כתב תביעה.</p>
             {docs.length > 0 && (
               <ul className="doc-chips">
-                {docs.map((d) => <li key={d.id}><Icon name="file" size={15} /><span>{d.file_name}</span><small>{(d.size_bytes / 1048576).toFixed(1)}MB</small></li>)}
+                {docs.map((d) => <li key={d.id}><Icon name="file" size={15} /><span><bdi dir="auto">{d.file_name}</bdi></span><small>{(d.size_bytes / 1048576).toFixed(1)}MB</small></li>)}
               </ul>
             )}
             <FilePicker files={files} onChange={setFiles} label={docs.length ? 'מסמכים נוספים' : 'גררו לכאן את מסמכי התיק'} />
