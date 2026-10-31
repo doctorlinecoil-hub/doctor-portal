@@ -79,6 +79,11 @@ export default function RegisterForm({ initialKind }: { initialKind?: string }) 
       <label className="su-terms"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} /><span>קראתי ואני מסכים/ה ל<a href="/terms" target="_blank">תנאי השימוש</a> ול<a href="/privacy" target="_blank">מדיניות הפרטיות</a>, כולל שמירת מסמכים רפואיים במערכת לצורך הטיפול בפנייה.</span></label>
       <input className="pb-hp" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden="true" placeholder="website" />
       {err && <p className="err" role="alert">{err}</p>}
+      {err.includes('כבר רשום') && (
+        <a className="btn btn-primary su-known" href={`/login?code=1&email=${encodeURIComponent(v.email.trim())}`}>
+          <Icon name="mail" />כבר רשומים? כניסה עם קוד למייל
+        </a>
+      )}
       <button className="btn btn-primary btn-lg" type="submit" disabled={busy}>{busy ? 'שולח…' : 'הרשמה'}</button>
     </form>
   );
