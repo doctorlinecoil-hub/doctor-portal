@@ -15,7 +15,7 @@ export async function priorVisits(db: SupabaseClient, a: { id: string; patient_i
   // only this referrer's own earlier cases: another office's visits must never show up in a document they get
   if (!a.firm_id) return [];
   const { data } = await db.from('appointments').select('id, starts_at, status, service_label')
-    .in('patient_id_number', ids).eq('firm_id', a.firm_id).lt('starts_at', a.starts_at).neq('id', a.id).not('status', 'in', '(cancelled,pending)')
+    .in('patient_id_number', ids).eq('firm_id', a.firm_id).eq('provisional', false).lt('starts_at', a.starts_at).neq('id', a.id).not('status', 'in', '(cancelled,pending)')
     .order('starts_at').limit(30);
   const visit = ilParts(a.starts_at).date;
   const seen = new Set<string>();
@@ -37,7 +37,7 @@ export async function priorLetters(db: SupabaseClient, a: { id: string; patient_
   const ids = [...new Set([raw, raw.padStart(9, '0'), raw.replace(/^0+/, ''), String(a.patient_id_number).trim()])];
   if (!a.firm_id) return [];
   const { data: appts } = await db.from('appointments').select('id, starts_at, service_label')
-    .in('patient_id_number', ids).eq('firm_id', a.firm_id).lt('starts_at', a.starts_at).neq('id', a.id).not('status', 'in', '(cancelled,pending)')
+    .in('patient_id_number', ids).eq('firm_id', a.firm_id).eq('provisional', false).lt('starts_at', a.starts_at).neq('id', a.id).not('status', 'in', '(cancelled,pending)')
     .order('starts_at', { ascending: false }).limit(10);
   const list = (appts as { id: string; starts_at: string; service_label: string | null }[] | null) ?? [];
   if (!list.length) return [];

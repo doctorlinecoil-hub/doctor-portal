@@ -290,6 +290,15 @@ export async function runTick(): Promise<NotifyResult> {
     const who = await audience(db, a);
     if (who.patient.length) await sendMail(db, a.id, 'deposit_expired', { to: who.patient, ...depositExpiredEmail(s, info(a), `${appUrl()}/book`) });
   }
+  // documents opened and left empty for a day (nothing written, no files, no payment): removed
+  const { data: empty } = await db.from('appointments').select('id, letters(body, exam_notes), documents(id), payments(id)').eq('provisional', true).lt('created_at', iso(-24 * H)).limit(50);
+  type Empty = { id: string; letters: { body: string | null; exam_notes: string | null }[] | { body: string | null; exam_notes: string | null } | null; documents: { id: string }[] | null; payments: { id: string }[] | null };
+  const drop = ((empty as Empty[] | null) ?? []).filter((r) => {
+    const ls = Array.isArray(r.letters) ? r.letters : r.letters ? [r.letters] : [];
+    const text = ls.some((l) => String(l.body || '').replace(/<[^>]+>/g, '').trim() || String(l.exam_notes || '').trim());
+    return !text && !(r.documents ?? []).length && !(r.payments ?? []).length;
+  }).map((r) => r.id);
+  if (drop.length) await db.from('appointments').delete().in('id', drop).eq('provisional', true);
   return { ok: true, sent, info: '' };
 }
 

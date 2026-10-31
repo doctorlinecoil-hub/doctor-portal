@@ -59,7 +59,7 @@ export async function sendDailyDigest(opts: { force?: boolean } = {}): Promise<{
   const seenToday = span.filter((r) => ilParts(r.starts_at).date === today && live(r)).length;
   const since = new Date(Date.now() - 24 * 3600_000).toISOString();
   const [{ count: newToday }, { count: paidToday }] = await Promise.all([
-    db.from('appointments').select('id', { count: 'exact', head: true }).gte('created_at', since),
+    db.from('appointments').select('id', { count: 'exact', head: true }).eq('provisional', false).gte('created_at', since),
     db.from('payments').select('id', { count: 'exact', head: true }).gte('created_at', since),
   ]);
   const [{ count: pending }, { count: moves }, waiting, { count: proofs }] = await Promise.all([
