@@ -4,7 +4,7 @@ import { after } from 'next/server';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACCEPTED_TYPES, BUCKET, EMAIL_RE, MAX_FILE_BYTES, SETTINGS_DEFAULTS, dbError, payLines, type Settings } from '@/lib/constants';
-import { notifyNewRequest, sendDepositRequest, sendSummons } from '@/lib/notify';
+import { notifyNewRequest, notifyPaymentProof, sendDepositRequest, sendSummons } from '@/lib/notify';
 import { appUrl } from '@/lib/mail';
 import { runIntake } from '@/lib/intake';
 import { autoDraft } from '@/lib/autodraft';
@@ -275,5 +275,42 @@ export async function depositProofDone(id: string, key: string, up: { path: stri
   if (!obj) return { ok: false, error: 'הקובץ לא הגיע. נסו שוב.' };
   await c.db.from('documents').insert({ appointment_id: id, firm_id: c.a.firm_id, storage_path: up.path, file_name: `אישור העברה למקדמה - ${clean(up.name, 200) || 'קובץ'}`, mime_type: up.type, size_bytes: Number((obj.metadata as { size?: number } | null)?.size ?? 1) || 1 });
   await c.db.rpc('deposit_proof_sent', { p_id: id });
+  return { ok: true };
+}
+
+
+/* ---------- a ready document waits for payment: the payer sends the transfer confirmation ---------- */
+
+async function byPayKey(id: string, key: string) {
+  if (!UUID.test(id) || !/^[0-9a-f]{48}$/.test(key)) return null;
+  const db = createAdminClient();
+  const { data: a } = await db.from('appointments').select('id, firm_id, status, pay_key_hash, pay_key_expires').eq('id', id).maybeSingle();
+  if (!a || a.pay_key_hash !== sha(key) || !a.pay_key_expires || new Date(a.pay_key_expires).getTime() < Date.now()) return null;
+  return { db, a };
+}
+
+/** A signed address to upload the transfer confirmation into the case. */
+export async function payProofUrl(id: string, key: string, file: { name: string; size: number; type: string }): Promise<R<{ path: string; url: string }>> {
+  const c = await byPayKey(id, key);
+  if (!c) return { ok: false, error: 'הקישור פג תוקף. אפשר להשיב למייל עם צילום האישור.' };
+  if (!ACCEPTED_TYPES.includes(file.type) || !(file.size > 0) || file.size > MAX_FILE_BYTES) return { ok: false, error: 'אפשר לצרף PDF או תמונה עד 25MB.' };
+  const path = `${c.a.firm_id}/${id}/payment-${crypto.randomUUID()}.${EXT[file.type] || 'bin'}`;
+  const { data, error } = await c.db.storage.from(BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: 'ההעלאה לא זמינה כרגע.' };
+  return { ok: true, path, url: data.signedUrl };
+}
+
+/** Records the confirmation in the case, and the doctor gets it by email and in the system. */
+export async function payProofDone(id: string, key: string, up: { path: string; name: string; type: string }): Promise<R> {
+  const c = await byPayKey(id, key);
+  if (!c) return { ok: false, error: 'הקישור פג תוקף.' };
+  const folder = `${c.a.firm_id}/${id}`;
+  if (!up.path.startsWith(`${folder}/payment-`) || !ACCEPTED_TYPES.includes(up.type)) return { ok: false, error: 'הקובץ לא תקין.' };
+  const { data: listed } = await c.db.storage.from(BUCKET).list(folder, { limit: 200 });
+  const obj = (listed ?? []).find((o) => `${folder}/${o.name}` === up.path);
+  if (!obj) return { ok: false, error: 'הקובץ לא הגיע. נסו שוב.' };
+  await c.db.from('documents').insert({ appointment_id: id, firm_id: c.a.firm_id, storage_path: up.path, file_name: `אישור העברה לתשלום - ${clean(up.name, 200) || 'קובץ'}`, mime_type: up.type, size_bytes: Number((obj.metadata as { size?: number } | null)?.size ?? 1) || 1 });
+  await c.db.rpc('payment_proof_sent', { p_id: id });
+  after(async () => { await notifyPaymentProof(id, up.path).catch(() => undefined); });
   return { ok: true };
 }
