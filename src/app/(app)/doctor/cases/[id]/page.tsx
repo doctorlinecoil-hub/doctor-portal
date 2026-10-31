@@ -14,6 +14,7 @@ import LetterEditor, { type LetterRow } from './LetterEditor';
 import PaymentPanel from './PaymentPanel';
 import PaymentRelease from './PaymentRelease';
 import DoctorCancel from './DoctorCancel';
+import DeletePatient from './DeletePatient';
 import IntakePanel from './IntakePanel';
 import CommsPanel, { type EmailLogRow } from './CommsPanel';
 import ResolveButton from './ResolveButton';
@@ -75,7 +76,7 @@ export default async function DoctorCasePage({ params }: { params: Promise<{ id:
       c={c}
       notes={(notes as NoteRow[]) ?? []}
       docs={docRows}
-      cancel={open ? <DoctorCancel appointmentId={id} /> : null}
+      cancel={<>{open && <DoctorCancel appointmentId={id} />}<DeletePatient appointmentId={id} name={c.patient_name || 'מחק'} cases={history.length + 1} /></>}
       approval={<ApprovalButtons id={id} deposit={Number(a.deposit_amount) > 0 ? { amount: Number(a.deposit_amount), paid: !!a.deposit_paid_at, proof: !!a.deposit_proof_at } : null} />}
       history={<PatientHistory rows={history} />}
       reschedule={resched ? <RescheduleDecision req={resched as RescheduleRow} fromLabel={label(a.starts_at)} toLabel={label((resched as RescheduleRow).requested_starts_at)} /> : null}
