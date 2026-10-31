@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { deliverLetter } from '@/lib/notify';
 import { sendBackup } from '@/lib/backup';
+import { sendDailyDigest } from '@/lib/daily';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { tempPassword } from '@/lib/password';
@@ -31,7 +32,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
-  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
+  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -72,7 +73,15 @@ export async function saveSettings(input: {
     auto_draft: !!input.auto_draft,
     deposit_amount: Math.max(0, Math.min(99999, money(input.deposit_amount || 0))),
     deposit_hold_hours: Math.min(336, Math.max(1, Math.round(+input.deposit_hold_hours || 48))),
-    change_business_days: Math.min(30, Math.max(0, Math.round(Number(input.change_business_days ?? 5)))),
+    change_business_days: Math.min(60, Math.max(0, Math.round(Number(input.change_business_days ?? 5)))),
+    cancel_days: Math.min(60, Math.max(0, Math.round(Number(input.cancel_days ?? 5)))),
+    change_days_unit: input.change_days_unit === 'calendar' ? 'calendar' : 'business',
+    allow_reschedule: input.allow_reschedule !== false,
+    allow_cancel: input.allow_cancel !== false,
+    max_reschedules: Math.min(20, Math.max(0, Math.round(Number(input.max_reschedules ?? 0)))),
+    daily_digest: input.daily_digest !== false,
+    auto_pay_reminder_days: Math.min(30, Math.max(0, Math.round(Number(input.auto_pay_reminder_days ?? 0)))),
+    policy_in_summons: input.policy_in_summons !== false,
     bank_details: clean(input.bank_details, 1000), bit_phone: clean(input.bit_phone, 30), pay_note: clean(input.pay_note, 1000),
     open_registration: !!input.open_registration,
     phone_appointments: !!input.phone_appointments,
@@ -352,4 +361,11 @@ export async function backupNow(): Promise<Result> {
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
   const r = await sendBackup({ force: true });
   return r.ok ? { ok: true, info: r.info } : { ok: false, error: r.info };
+}
+
+export async function digestNow(): Promise<Result> {
+  const supabase = await assertAdmin().catch(() => null);
+  if (!supabase) return { ok: false, error: 'אין הרשאה.' };
+  const r = await sendDailyDigest({ force: true });
+  return r.ok ? { ok: true, info: 'סיכום הבוקר נשלח למייל של הרופא' } : { ok: false, error: r.info };
 }
