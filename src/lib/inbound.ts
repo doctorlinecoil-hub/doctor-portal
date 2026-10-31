@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * Replies to payment emails come back into the system (Resend "Receiving"):
  * each payment email gets its own reply address  pay-<case>-<token>@<INBOUND_EMAIL_DOMAIN>,
  * so a reply with the transfer confirmation lands in the right case. The token stops anyone
- * from guessing another case's address. Off until INBOUND_EMAIL_DOMAIN is set.
+ * from guessing another case's address. Off until INBOUND_EMAIL_DOMAIN is set (Vercel env, e.g. <id>.resend.app).
  */
 
 const secret = () => process.env.INBOUND_SECRET || process.env.RESEND_API_KEY || '';
