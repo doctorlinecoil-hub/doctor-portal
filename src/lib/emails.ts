@@ -3,6 +3,7 @@ import { ils, payLines, typeOf, type Settings } from './constants';
 import { bringList, mapsLink, wazeLink, when, type ApptInfo, type ClinicInfo } from './messages';
 import { appUrl } from './mail';
 import { fmtDate } from './dates';
+import type { ProofCheck } from './payCheck';
 
 // Email templates. Table layout and inline styles so they look right in Gmail, Outlook and phones. RTL Hebrew.
 
@@ -337,10 +338,27 @@ export function paymentReminderEmail(s: Settings, a: ApptInfo, amount: number, l
 }
 
 /** To the clinic: the payer sent a transfer confirmation (attached). */
-export function paymentProofEmail(s: Settings, a: ApptInfo, link: string, reply?: { from: string; text: string }): Rendered {
+/** The system's reading of a transfer confirmation, for the doctor. */
+function checkBlock(c: ProofCheck) {
+  const tone = c.verdict === 'ok' ? ['#ECF8F3', '#BFE6D4', '#11643F', '✓ נראה תקין'] : c.verdict === 'bad' ? ['#FEF3F2', '#F8C9C4', '#B42318', '✗ נראה לא תקין'] : ['#FFF8EB', '#F5DDB0', '#7A4B0B', '! כדאי לבדוק'];
+  const rows: [string, string][] = [];
+  if (c.amount != null) rows.push(['סכום', esc(ils(c.amount))]);
+  if (c.date) rows.push(['תאריך', esc(fmtDate(c.date))]);
+  if (c.payer) rows.push(['משלם', esc(c.payer)]);
+  if (c.recipient || c.account) rows.push(['מוטב', esc([c.recipient, c.account].filter(Boolean).join(' · '))]);
+  if (c.reference) rows.push(['אסמכתא', esc(c.reference)]);
+  return `<div style="margin:0 0 14px;padding:12px 14px;border-radius:12px;background:${tone[0]};border:1px solid ${tone[1]};color:${tone[2]}">` +
+    `<div style="font-weight:700;font-size:15px;margin-bottom:4px">בדיקת המערכת: ${tone[3]}</div>` +
+    `<div style="font-size:14px">${esc(c.summary)}</div>` +
+    (c.issues.length ? `<ul style="margin:6px 0 0;padding-inline-start:18px;font-size:13.5px">${c.issues.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '') +
+    `</div>` + (rows.length ? card(rows) : '');
+}
+
+export function paymentProofEmail(s: Settings, a: ApptInfo, link: string, reply?: { from: string; text: string }, check?: ProofCheck | null): Rendered {
   const subject = `התקבל אישור העברה · ${a.patientName} · תיק ${a.caseNo}`;
   const body = p(`התקבל צילום אישור העברה עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo})${reply ? ` בתשובה למייל, מאת ${esc(reply.from)}` : ''}. הקובץ מצורף ונשמר בתיק.`) +
     (reply?.text ? `<div style="margin:0 0 14px;padding:12px 14px;border-radius:10px;background:#F4F6FA;color:${INK};font-size:14px;white-space:pre-wrap">${esc(reply.text)}</div>` : '') +
+    (check ? checkBlock(check) : '') +
     p('אחרי שבדקתם שהכסף התקבל, אשרו את התשלום, והמסמך יישלח אוטומטית כ־PDF. אם האסמכתא לא תקינה, אפשר לשלוח למשלם הודעה מאותו מסך.') +
     `<div style="margin:6px 0 10px">${button(link, 'לאישור התשלום')}</div>`;
   return { subject, html: layout(s, { preheader: 'אישור העברה התקבל', title: 'התקבל אישור העברה', body }), text: textOf([subject, reply?.text || '', link]) };

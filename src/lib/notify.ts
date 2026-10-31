@@ -15,6 +15,7 @@ import { letterFileName, letterHtml, renderPdf } from './pdf';
 import { rxHtml } from './rx';
 import { priorVisits } from './visits';
 import { payReplyAddress } from './inbound';
+import { checkProof } from './payCheck';
 import type { RxItem } from './rxTypes';
 
 /*
@@ -106,12 +107,15 @@ export async function notifyPaymentProof(id: string, path: string, reply?: { fro
   const db = createAdminClient();
   const { a, s } = await load(db, id);
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  // the system reads the confirmation first; the doctor decides
+  const check = await checkProof(db, s, { path, fileName: path.split('/').pop() || 'proof', due: await balanceOf(db, id, Number(a.price)), patient: a.patient_name, caseNo: a.case_no });
+  if (check) await db.from('appointments').update({ pay_proof_check: check }).eq('id', id);
   const { data: file } = await db.storage.from(BUCKET).download(path);
   const buf = file ? Buffer.from(await file.arrayBuffer()) : null;
   const ext = path.split('.').pop() || 'pdf';
   const r = await sendMail(db, id, 'payment_proof', {
     to: await staffEmails(db, s),
-    ...paymentProofEmail(s, info(a), `${appUrl()}/doctor/payments`, reply),
+    ...paymentProofEmail(s, info(a), `${appUrl()}/doctor/payments`, reply, check),
     attachments: buf && buf.length < 20_000_000 ? [{ filename: `אישור העברה - תיק ${a.case_no}.${ext}`, content: buf }] : undefined,
   });
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
