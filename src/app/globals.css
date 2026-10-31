@@ -3081,3 +3081,6 @@ a.fx-next:hover { text-decoration: none; background: rgba(255,255,255,.1); }
 .pp-check p { margin: 4px 0 0; }
 .pp-check ul { margin: 4px 0 0; padding-inline-start: 18px; }
 .pp-check small { display: block; margin-top: 4px; opacity: .85; }
+.danger-zone { border-color: #F8C9C4; margin-top: 20px; }
+.danger-zone h2 svg { color: #B42318; }
+.dz-confirm { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
