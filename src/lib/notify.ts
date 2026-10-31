@@ -1,13 +1,14 @@
 import 'server-only';
+import { createHash, randomBytes } from 'node:crypto';
 import { sendSms, smsEnabled, smsReminderText } from './sms';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from './supabase/admin';
-import { SETTINGS_DEFAULTS, ils, isPatientKind, type ReferralType, type Settings } from './constants';
+import { BUCKET, SETTINGS_DEFAULTS, ils, isPatientKind, type ReferralType, type Settings } from './constants';
 import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
 import { icsFile, type ApptInfo } from './messages';
 import {
-  awaitingPaymentEmail, paymentReminderEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
+  awaitingPaymentEmail, paymentReminderEmail, paymentProofEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
 } from './emails';
 import { letterFileName, letterHtml, renderPdf } from './pdf';
@@ -82,6 +83,38 @@ async function dueOf(_db: SupabaseClient, _a: Appt): Promise<number> {
 }
 
 const caseLink = (id: string, staff: boolean) => `${appUrl()}/${staff ? 'doctor' : 'firm'}/cases/${id}`;
+
+/** A personal link (no sign-in, 60 days) to upload the transfer confirmation for a ready document. A new link replaces the old one. */
+async function payLinkFor(db: SupabaseClient, id: string) {
+  const key = randomBytes(24).toString('hex');
+  const { error } = await db.from('appointments').update({
+    pay_key_hash: createHash('sha256').update(key).digest('hex'),
+    pay_key_expires: new Date(Date.now() + 60 * 86400_000).toISOString(),
+  }).eq('id', id);
+  return error ? undefined : `${appUrl()}/pay/${id}?k=${key}`;
+}
+
+/** What is still owed on the case. */
+async function balanceOf(db: SupabaseClient, id: string, price: number) {
+  const { data: pays } = await db.from('payments').select('amount').eq('appointment_id', id);
+  return Math.max(0, Number(price) - (pays ?? []).reduce((x, p) => x + Number(p.amount), 0));
+}
+
+/** The payer sent a transfer confirmation: email the clinic with the file attached. */
+export async function notifyPaymentProof(id: string, path: string): Promise<NotifyResult> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
+  const { data: file } = await db.storage.from(BUCKET).download(path);
+  const buf = file ? Buffer.from(await file.arrayBuffer()) : null;
+  const ext = path.split('.').pop() || 'pdf';
+  const r = await sendMail(db, id, 'payment_proof', {
+    to: await staffEmails(db, s),
+    ...paymentProofEmail(s, info(a), `${appUrl()}/doctor/payments`),
+    attachments: buf && buf.length < 20_000_000 ? [{ filename: `אישור העברה - תיק ${a.case_no}.${ext}`, content: buf }] : undefined,
+  });
+  return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
+}
 
 /** To the doctor, when a referrer books. */
 export async function notifyNewRequest(id: string): Promise<NotifyResult> {
@@ -254,7 +287,7 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   const { data: released } = await db.rpc('letter_released', { p_id: id });
   if (!released) {
     if (!(await alreadySent(db, id, 'letter_awaiting_payment'))) {
-      const m = awaitingPaymentEmail(s, ai, '', caseLink(id, false));
+      const m = awaitingPaymentEmail(s, ai, await balanceOf(db, id, price), caseLink(id, false), await payLinkFor(db, id));
       const payTo = (a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient') && a.patient_email ? [a.patient_email] : firmTo;
       await sendMail(db, id, 'letter_awaiting_payment', { to: payTo, ...m });
     }
@@ -300,7 +333,7 @@ export async function sendPaymentReminder(id: string): Promise<NotifyResult> {
   const patientPays = a.firm?.kind === 'private' || (a as { payer?: string }).payer === 'patient';
   const to = patientPays ? (a.patient_email ? [a.patient_email] : await firmEmails(db, a.firm_id, a.firm?.email, null)) : await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails);
   if (!to.length) return { ok: false, sent: 0, info: patientPays ? 'אין מייל למטופל. אפשר לשלוח בוואטסאפ.' : 'אין מייל למפנה. אפשר לשלוח בוואטסאפ.' };
-  const r = await sendMail(db, id, 'payment_reminder', { to, ...paymentReminderEmail(s, info(a), due, caseLink(id, false)) });
+  const r = await sendMail(db, id, 'payment_reminder', { to, ...paymentReminderEmail(s, info(a), due, caseLink(id, false), await payLinkFor(db, id)) });
   return r.ok ? { ok: true, sent: 1, info: `נשלחה תזכורת ל${patientPays ? 'מטופל' : 'מפנה'}` } : { ok: false, sent: 0, info: r.error || 'השליחה נכשלה' };
 }
 

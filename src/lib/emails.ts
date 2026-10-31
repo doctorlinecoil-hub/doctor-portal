@@ -303,27 +303,46 @@ export function letterEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean;
   return { subject, html: layout(s, { preheader: `${label} מוכנה`, title: `${label} מוכנה`, body }), text: textOf([subject, o.attached ? 'המסמך מצורף כ־PDF.' : '', o.link]) };
 }
 
-export function awaitingPaymentEmail(s: Settings, a: ApptInfo, balance: string, link: string): Rendered {
+export function awaitingPaymentEmail(s: Settings, a: ApptInfo, due: number, link: string, payLink?: string): Rendered {
   const label = (a.label || typeOf(a.type).label);
   const subject = `${label} מוכנה וממתינה לתשלום · ${a.patientName} · תיק ${a.caseNo}`;
   const body =
-    p(`${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.`) +
-    (balance ? card([['יתרה לתשלום', esc(balance)]]) : '') +
-    p('המסמך יישלח אליכם אוטומטית מיד אחרי אישור התשלום במרפאה.') +
-    `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק')}</div>`;
-  return { subject, html: layout(s, { preheader: 'המסמך מוכן וממתין לתשלום', title: 'המסמך מוכן', body }), text: textOf([subject, balance && `יתרה: ${balance}`, link]) };
+    p(`שלום,<br>${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה.`) +
+    payBlock(s, due, 'לתשלום') +
+    proofBlock(payLink) +
+    p('מיד כשהרופא יאשר את התשלום, המסמך יישלח אליכם למייל כקובץ PDF.') +
+    `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק', false)}</div>`;
+  return { subject, html: layout(s, { preheader: 'המסמך מוכן וממתין לתשלום', title: 'המסמך מוכן', body }), text: textOf([subject, payText(s, due), payLink && `העלאת אישור העברה: ${payLink}`, 'אפשר גם להשיב למייל הזה עם צילום אישור ההעברה.', link]) };
+}
+
+/** How to send the transfer confirmation: a personal upload link, or a reply to the email. */
+function proofBlock(payLink?: string) {
+  return `<h2 style="margin:14px 0 6px;font-size:16px;color:${INK}">אחרי ההעברה</h2>` +
+    p('שלחו לנו את צילום אישור ההעברה באחת משתי הדרכים:') +
+    (payLink ? `<div style="margin:4px 0 8px">${button(payLink, 'העלאת אישור העברה')}</div>` : '') +
+    p(`${payLink ? 'או ' : ''}פשוט השיבו למייל הזה וצרפו את צילום האישור.`);
 }
 
 /** A reminder from the clinic: the document is ready and waits for payment. */
-export function paymentReminderEmail(s: Settings, a: ApptInfo, amount: number, link: string): Rendered {
+export function paymentReminderEmail(s: Settings, a: ApptInfo, amount: number, link: string, payLink?: string): Rendered {
   const label = (a.label || typeOf(a.type).label);
   const subject = `תזכורת: ${label} מוכנה וממתינה לתשלום · ${a.patientName} · תיק ${a.caseNo}`;
   const body =
     p(`שלום,<br>${esc(label)} עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}) מוכנה וממתינה לתשלום.`) +
     payBlock(s, amount, 'לתשלום') +
-    p('מיד כשהתשלום יתקבל במרפאה, המסמך יישלח אליכם במייל אוטומטית. אם כבר שילמתם, אפשר להשיב למייל הזה עם אישור התשלום.') +
-    `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק')}</div>`;
-  return { subject, html: layout(s, { preheader: 'תזכורת: המסמך ממתין לתשלום', title: 'תזכורת לתשלום', body }), text: textOf([subject, payText(s, amount), link]) };
+    proofBlock(payLink) +
+    p('מיד כשהרופא יאשר את התשלום, המסמך יישלח אליכם למייל כקובץ PDF.') +
+    `<div style="margin:6px 0 10px">${button(link, 'פרטי התיק', false)}</div>`;
+  return { subject, html: layout(s, { preheader: 'תזכורת: המסמך ממתין לתשלום', title: 'תזכורת לתשלום', body }), text: textOf([subject, payText(s, amount), payLink && `העלאת אישור העברה: ${payLink}`, 'אפשר גם להשיב למייל הזה עם צילום אישור ההעברה.', link]) };
+}
+
+/** To the clinic: the payer sent a transfer confirmation (attached). */
+export function paymentProofEmail(s: Settings, a: ApptInfo, link: string): Rendered {
+  const subject = `התקבל אישור העברה · ${a.patientName} · תיק ${a.caseNo}`;
+  const body = p(`התקבל צילום אישור העברה עבור <b>${esc(a.patientName)}</b> (תיק ${a.caseNo}). הקובץ מצורף ונשמר בתיק.`) +
+    p('אחרי שבדקתם שהכסף התקבל, אשרו את התשלום, והמסמך יישלח אוטומטית כ־PDF.') +
+    `<div style="margin:6px 0 10px">${button(link, 'לאישור התשלום')}</div>`;
+  return { subject, html: layout(s, { preheader: 'אישור העברה התקבל', title: 'התקבל אישור העברה', body }), text: textOf([subject, link]) };
 }
 
 export function rxEmail(s: Settings, patientName: string): Rendered {
