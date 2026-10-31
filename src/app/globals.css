@@ -3481,3 +3481,11 @@ details[open] > summary::after { transform: translateY(-30%) rotate(135deg); }
 .dp p { margin: 0; font-size: 13.5px; color: var(--fg-2); }
 .dp label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .fx-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 640px) { .fx-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } }
+
+/* doctor moves an appointment */
+.mv-box { display: grid; gap: 10px; padding: 14px; border-radius: 14px; border: 1px solid var(--line, #E3E8EF); background: var(--surface-2, #F7F9FC); max-width: 520px; }
+.mv-box > small { color: var(--muted, #5B6878); }
+.mv-row { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
+.mv-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.mv-check input { width: 18px; height: 18px; }
+@media (max-width: 520px) { .mv-row { grid-template-columns: 1fr 1fr; } }
