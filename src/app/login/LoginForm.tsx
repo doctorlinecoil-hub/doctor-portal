@@ -4,15 +4,15 @@ import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase/browser';
 import { requestLoginCode } from './actions';
 
-export default function LoginForm() {
+export default function LoginForm({ initialMode = 'password', initialEmail = '' }: { initialMode?: 'password' | 'code'; initialEmail?: string }) {
   const supabase = useSupabase();
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   // sign in with a password, or with a one-time code sent by email
-  const [mode, setMode] = useState<'password' | 'code'>('password');
+  const [mode, setMode] = useState<'password' | 'code'>(initialMode);
   const [sent, setSent] = useState('');
   const [code, setCode] = useState('');
 
