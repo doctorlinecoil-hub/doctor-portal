@@ -3072,3 +3072,12 @@ a.fx-next:hover { text-decoration: none; background: rgba(255,255,255,.1); }
 .pp-rej textarea { width: 100%; font: inherit; font-size: 14px; }
 .pp-rej-a { display: flex; gap: 8px; }
 .fx-okpay { color: var(--ok); font-weight: 600; }
+.pp-proofw { display: flex; flex-direction: column; gap: 8px; }
+.pp-check { padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; border: 1px solid; }
+.pp-check.ok { background: #ECF8F3; border-color: #BFE6D4; color: #11643F; }
+.pp-check.check { background: #FFF8EB; border-color: #F5DDB0; color: #7A4B0B; }
+.pp-check.bad { background: #FEF3F2; border-color: #F8C9C4; color: #B42318; }
+.pp-check-h { display: flex; align-items: center; gap: 6px; }
+.pp-check p { margin: 4px 0 0; }
+.pp-check ul { margin: 4px 0 0; padding-inline-start: 18px; }
+.pp-check small { display: block; margin-top: 4px; opacity: .85; }
