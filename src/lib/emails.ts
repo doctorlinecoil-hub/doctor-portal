@@ -507,3 +507,14 @@ export function cancelledByClinicEmail(s: Settings, a: ApptInfo, o: { forReferre
     (o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'קביעת מועד חדש')}</div>` : '');
   return { subject, html: layout(s, { preheader: w.label, title: a.phone ? 'השיחה בוטלה' : 'התור בוטל', body }), text: textOf([subject, w.label, c.phone ? `טלפון: ${c.phone}` : '']) };
 }
+
+/** A one-time sign-in code (and a one-click sign-in link). */
+export function loginCodeEmail(s: Settings, name: string, code: string, link: string): Rendered {
+  const subject = `קוד כניסה: ${code} · ${s.lh_name}`;
+  const body = p(`שלום${name ? ` ${esc(name)}` : ''},<br>זה קוד הכניסה שלך למערכת:`) +
+    `<div style="margin:6px 0 16px;padding:18px;border-radius:14px;background:#F4F6FA;border:1px solid #E3E8EF;text-align:center;font-size:34px;font-weight:800;letter-spacing:10px;color:${ACCENT};direction:ltr">${esc(code)}</div>` +
+    p('אפשר להקליד את הקוד במסך הכניסה, או פשוט ללחוץ:') +
+    `<div style="margin:6px 0 14px">${button(link, 'כניסה למערכת')}</div>` +
+    p('<span style="color:#5B6878;font-size:13px">הקוד והקישור תקפים לשעה ולשימוש אחד. לא ביקשת? אפשר להתעלם מההודעה.</span>');
+  return { subject, html: layout(s, { preheader: `קוד הכניסה שלך: ${code}`, title: 'כניסה למערכת', body }), text: textOf([subject, link]) };
+}

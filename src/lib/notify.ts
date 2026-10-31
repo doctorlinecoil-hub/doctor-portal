@@ -389,6 +389,7 @@ export async function sendLetterTo(id: string, emails: string[], opts: { byRefer
   const { data: l } = await db.from('letters').select('*').eq('appointment_id', id).maybeSingle();
   if (!l?.is_final || !l.final_body) return { ok: false, sent: 0, info: 'המכתב עוד לא סופי' };
   if (opts.byReferrer) {
+    if (a.status === 'cancelled') return { ok: false, sent: 0, info: 'התיק בוטל.' };
     const { data: released } = await db.rpc('letter_released', { p_id: id });
     if (!released) return { ok: false, sent: 0, info: 'המסמך מוכן וממתין לתשלום. הוא יהיה זמין מיד אחרי אישור התשלום.' };
   }

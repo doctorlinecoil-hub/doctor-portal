@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { createAdminClient } from './supabase/admin';
 import { EMAIL_RE, KIND, SETTINGS_DEFAULTS, notifyList, type Settings } from './constants';
 import { appUrl, mailEnabled, sendMail } from './mail';
-import { accountApprovedEmail, accountRejectedEmail, signupReceivedEmail, signupStaffEmail, resetLinkEmail } from './emails';
+import { accountApprovedEmail, accountRejectedEmail, loginCodeEmail, signupReceivedEmail, signupStaffEmail, resetLinkEmail } from './emails';
 
 /*
  * Accounts that people open by themselves: law offices, brokers, companies and patients.
@@ -185,4 +185,26 @@ export async function resetPassword(token: string, password: string): Promise<R>
   await db.from('password_resets').delete().eq('user_id', row.user_id).is('used_at', null);
   await db.from('audit_log').insert({ user_id: row.user_id, action: 'password_reset', entity: 'profile', entity_id: row.user_id, details: {} });
   return { ok: true, info: 'הסיסמה עודכנה. אפשר להתחבר.' };
+}
+
+/**
+ * Sign-in by email: a one-time code (and link) to an active account's address. The code is Supabase's own
+ * one-time password (generated here, sent through the clinic's mail), so the session is a normal sign-in.
+ */
+export async function sendLoginCode(emailRaw: string): Promise<R> {
+  const email = clean(emailRaw, 200).toLowerCase();
+  if (!EMAIL_RE.test(email)) return { ok: false, error: 'כתובת המייל לא תקינה.' };
+  if (!mailEnabled()) return { ok: false, error: 'שליחת מיילים עוד לא הופעלה. היכנסו עם סיסמה.' };
+  const db = createAdminClient();
+  const generic: R = { ok: true, info: 'אם המייל רשום במערכת, נשלח אליו קוד כניסה (תקף לשעה). בדקו גם בתיקיית הספאם.' };
+  if (await limited(db, 'login_code', await who(), 10)) return { ok: false, error: 'יותר מדי בקשות. נסו שוב בעוד שעה.' };
+  if (await limited(db, 'login_code_email', sha('mail:' + email).slice(0, 32), 5)) return generic;
+  const { data: p } = await db.from('profiles').select('id, full_name, email, active').eq('email', email).maybeSingle();
+  if (!p || !p.active || String(p.email).toLowerCase() !== email) return generic;
+  const { data, error } = await db.auth.admin.generateLink({ type: 'magiclink', email });
+  const code = data?.properties?.email_otp, hashed = data?.properties?.hashed_token;
+  if (error || !code || !hashed) return generic;
+  const s = await settings(db);
+  await sendMail(db, null, 'login_code', { to: [p.email], ...loginCodeEmail(s, p.full_name || '', code, `${appUrl()}/auth/confirm?token_hash=${encodeURIComponent(hashed)}&type=magiclink`) });
+  return generic;
 }
