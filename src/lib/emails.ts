@@ -253,7 +253,7 @@ export function accountApprovedEmail(s: Settings, name: string, email: string): 
   const subject = `החשבון שלך אושר · ${s.lh_name}`;
   const body = p(`שלום ${esc(name)},<br>החשבון שלך במערכת של ${esc(s.lh_name)} אושר. אפשר להתחבר עם המייל והסיסמה שבחרת בהרשמה.`) +
     card([['מייל לכניסה', `<span dir="ltr">${esc(email)}</span>`]]) + `<div style="margin:6px 0 10px">${button(link, 'כניסה למערכת')}</div>` +
-    p('שכחת את הסיסמה? בדף הכניסה לוחצים ״שכחתי סיסמה״ ומקבלים סיסמה זמנית במייל.');
+    p(`אפשר גם בלי סיסמה: <a href="${appUrl()}/login?code=1&email=${encodeURIComponent(email)}">כניסה עם קוד שנשלח למייל</a>.`);
   return { subject, html: layout(s, { preheader: 'אפשר להתחבר', title: 'החשבון אושר', body }), text: textOf([subject, `כניסה: ${link}`]) };
 }
 

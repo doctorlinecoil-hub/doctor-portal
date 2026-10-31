@@ -72,7 +72,7 @@ export async function signup(input: SignupInput): Promise<R> {
   if (miss.length) return { ok: false, error: 'חסר: ' + miss.join(', ') };
 
   const { data: exists } = await db.from('profiles').select('id').eq('email', v.email).maybeSingle();
-  if (exists) return { ok: false, error: 'המייל הזה כבר רשום במערכת. אפשר להתחבר, או לאפס את הסיסמה ב״שכחתי סיסמה״.' };
+  if (exists) return { ok: false, error: 'המייל הזה כבר רשום במערכת. אפשר להיכנס עם קוד שנשלח למייל, בלי סיסמה.' };
 
   const { data: firm, error: fErr } = await db.from('firms').insert({
     name: kind === 'patient' ? v.name : v.org, kind, contact_name: v.name, phone: v.phone, email: v.email,
