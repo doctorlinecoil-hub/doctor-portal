@@ -3557,3 +3557,8 @@ details[open] > summary::after { transform: translateY(-30%) rotate(135deg); }
 .wa-tpl ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .wa-tpl li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #fff; font-size: 14px; }
 .wa-tpl li em { font-style: normal; color: #8A6A1F; } .wa-tpl li em.ok { color: #11643F; font-weight: 700; }
+
+/* send the summons from the clinic's WhatsApp */
+.btn-wa { background: #25D366; border-color: #25D366; color: #fff; }
+.btn-wa:hover { background: #1EBE5A; border-color: #1EBE5A; color: #fff; }
+.approve-done { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
