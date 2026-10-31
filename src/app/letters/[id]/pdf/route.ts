@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-type L = { letter_type: ReferralType; recipient: string; subject: string; body: string; letter_date: string | null };
+type L = { letter_type: ReferralType; recipient: string; subject: string; body: string; letter_date: string | null; show_visits?: boolean };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return new Response('המסמך עוד לא זמין להורדה (הוא ייפתח אחרי אישור התשלום במרפאה).', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
   const doc = { ...letter, letter_date: letter.letter_date || todayIL() };
-  const visits = await priorVisits(supabase, a);
+  const visits = letter.show_visits ? await priorVisits(supabase, a) : [];
   const pt = { name: a.patient_name ?? '', idNumber: a.patient_id_number ?? '', dob: a.patient_dob };
   const pdf = await renderPdf(
     letterHtml(settings, doc, pt, { title: (a.referral_type === doc.letter_type && a.service_label) || undefined, visitDate: ilParts(a.starts_at).date, signed: settings.sign_final, visits }),
