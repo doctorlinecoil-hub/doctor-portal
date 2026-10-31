@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import LiveRefresh from '@/components/LiveRefresh';
 import { loadAppointments } from '@/lib/queries';
 import { PendingPayView, type PayLine } from '@/views/PendingPayView';
 import { released } from '@/lib/types';
@@ -48,6 +49,8 @@ export default async function PaymentApprovalPage() {
   const pays: Record<string, PayLine[]> = {};
   for (const x of (p as (PayLine & { appointment_id: string })[] | null) ?? []) (pays[x.appointment_id] ??= []).push({ amount: Number(x.amount), method: x.method, paid_on: x.paid_on });
   return (
+    <>
+    <LiveRefresh />
     <PendingPayView waiting={waiting} approved={approved} gate={gate} pays={pays} proofs={proofs}
       remind={(r) => {
         const patientPays = r.firm_kind === 'private' || r.payer === 'patient';
@@ -59,5 +62,6 @@ export default async function PaymentApprovalPage() {
           last={last ? `${fmtDate(ilParts(last).date)} ${ilParts(last).time}` : null} />;
       }}
       action={(r, undo) => <ApprovePay id={r.id} today={today} undo={undo} due={Math.max(0, r.price - r.paid)} paidInFull={r.price > 0 && r.paid + 0.001 >= r.price} />} />
+    </>
   );
 }
