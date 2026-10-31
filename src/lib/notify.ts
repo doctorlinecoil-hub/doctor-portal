@@ -201,8 +201,12 @@ export async function sendDeclined(id: string): Promise<NotifyResult> {
   const db = createAdminClient();
   const { a, s } = await load(db, id);
   if (!a) return { ok: false, sent: 0, info: 'התיק לא נמצא' };
-  const m = declinedEmail(s, info(a), a.decline_reason, `${appUrl()}/firm/book`);
-  const r = await sendMail(db, id, 'declined', { to: await firmEmails(db, a.firm_id, a.firm?.email, a.notify_emails), ...m });
+  // a patient who booked by themselves (no referrer account) is told directly, with the public booking page
+  const who = await audience(db, a);
+  const to = uniq([...who.referrer, ...who.patient]);
+  if (!to.length) return { ok: false, sent: 0, info: 'אין כתובת מייל למפנה או למטופל' };
+  const m = declinedEmail(s, info(a), a.decline_reason, `${appUrl()}/${who.referrer.length ? 'firm/book' : 'book'}`);
+  const r = await sendMail(db, id, 'declined', { to, ...m });
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
 
@@ -328,6 +332,11 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   const pt = { name: a.patient_name, idNumber: a.patient_id_number, dob: a.patient_dob };
   const html = letterHtml(s, doc, pt, { title: (a.referral_type === doc.letter_type && ai.label) || undefined, visitDate: ilParts(a.starts_at).date, signed: true, visits: l.show_visits ? await priorVisits(db, a) : [] });
   // the PDF goes in the same email; one more try if the first render fails
+  // claim the delivery first, so two calls at the same moment never send the letter twice
+  if (!opts.force) {
+    const { data: claimed } = await db.from('appointments').update({ letter_sent_at: new Date().toISOString() }).eq('id', id).is('letter_sent_at', null).select('id');
+    if (!claimed?.length) return { ok: true, sent: 0, info: 'המכתב כבר נשלח' };
+  }
   const pdf = await renderPdf(html, '');
   const attachments = pdf ? [{ filename: letterFileName(doc, pt), content: pdf, contentType: 'application/pdf' }] : undefined;
 
@@ -335,11 +344,12 @@ export async function deliverLetter(id: string, opts: { force?: boolean; onlyIfA
   const r1 = await sendMail(db, id, 'letter_firm', { to: firmTo, ...letterEmail(s, ai, { forReferrer: true, attached: !!pdf, link: caseLink(id, false) }), attachments });
   if (r1.ok) sent++;
   // the patient has no portal account, so they only get the letter when it can be attached
-  if (a.patient_email && pdf) {
+  if (a.patient_email && pdf && !firmTo.includes(a.patient_email.trim().toLowerCase())) {
     const r2 = await sendMail(db, id, 'letter_patient', { to: [a.patient_email], ...letterEmail(s, ai, { forReferrer: false, attached: true }), attachments });
     if (r2.ok) sent++;
   }
   if (sent) await db.from('appointments').update({ letter_sent_at: new Date().toISOString() }).eq('id', id);
+  else if (!opts.force) await db.from('appointments').update({ letter_sent_at: null }).eq('id', id);
   return {
     ok: sent > 0,
     sent,
@@ -433,6 +443,12 @@ export async function notifyCancelled(id: string): Promise<NotifyResult> {
     to: await staffEmails(db, s), ...cancelledStaffEmail(s, info(a), caseLink(id, true), a.firm?.name || 'המפנה'),
     attachments: [{ filename: 'הסרה מהיומן.ics', content: ics, contentType: 'text/calendar; charset=utf-8; method=CANCEL' }],
   });
+  // the patient already has the summons in their calendar: tell them too
+  const who = await audience(db, a);
+  if (who.patient.length && ((await alreadySent(db, id, 'summons_patient')) || (await alreadySent(db, id, 'summons_firm'))) && !(await alreadySent(db, id, 'cancel_patient'))) {
+    const pics = icsFile(info(a), clinicOf(s), `appt-${a.id}@doctor-portal`, { cancel: true });
+    await sendMail(db, id, 'cancel_patient', { to: who.patient, ...cancelledByClinicEmail(s, info(a), { forReferrer: false, link: `${appUrl()}/book` }), attachments: [{ filename: 'הסרה מהיומן.ics', content: pics, contentType: 'text/calendar; charset=utf-8; method=CANCEL' }] });
+  }
   return { ok: r.ok, sent: r.ok ? 1 : 0, info: r.error || '' };
 }
 

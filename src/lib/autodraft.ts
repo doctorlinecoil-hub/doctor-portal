@@ -36,6 +36,7 @@ export async function autoDraft(appointmentId: string): Promise<{ ok: boolean; i
     type: 'text',
     text: buildPrompt({
       letterType,
+      serviceId: a.service_id,
       exam: '',
       settings: s,
       visitDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date(a.starts_at)),

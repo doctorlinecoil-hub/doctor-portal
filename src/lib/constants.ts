@@ -60,7 +60,7 @@ export type Settings = {
   /** the clinic's notification addresses, comma separated (empty = the doctor's account email) */
   notify_email: string;
   /** the doctor's standing instructions for the AI, per document type ('all' applies to every document) */
-  ai_style: Partial<Record<'all' | ReferralType, string>>;
+  ai_style: Partial<Record<string, string>>;
   bring_items: string;
   summons_note: string;
   reminders_on: boolean;
@@ -115,6 +115,7 @@ const DB_ERRORS: Record<string, string> = {
   SLOT_TOO_SOON: 'התור קרוב מדי. בחרו תור מאוחר יותר.',
   SLOT_TOO_FAR: 'התור רחוק מדי. בחרו תור קרוב יותר.',
   TOO_MANY_BOOKINGS: 'הגעתם למספר המרבי של תורים פתוחים. לקביעת תורים נוספים צרו קשר עם המרפאה.',
+  SERVICE_UNAVAILABLE: 'השירות הזה לא זמין כרגע לקביעה. בחרו שירות אחר או צרו קשר עם המרפאה.',
   CANNOT_CANCEL: 'אי אפשר לבטל את התור הזה.',
   CANNOT_APPROVE: 'הבקשה כבר טופלה.',
   DEPOSIT_REQUIRED: 'אי אפשר לאשר את התור לפני שהמקדמה התקבלה. סמנו קודם ״המקדמה התקבלה״.',

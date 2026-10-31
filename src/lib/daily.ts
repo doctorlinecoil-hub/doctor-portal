@@ -26,8 +26,15 @@ async function staffTo(db: SupabaseClient, s: Settings) {
 /** Cases whose document is ready and still waits for payment. */
 async function waitingPayment(db: SupabaseClient, s: Settings) {
   const rows = await loadAppointments(db, { order: 'desc', limit: 3000 });
+  // the paid totals come from the payments themselves (the per-user totals view is empty for the system key)
+  const done = rows.filter((r) => r.status === 'done');
+  const paid = new Map<string, number>();
+  for (let i = 0; i < done.length; i += 300) {
+    const { data } = await db.from('payments').select('appointment_id, amount').in('appointment_id', done.slice(i, i + 300).map((r) => r.id));
+    for (const p of (data ?? []) as { appointment_id: string; amount: number }[]) paid.set(p.appointment_id, (paid.get(p.appointment_id) ?? 0) + Number(p.amount));
+  }
   const gate = s.letter_requires_payment !== false;
-  return rows.filter((r) => r.status === 'done' && !released(r, gate));
+  return done.map((r) => ({ ...r, paid: paid.get(r.id) ?? 0 })).filter((r) => !released(r, gate));
 }
 
 /** The doctor's evening summary (21:00): tomorrow's schedule, what happened today and what waits for him. Once a day. */
