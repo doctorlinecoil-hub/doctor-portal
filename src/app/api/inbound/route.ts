@@ -19,13 +19,21 @@ const api = (path: string) => fetch(`https://api.resend.com${path}`, { headers: 
  */
 export async function POST(req: Request) {
   const raw = await req.text();
-  if (!verifyWebhook(raw, { id: req.headers.get('svix-id'), timestamp: req.headers.get('svix-timestamp'), signature: req.headers.get('svix-signature') })) {
+  // with a signing secret the signature must match; without one, nothing in the payload is trusted:
+  // the email is read back from Resend with our own key, so only mail our account really received is used
+  if (process.env.RESEND_WEBHOOK_SECRET && !verifyWebhook(raw, { id: req.headers.get('svix-id'), timestamp: req.headers.get('svix-timestamp'), signature: req.headers.get('svix-signature') })) {
     return new Response('bad signature', { status: 401 });
   }
+  if (!process.env.RESEND_API_KEY) return new Response('receiving is off', { status: 503 });
   let event: { type?: string; data?: Received };
   try { event = JSON.parse(raw); } catch { return new Response('bad json', { status: 400 }); }
   if (event.type !== 'email.received' || !event.data?.email_id) return Response.json({ ok: true, skipped: true });
-  const d = event.data;
+  if (!/^[\w-]{6,80}$/.test(event.data.email_id)) return Response.json({ ok: true, skipped: 'bad id' });
+  // the real email, from Resend (not from the webhook body)
+  const full = await api(`/emails/receiving/${encodeURIComponent(event.data.email_id)}`).catch(() => null);
+  const body = full?.ok ? await full.json().catch(() => null) as (Received & { text?: string }) | null : null;
+  if (!body) return Response.json({ ok: true, skipped: 'not found' });
+  const d: Received = { ...body, email_id: event.data.email_id };
   const caseNo = [...(d.to ?? []), ...(d.cc ?? []), ...(d.received_for ?? [])].map(caseFromAddress).find((n) => n != null) ?? null;
   if (caseNo == null) return Response.json({ ok: true, skipped: 'no case address' });
 
@@ -55,8 +63,6 @@ export async function POST(req: Request) {
   }
 
   // the reply text, for the doctor
-  const full = await api(`/emails/receiving/${encodeURIComponent(d.email_id)}`).catch(() => null);
-  const body = full?.ok ? await full.json().catch(() => null) : null;
   const text = String(body?.text || '').split(/\n\s*(?:On .+wrote:|ב.+כתב:|-----Original Message-----)/)[0].trim().slice(0, 3000);
 
   if (saved.length) await db.rpc('payment_proof_sent', { p_id: a.id });
