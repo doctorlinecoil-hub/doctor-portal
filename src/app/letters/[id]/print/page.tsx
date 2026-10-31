@@ -16,7 +16,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   const { id } = await params;
   const { v, embed } = await searchParams;
   const { supabase, settings, staff } = await requireUser();
-  const { data: a } = await supabase.from('appointments').select('id, patient_name, patient_id_number, patient_dob, starts_at, service_label, referral_type').eq('id', id).maybeSingle();
+  const { data: a } = await supabase.from('appointments').select('id, firm_id, patient_name, patient_id_number, patient_dob, starts_at, service_label, referral_type').eq('id', id).maybeSingle();
   if (!a) notFound();
 
   let letter: L | null = null;
