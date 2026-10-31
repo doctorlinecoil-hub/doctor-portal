@@ -163,19 +163,34 @@ export function reminderEmail(s: Settings, a: ApptInfo, forReferrer: boolean | '
   };
 }
 
-/** How to pay: amount, bank transfer details, Bit. Empty when the clinic hasn't filled in details. */
+/** How to pay: the amount, then the bank details as a clean table (label | value), Bit, and the clinic's note. */
 export function payBlock(s: Settings, amount: number, title = 'לתשלום'): string {
   const pl = payLines(s);
-  if (!pl.bank.length && !pl.bit) return amount > 0 ? card([[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]]) : '';
-  const rows: [string, string][] = amount > 0 ? [[title, `<span style="font-size:17px">${esc(ils(amount))}</span>`]] : [];
-  if (pl.bank.length) rows.push(['העברה בנקאית', pl.bank.map(esc).join('<br>')]);
-  if (pl.bit) rows.push(['ביט / פייבוקס', `<span dir="ltr">${esc(pl.bit)}</span>`]);
-  return `<h2 style="margin:10px 0 6px;font-size:16px;color:${INK}">פרטי תשלום</h2>` + card(rows) + (pl.note ? p(esc(pl.note).replace(/\n/g, '<br>')) : '');
+  const amountRow = amount > 0
+    ? `<div style="margin:6px 0 10px;padding:14px 16px;border-radius:12px;background:${INK};color:#ffffff;display:block">
+<span style="font-size:13px;opacity:.75">${esc(title)}</span><br><span style="font-size:24px;font-weight:700;letter-spacing:.3px">${esc(ils(amount))}</span></div>`
+    : '';
+  if (!pl.bank.length && !pl.bit) return amountRow;
+  const row = (k: string, v: string, ltr = false) =>
+    `<tr><td style="padding:10px 14px;border-top:1px solid #E3EAF0;font-size:13.5px;color:${MUTED};width:38%;vertical-align:top">${esc(k)}</td>` +
+    `<td style="padding:10px 14px;border-top:1px solid #E3EAF0;font-size:16px;font-weight:700;color:${INK}"${ltr ? ' dir="ltr" align="right"' : ''}>${esc(v)}</td></tr>`;
+  const bankRows = pl.bank.map((l) => {
+    const i = l.indexOf(':');
+    const k = l.slice(0, i).trim();
+    const v = l.slice(i + 1).trim();
+    return row(k, v, /^[\d\s\-]+$/.test(v));
+  }).join('');
+  const table = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #D5DEE7;border-radius:12px;border-collapse:separate;overflow:hidden;margin:0 0 12px">
+<tr><td colspan="2" style="padding:10px 14px;background:#F4F7FA;font-size:14px;font-weight:700;color:${INK}">${pl.bank.length ? 'העברה בנקאית' : 'ביט / פייבוקס'}</td></tr>
+${bankRows}${pl.bit ? row(pl.bank.length ? 'או בביט / פייבוקס' : 'מספר', pl.bit, true) : ''}
+</table>`;
+  return `<h2 style="margin:12px 0 6px;font-size:16px;color:${INK}">פרטי תשלום</h2>` + amountRow + table +
+    (pl.note ? `<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:${MUTED}">${esc(pl.note).replace(/\n/g, '<br>')}</p>` : '');
 }
 
 const payText = (s: Settings, amount: number) => {
   const pl = payLines(s);
-  return [amount > 0 ? `סכום: ${ils(amount)}` : '', pl.bank.length ? `העברה בנקאית: ${pl.bank.join(', ')}` : '', pl.bit ? `ביט: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
+  return [amount > 0 ? `סכום לתשלום: ${ils(amount)}` : '', pl.bank.length ? `העברה בנקאית:\n${pl.bank.join('\n')}` : '', pl.bit ? `ביט / פייבוקס: ${pl.bit}` : '', pl.note].filter(Boolean).join('\n');
 };
 
 /** To a patient who booked by himself: the slot waits for the deposit. */

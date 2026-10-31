@@ -156,11 +156,17 @@ export const SETTINGS_DEFAULTS = {
   sms_reminders: true,
 } as const;
 
-/** The clinic's payment details, as lines (bank transfer, Bit, a note). Empty when nothing was filled in. */
+/** Emoji and decorations pasted from WhatsApp, removed so the details read cleanly everywhere. */
+const plain = (t: string) => t.replace(/[\p{Extended_Pictographic}\uFE0F\u200D\u20E3]/gu, '').replace(/^[\s•·*\-–]+/, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * The clinic's payment details. bank = the "label: value" lines (בנק, סניף, חשבון, על שם);
+ * any other sentence pasted there (a greeting, "thank you") joins the note. Empty when nothing was filled in.
+ */
 export function payLines(s: Pick<Settings, 'bank_details' | 'bit_phone' | 'pay_note'>) {
-  return {
-    bank: String(s.bank_details || '').split('\n').map((l) => l.trim()).filter(Boolean),
-    bit: String(s.bit_phone || '').trim(),
-    note: String(s.pay_note || '').trim(),
-  };
+  const lines = String(s.bank_details || '').split('\n').map(plain).filter(Boolean);
+  const bank = lines.filter((l) => /^[^:]{1,25}:\s*\S/.test(l));
+  const extra = lines.filter((l) => !bank.includes(l) && !/^(נא לבצע|יש לבצע|פרטי העברה|📢)/.test(l));
+  const note = [String(s.pay_note || '').split('\n').map(plain).filter(Boolean).join('\n'), ...extra.filter((l) => !/^תודה/.test(l))].filter(Boolean).join('\n');
+  return { bank, bit: plain(String(s.bit_phone || '')), note };
 }
