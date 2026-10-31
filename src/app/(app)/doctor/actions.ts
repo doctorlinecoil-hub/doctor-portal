@@ -2,7 +2,8 @@
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { dbError, type PayMethod } from '@/lib/constants';
+import { BUCKET, dbError, type PayMethod } from '@/lib/constants';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { recordPayment } from '../admin/actions';
 import { runIntake } from '@/lib/intake';
 import { deliverLetter, sendClinicCancel, sendPaymentRejected, sendPaymentReminder, sendDeclined, sendDocRequest, sendLetterTo, sendRx, sendSummons } from '@/lib/notify';
@@ -207,4 +208,33 @@ export async function afterClinicCancel(id: string): Promise<Result> {
   if (!c) return { ok: false, error: 'אין הרשאה.' };
   const r = await sendClinicCancel(id);
   return { ok: true, info: r.sent ? 'נשלחה הודעה על הביטול למטופל ולמפנה' : '' };
+}
+
+/**
+ * Deletes a patient for good: every case of this person (same ID number; without one, only this case), with its
+ * documents, letters, payments and files. The doctor confirms by typing the patient's name.
+ */
+export async function deletePatient(id: string, confirmName: string): Promise<Result> {
+  const c = await staffCase(id);
+  if (!c) return { ok: false, error: 'אין הרשאה.' };
+  const admin = createAdminClient();
+  const { data: a } = await admin.from('appointments').select('id, patient_name, patient_id_number').eq('id', id).maybeSingle();
+  if (!a) return { ok: false, error: 'התיק לא נמצא.' };
+  const norm = (x: string) => String(x || '').replace(/[\s"'״׳]/g, '');
+  if (!confirmName.trim() || norm(confirmName) !== norm(a.patient_name || 'מחק')) return { ok: false, error: 'כדי לאשר, הקלידו את שם המטופל בדיוק כמו שהוא מופיע.' };
+  const raw = String(a.patient_id_number || '').replace(/\D/g, '');
+  let ids = [id];
+  if (raw.length >= 5) {
+    const variants = [...new Set([raw, raw.padStart(9, '0'), raw.replace(/^0+/, ''), String(a.patient_id_number).trim()])];
+    const { data } = await admin.from('appointments').select('id').in('patient_id_number', variants).limit(500);
+    ids = [...new Set([id, ...((data ?? []) as { id: string }[]).map((r) => r.id)])];
+  }
+  const { data: docs } = await admin.from('documents').select('storage_path').in('appointment_id', ids);
+  const { error } = await admin.from('appointments').delete().in('id', ids);
+  if (error) return { ok: false, error: `המחיקה נכשלה: ${error.message}` };
+  const paths = ((docs ?? []) as { storage_path: string }[]).map((d) => d.storage_path).filter(Boolean);
+  for (let i = 0; i < paths.length; i += 100) await admin.storage.from(BUCKET).remove(paths.slice(i, i + 100)).catch(() => undefined);
+  await c.supabase.rpc('log_event', { p_action: 'delete_patient', p_entity: 'patient', p_entity_id: null, p_details: { cases: ids.length } }).then(() => undefined, () => undefined);
+  revalidatePath('/doctor');
+  return { ok: true, info: `נמחקו ${ids.length} תיקים` };
 }
