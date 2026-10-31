@@ -1,8 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { caseOfPhone, validSignature } from '@/lib/whatsapp';
+import { handleIncoming } from '@/lib/waBot';
+import { SETTINGS_DEFAULTS, type Settings } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /** Meta checks the webhook address once: it sends the verify token and expects the challenge back. */
 export async function GET(req: Request) {
@@ -14,7 +17,7 @@ export async function GET(req: Request) {
   return new Response('forbidden', { status: 403 });
 }
 
-type Msg = { from: string; id: string; type: string; text?: { body: string }; button?: { text: string }; interactive?: { button_reply?: { title: string }; list_reply?: { title: string } }; image?: { caption?: string }; document?: { filename?: string; caption?: string } };
+type Msg = { from: string; id: string; type: string; text?: { body: string }; button?: { text: string }; interactive?: { button_reply?: { id: string; title: string }; list_reply?: { id: string; title: string } }; image?: { caption?: string }; document?: { filename?: string; caption?: string } };
 type Status = { id: string; status: string; errors?: { title?: string; message?: string }[] };
 
 const LABEL: Record<string, string> = { image: '📷 תמונה', document: '📄 קובץ', audio: '🎤 הודעה קולית', video: '🎬 סרטון', sticker: 'מדבקה', location: '📍 מיקום', contacts: '👤 איש קשר' };
@@ -26,6 +29,7 @@ export async function POST(req: Request) {
   let body: { entry?: { changes?: { value?: { contacts?: { wa_id: string; profile?: { name?: string } }[]; messages?: Msg[]; statuses?: Status[] } }[] }[] };
   try { body = JSON.parse(raw); } catch { return new Response('ok'); }
   const db = createAdminClient();
+  let settings: Settings | null = null;
   for (const e of body.entry ?? []) {
     for (const c of e.changes ?? []) {
       const v = c.value ?? {};
@@ -35,11 +39,16 @@ export async function POST(req: Request) {
         if (!phone) continue;
         const text = m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? m.interactive?.list_reply?.title
           ?? [LABEL[m.type] || m.type, m.image?.caption || m.document?.caption || m.document?.filename || ''].filter(Boolean).join(' · ');
-        // the same message can arrive twice; wa_id is unique
-        await db.from('wa_messages').upsert({
-          appointment_id: await caseOfPhone(db, phone), phone, name: (names.get(m.from) || '').slice(0, 120),
+        // the same message can arrive twice; wa_id is unique, and only a new one goes to the bot
+        const name = (names.get(m.from) || '').slice(0, 120);
+        const { data: fresh } = await db.from('wa_messages').upsert({
+          appointment_id: await caseOfPhone(db, phone), phone, name,
           direction: 'in', kind: m.type || 'text', body: String(text).slice(0, 4000), wa_id: m.id, status: 'received',
-        }, { onConflict: 'wa_id', ignoreDuplicates: true });
+        }, { onConflict: 'wa_id', ignoreDuplicates: true }).select('id');
+        if (!fresh?.length) continue;
+        settings ??= { ...SETTINGS_DEFAULTS, ...((await db.from('settings').select('*').eq('id', 1).single()).data as Settings) } as Settings;
+        const replyId = m.interactive?.button_reply?.id ?? m.interactive?.list_reply?.id ?? '';
+        await handleIncoming(db, settings, { phone, name, text: String(text), replyId }).catch((e) => console.error('wa bot', e));
       }
       for (const st of v.statuses ?? []) {
         const rank: Record<string, number> = { sent: 1, delivered: 2, read: 3, failed: 4 };
