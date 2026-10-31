@@ -79,6 +79,8 @@ export type Settings = {
   public_booking: boolean;
   deposit_amount: number;
   deposit_hold_hours: number;
+  /** a referrer may move or cancel a confirmed appointment until this many business days before it */
+  change_business_days: number;
   bank_details: string;
   bit_phone: string;
   pay_note: string;
@@ -106,6 +108,7 @@ const DB_ERRORS: Record<string, string> = {
   BAD_AMOUNT: 'סכום לא תקין.',
   SLOT_TAKEN: 'המועד הזה כבר תפוס. בחרו מועד אחר.',
   CANNOT_RESCHEDULE: 'אי אפשר לשנות את המועד של התור הזה.',
+  TOO_LATE_TO_CHANGE: 'כבר אי אפשר לשנות או לבטל את התור דרך המערכת (פחות מ־5 ימי עסקים לפני המועד). לשינוי צרו קשר עם המרפאה.',
   CANNOT_DECLINE: 'הבקשה כבר טופלה.',
   IN_PAST: 'אי אפשר לבטל תור שכבר עבר.',
   FORBIDDEN: 'אין לכם הרשאה לפעולה הזו.',
@@ -144,6 +147,7 @@ export const SETTINGS_DEFAULTS = {
   public_booking: true,
   deposit_amount: 0,
   deposit_hold_hours: 48,
+  change_business_days: 5,
   bank_details: '',
   bit_phone: '',
   pay_note: '',
