@@ -32,7 +32,7 @@ export async function saveSettings(input: {
   lh_name: string; lh_titles: string; lh_licenses: string; lh_address: string; lh_phone: string; lh_email: string; lh_education: string;
   lh_footer: string; lh_cv: string; use_banner: boolean; sign_final: boolean; cv_in_opinions: boolean; public_booking: boolean;
   require_approval: boolean; notify_email: string; bring_items: string; summons_note: string; reminders_on: boolean; email_letters: boolean; auto_intake: boolean; auto_draft: boolean;
-  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<string, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean;
+  deposit_amount: number; deposit_hold_hours: number; change_business_days?: number; allow_reschedule?: boolean; allow_cancel?: boolean; cancel_days?: number; change_days_unit?: string; max_reschedules?: number; daily_digest?: boolean; auto_pay_reminder_days?: number; policy_in_summons?: boolean; ai_style?: Partial<Record<string, string>>; bank_details: string; bit_phone: string; pay_note: string; open_registration: boolean; phone_appointments: boolean; sms_reminders?: boolean; whatsapp_on?: boolean;
 }): Promise<Result> {
   const supabase = await assertAdmin().catch(() => null);
   if (!supabase) return { ok: false, error: 'אין הרשאה.' };
@@ -92,6 +92,7 @@ export async function saveSettings(input: {
     open_registration: !!input.open_registration,
     phone_appointments: !!input.phone_appointments,
     sms_reminders: input.sms_reminders !== false,
+    whatsapp_on: input.whatsapp_on !== false,
   }).eq('id', 1);
   if (error) return { ok: false, error: 'השמירה נכשלה.' };
   revalidatePath('/', 'layout');
@@ -399,4 +400,20 @@ export async function saveInfraNotes(notes: Record<string, Record<string, string
   }
   const { error } = await supabase.from('admin_notes').upsert({ id: 1, data: out, updated_at: new Date().toISOString() });
   return error ? { ok: false, error: 'השמירה נכשלה.' } : { ok: true };
+}
+
+/** Sends the WhatsApp message templates to Meta for approval, and reports where each one stands. */
+export async function waTemplates(submit: boolean): Promise<{ ok: boolean; error?: string; rows?: { name: string; title: string; status: string }[] }> {
+  const supabase = await assertAdmin().catch(() => null);
+  if (!supabase) return { ok: false, error: 'אין הרשאה.' };
+  const { submitTemplates, templateStatus, TEMPLATES } = await import('@/lib/whatsapp');
+  let notes: Record<string, string> = {};
+  if (submit) {
+    const r = await submitTemplates();
+    if (r.length === 1 && !r[0].name) return { ok: false, error: r[0].info };
+    notes = Object.fromEntries(r.map((x) => [x.name, x.ok ? '' : x.info]));
+  }
+  const st = await templateStatus();
+  const he: Record<string, string> = { APPROVED: 'מאושר ✓', PENDING: 'ממתין לאישור', REJECTED: 'נדחה', PAUSED: 'מושהה', DISABLED: 'מושבת' };
+  return { ok: true, rows: Object.entries(TEMPLATES).map(([name, t]) => ({ name, title: t.title, status: notes[name] || he[st[name]] || st[name] || 'עוד לא נשלח' })) };
 }

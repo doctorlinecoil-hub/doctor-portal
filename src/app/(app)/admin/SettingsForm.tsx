@@ -6,6 +6,7 @@ import { DAYS, dayNum, fmtDate, fromDayNum, todayIL, weekday } from '@/lib/dates
 import { policyLines } from '@/lib/policy';
 import { AI_STYLE_DEFAULTS } from '@/lib/aiStyle';
 import { digestNow, saveSettings } from './actions';
+import WaPanel from './WaPanel';
 
 /* ---------- small building blocks ---------- */
 
@@ -84,7 +85,7 @@ function exampleStart() {
   return { iso: new Date(`${d}T10:00:00+02:00`).toISOString(), date: d };
 }
 
-export default function SettingsForm({ initial, morning, mail, preview, sms = '', services = [] }: { services?: { id: string; label: string; base_type: ReferralType }[]; initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean; sms?: '' | 'sms' | 'whatsapp' }) {
+export default function SettingsForm({ initial, morning, mail, preview, sms = '', wa = false, services = [] }: { wa?: boolean; services?: { id: string; label: string; base_type: ReferralType }[]; initial: Settings; morning: boolean; mail: boolean; cron?: boolean; preview?: boolean; sms?: '' | 'sms' | 'whatsapp' }) {
   const start = useMemo(() => ({ ...SETTINGS_DEFAULTS, ...initial, prices: Object.assign({ referral: 0, summary: 0, nii: 0, legal: 0 }, initial.prices) }) as Settings, [initial]);
   const [s, setS] = useState<Settings>(start);
   const [saved, setSaved] = useState(() => JSON.stringify(start));
@@ -313,6 +314,8 @@ export default function SettingsForm({ initial, morning, mail, preview, sms = ''
           <Seg label="תדירות" value={s.auto_pay_reminder_days} set={set('auto_pay_reminder_days')} options={[[0, 'כבוי'], [3, 'כל 3 ימים'], [7, 'כל שבוע'], [14, 'כל שבועיים']]} />
         </Row>
         <Toggle id="rem" on={s.reminders_on} set={set('reminders_on')} title="תזכורות לפני תור: 3 ימים ושעתיים לפני" desc="במייל למטופל, למפנה ולך." />
+        <Toggle id="wa" on={s.whatsapp_on !== false} set={set('whatsapp_on')} title="הודעות וואטסאפ אוטומטיות למטופל" desc={wa ? 'מחובר. זימון, תזכורות, הזזת תור, ביטול ומסמך מוכן (קישור מאובטח) – גם בוואטסאפ. השיחות מופיעות ב״שיחות וואטסאפ״.' : 'עוד לא מחובר לוואטסאפ של מטא.'} />
+        <WaPanel connected={wa} />
         <Toggle id="sms" on={s.sms_reminders} set={set('sms_reminders')} title={`תזכורת גם ב${sms === 'whatsapp' ? 'וואטסאפ' : 'SMS'} למטופל`} desc={sms ? 'מחובר. נשלחת באותם מועדים.' : 'דורש חיבור Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM ב־Vercel). עד אז נשלח רק מייל.'} />
         <Toggle id="emailLetters" on={s.email_letters} set={set('email_letters')} title="שליחת המסמך הסופי במייל כ־PDF" desc="למפנה, ולמטופל אם יש מייל. כשהמסמך נפתח רק אחרי תשלום, הוא נשלח אחרי אישור התשלום." />
         <Toggle id="intake" on={s.auto_intake} set={set('auto_intake')} title="סריקת AI לכל פנייה חדשה" desc="סיכום, ציר זמן, דגלים אדומים ומסמכים חסרים. נסרק שוב כשמגיעים מסמכים." />
