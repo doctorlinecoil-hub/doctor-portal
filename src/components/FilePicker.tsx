@@ -39,7 +39,7 @@ export default function FilePicker({ files, onChange, label = 'גררו לכאן
           {files.map((f, i) => (
             <div className="file" key={i + f.name}>
               <span className={`file-ic${f.type.startsWith('image/') ? ' img' : ''}`}>{f.type.startsWith('image/') ? 'IMG' : 'PDF'}</span>
-              <span><b>{f.name}</b><span>{(f.size / 1024 / 1024).toFixed(1)}MB</span></span>
+              <span><b><bdi dir="auto">{f.name}</bdi></b><span>{(f.size / 1024 / 1024).toFixed(1)}MB</span></span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange(files.filter((_, j) => j !== i))} aria-label={`הסרת ${f.name}`}><Icon name="x" /></button>
             </div>
           ))}
