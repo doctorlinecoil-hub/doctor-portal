@@ -320,7 +320,7 @@ export function DocsPanel({ docs, open }: { docs: DocRow[]; open?: boolean }) {
               <div className="doc" key={d.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <span className={`file-ic${img ? ' img' : ''}`}>{img && d.url ? <img src={d.url} alt="" /> : img ? 'IMG' : 'PDF'}</span>
-                <span><b>{d.file_name}</b><span className="hint">{(d.size_bytes / 1024 / 1024).toFixed(1)}MB · {fmtStamp(d.created_at)}</span></span>
+                <span><b><bdi dir="auto">{d.file_name}</bdi></b><span className="hint">{(d.size_bytes / 1024 / 1024).toFixed(1)}MB · {fmtStamp(d.created_at)}</span></span>
                 {open && d.url ? <a className="btn btn-sm" href={d.url} target="_blank" rel="noopener"><Icon name="externalLink" />פתיחה</a> : <span />}
               </div>
             );

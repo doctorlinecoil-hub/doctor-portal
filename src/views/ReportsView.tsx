@@ -72,7 +72,7 @@ export function ReportsView({ report: r, bare }: { report: Report; bare?: boolea
         </section>
       </div>
 
-      <div className="cols" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
+      <div className="cols cols-even">
         <section className="panel">
           <div className="panel-head"><h2><Icon name="briefcase" />המפנים המובילים</h2><span className="hint">לפי סכום חיוב</span></div>
           <HBars data={r.firms.slice(0, 8).map((f) => ({ label: f.name || 'ללא שם', value: f.billed, sub: `${f.cases} תיקים · שולם ${ils(f.paid)}${f.balance ? ` · יתרה ${ils(f.balance)}` : ''}` }))} fmt={ils} />

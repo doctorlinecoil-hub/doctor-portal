@@ -47,7 +47,7 @@ export function PaperFrame({ backHref, printButton, hint, html, embed }: { backH
         @media (max-width: 820px) { .paper { width: auto; margin: 16px; padding: 14px; min-height: 0; } }
       `}</style>
       {!embed && <div className="toolbar no-print">
-        <Link href={backHref} className="btn btn-ghost"><Icon name="arrowLeft" />חזרה לתיק</Link>
+        <Link href={backHref} className="btn btn-ghost"><Icon name="arrowLeft" className="flip" />חזרה לתיק</Link>
         <div className="row">
           <span className="hint">בחלון ההדפסה בחרו ״שמירה כ־PDF״{hint ? ` · ${hint}` : ''}</span>
           {printButton}

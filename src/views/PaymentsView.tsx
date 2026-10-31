@@ -76,7 +76,7 @@ export function PaymentsView({ rows, filter, q, collectedThisMonth, bare }: { ro
             <nav className="tabs" aria-label="סינון" style={{ boxShadow: 'none' }}>
               {FILTERS.map((t) => <Link key={t.key} href={href(t.key, needle ? `&q=${encodeURIComponent(needle)}` : '')} aria-current={filter === t.key}>{t.label}</Link>)}
             </nav>
-            <form action="/admin/reports" style={{ marginInlineStart: 'auto' }}>
+            <form action="/admin/reports" className="filters-q">
               <input type="hidden" name="tab" value="collect" />
               <input type="hidden" name="f" value={filter} />
               <input type="search" name="q" defaultValue={needle} placeholder="חיפוש מטופל, מפנה או מספר תיק" aria-label="חיפוש" />
@@ -84,20 +84,20 @@ export function PaymentsView({ rows, filter, q, collectedThisMonth, bare }: { ro
           </div>
           {list.length === 0 ? <Empty icon="wallet">אין תיקים להצגה</Empty> : (
             <div className="table-wrap">
-              <table className="t">
+              <table className="t t-stack">
                 <thead><tr><th>תיק</th><th>מטופל</th><th>מפנה</th><th>תאריך</th><th>משלם</th><th className="num">מחיר</th><th className="num">שולם</th><th>מצב</th><th /></tr></thead>
                 <tbody>
                   {list.map((r) => (
                     <tr key={r.id}>
-                      <td className="num muted">{r.case_no}</td>
-                      <td><div className="cell-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span>{labelOf(r)}</span></div></td>
-                      <td>{r.firm_name}</td>
-                      <td className="num">{fmtDate(ilParts(r.starts_at).date)}</td>
-                      <td>{PAYERS[r.payer]}</td>
-                      <td className="num money">{ils(r.price)}</td>
-                      <td className="num">{ils(r.paid)}</td>
-                      <td><PayBadge state={payState(r.price, r.paid)} /></td>
-                      <td><Link className="btn btn-sm btn-soft" href={`/doctor/cases/${r.id}#payment`}><Icon name="plus" />תשלום</Link></td>
+                      <td className="num muted" data-label="תיק">{r.case_no}</td>
+                      <td className="t-wide t-first"><div className="cell-main"><b>{r.patient_name || 'ממתין לפרטים'}</b><span>{labelOf(r)}</span></div></td>
+                      <td data-label="מפנה">{r.firm_name}</td>
+                      <td className="num" data-label="תאריך">{fmtDate(ilParts(r.starts_at).date)}</td>
+                      <td data-label="משלם">{PAYERS[r.payer]}</td>
+                      <td className="num money" data-label="מחיר">{ils(r.price)}</td>
+                      <td className="num" data-label="שולם">{ils(r.paid)}</td>
+                      <td data-label="מצב"><PayBadge state={payState(r.price, r.paid)} /></td>
+                      <td className="t-wide"><Link className="btn btn-sm btn-soft" href={`/doctor/cases/${r.id}#payment`}><Icon name="plus" />תשלום</Link></td>
                     </tr>
                   ))}
                 </tbody>
