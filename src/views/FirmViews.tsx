@@ -34,7 +34,7 @@ export function ApptItem({ r, href, staff, extra }: { r: ApptRow; href: string; 
   );
 }
 
-export function FirmDashboardView({ firmName, clinicName, rows, gate = true }: { firmName: string; clinicName: string; rows: ApptRow[]; gate?: boolean }) {
+export function FirmDashboardView({ firmName, clinicName, rows, gate = true, free = [] }: { firmName: string; clinicName: string; rows: ApptRow[]; gate?: boolean; free?: { date: string; times: { time: string; iso: string }[] }[] }) {
   const today = todayIL();
   const now = new Date().toISOString();
   const live = rows.filter((r) => r.status !== 'cancelled');
@@ -104,6 +104,26 @@ export function FirmDashboardView({ firmName, clinicName, rows, gate = true }: {
             <div className="fx-next empty"><span className="fx-next-k">התור הבא</span><b>אין תורים קרובים</b><small>קובעים תור חדש בלחיצה למעלה.</small></div>
           )}
         </aside>
+      </section>
+
+      <section className="fx-quick" aria-label="תורים פנויים">
+        <div className="fx-quick-h">
+          <span className="fx-ic gold"><Icon name="calendarPlus" size={18} /></span>
+          <div><h2>קביעת תור מהירה</h2><small>בוחרים שעה פנויה, ממלאים את המטופל, וזהו.</small></div>
+          <Link href="/firm/book" className="fx-all">כל המועדים<Icon name="chevron" size={14} className="flip" /></Link>
+        </div>
+        {free.length === 0 ? <div className="fx-zero"><Icon name="calendar" size={22} />אין כרגע מועדים פנויים בשבועות הקרובים. אפשר ליצור קשר עם המרפאה.</div> : (
+          <div className="fx-days">
+            {free.map((d) => (
+              <div key={d.date} className="fx-day">
+                <b>{d.date === today ? 'היום' : fmtDay(d.date).split(',')[0]}<small className="num">{fmtDate(d.date)}</small></b>
+                <div className="fx-times">
+                  {d.times.map((t) => <Link key={t.iso} href={`/firm/book?slot=${encodeURIComponent(t.iso)}`} className="fx-time num">{t.time}</Link>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {todo.length > 0 && (
