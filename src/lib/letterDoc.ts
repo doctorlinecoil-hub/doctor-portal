@@ -265,6 +265,7 @@ ${p}.doc-body h3 { color: #0D1B2A; text-decoration: none !important; font-size: 
 ${p}.of-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 5mm; }
 ${p}.doc-body > :last-child { break-after: avoid; page-break-after: avoid; }
 ${p}.of-sign { break-before: avoid; page-break-before: avoid; }
+@media screen and (max-width: 640px) { ${p}.of-sign { flex-direction: column; align-items: stretch; gap: 4mm; } ${p}.of-doc { white-space: nowrap; } ${p}.of-sigblock { min-width: 0; align-self: center; } }
 ${p}.of-doc { font-size: 10.5pt; line-height: 1.5; }
 ${p}.of-doc b { display: block; font-size: 12pt; margin-top: 1mm; }
 ${p}.of-stamp { text-align: center; min-width: 60mm; }
