@@ -91,15 +91,18 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
   const c = clinicOf(s);
   const w = when(a.startsAt);
   const bring = bringList(c);
-  const subject = `${a.phone ? 'זימון לשיחה טלפונית' : 'זימון לתור'} · ${w.label} · ${s.lh_name}`;
+  const ok = a.phone ? 'אושרה' : 'אושר';
+  const subject = o.forReferrer
+    ? `${a.phone ? 'השיחה אושרה' : 'התור אושר'} בהצלחה · ${a.patientName} · ${w.label}`
+    : `${a.phone ? 'השיחה הטלפונית שלך אושרה' : 'התור שלך אושר'} · ${w.label} · ${s.lh_name}`;
   const what = a.phone ? 'השיחה הטלפונית' : 'התור';
   const intro = o.forReferrer
-    ? o.patientHasEmail
-      ? `${what} של <b>${esc(a.patientName)}</b> אושר${a.phone ? 'ה' : ''}. הזימון נשלח גם למטופל.`
-      : `${what} של <b>${esc(a.patientName)}</b> אושר${a.phone ? 'ה' : ''}. <b>לא הוזן מייל של המטופל, לכן הזימון נשלח אליכם. נא להעביר אותו למטופל.</b>`
-    : a.phone ? `שלום ${esc(a.patientName)},<br>נקבעה לך שיחה טלפונית עם ${esc(s.lh_name)}.` : `שלום ${esc(a.patientName)},<br>נקבע לך תור אצל ${esc(s.lh_name)}.`;
+    ? `שמחים לעדכן: ${what} של <b>${esc(a.patientName)}</b> אצל ${esc(s.lh_name)} ${ok} בהצלחה.` +
+      (o.patientHasEmail ? ' זימון מסודר נשלח גם למטופל.' : '<br><b>לא הוזן מייל של המטופל, לכן הזימון נשלח אליכם. נא להעביר אותו למטופל.</b>')
+    : a.phone ? `שלום ${esc(a.patientName)},<br>שמחים לעדכן ש${what} שלך עם ${esc(s.lh_name)} ${ok}.` : `שלום ${esc(a.patientName)},<br>שמחים לעדכן ש${what} שלך אצל ${esc(s.lh_name)} ${ok}. נשמח לראות אותך.`;
+  const okBanner = `<div style="margin:0 0 16px;padding:14px 16px;border-radius:12px;background:#ECF8F3;border:1px solid #BFE6D4;color:#11643F;font-size:16px;font-weight:700">✓ ${a.phone ? 'השיחה אושרה' : 'התור אושר'} בהצלחה</div>`;
   const body =
-    p(intro) +
+    okBanner + p(intro) +
     card([
       ['מועד', `<span style="font-size:17px">${esc(w.label)}</span>`],
       a.phone ? ['סוג הפגישה', `<b>שיחה טלפונית</b>`] : ['כתובת', esc(c.address || '—')],
@@ -116,9 +119,9 @@ export function summonsEmail(s: Settings, a: ApptInfo, o: { forReferrer: boolean
     (o.forReferrer && o.link ? `<div style="margin:6px 0 10px">${button(o.link, 'צפייה בתיק')}</div>` : '');
   return {
     subject,
-    html: layout(s, { preheader: `${w.label} · ${a.phone ? 'שיחה טלפונית' : c.address}`, title: a.phone ? 'זימון לשיחה טלפונית' : 'זימון לתור', body }),
+    html: layout(s, { preheader: `${a.phone ? 'השיחה אושרה' : 'התור אושר'} · ${w.label}`, title: o.forReferrer ? (a.phone ? 'השיחה אושרה' : 'התור אושר') : (a.phone ? 'זימון לשיחה טלפונית' : 'זימון לתור'), body }),
     text: textOf([
-      o.forReferrer ? `התור של ${a.patientName} אושר.${o.patientHasEmail ? '' : ' לא הוזן מייל של המטופל – נא להעביר לו את הזימון.'}` : `שלום ${a.patientName},`,
+      o.forReferrer ? `התור של ${a.patientName} אושר בהצלחה.${o.patientHasEmail ? ' הזימון נשלח גם למטופל.' : ' לא הוזן מייל של המטופל – נא להעביר לו את הזימון.'}` : `שלום ${a.patientName}, התור שלך אושר.`,
       `מועד: ${w.label}`, c.address && `כתובת: ${c.address}`, c.address && `ניווט: ${wazeLink(c.address)}`,
       bring.length ? `מה להביא: ${bring.join(', ')}` : '', c.note, o.due && o.due > 0 ? payText(s, o.due) : '', c.phone && `טלפון: ${c.phone}`,
     ]),
