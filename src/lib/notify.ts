@@ -7,7 +7,7 @@ import { createAdminClient } from './supabase/admin';
 import { BUCKET, SETTINGS_DEFAULTS, notifyList, ils, isPatientKind, type ReferralType, type Settings } from './constants';
 import { ilParts, todayIL } from './dates';
 import { alreadySent, appUrl, sendMail } from './mail';
-import { icsFile, type ApptInfo } from './messages';
+import { icsFile, summonsText, waLink, type ApptInfo } from './messages';
 import {
   awaitingPaymentEmail, cancelledByClinicEmail, movedEmail, cancelledStaffEmail, rescheduleStaffEmail, paymentReminderEmail, paymentProofEmail, paymentReplyEmail, paymentRejectedEmail, clinicOf, rxEmail, declinedEmail, depositEmail, depositExpiredEmail, docRequestEmail, firmUpdateEmail, letterEmail, newRequestEmail, reminderEmail, summonsEmail,
   type RemindWhen,
@@ -547,4 +547,12 @@ export async function sendMoved(id: string, oldStart: string): Promise<NotifyRes
   const wa = await waPatient(db, s, a, 'clinic_appointment_moved', [a.patient_name, s.lh_name, waWhen(a.starts_at), waWhen(oldStart)]);
   if (wa) sent++;
   return { ok: sent > 0, sent, info: errors[0] || (who.patient.length || wa ? '' : 'למטופל אין מייל') };
+}
+
+/** A WhatsApp link (wa.me) with the summons ready to send from the clinic's own phone; null without a patient mobile. */
+export async function summonsWaLink(id: string): Promise<string | null> {
+  const db = createAdminClient();
+  const { a, s } = await load(db, id);
+  if (!a || !a.patient_phone || !['booked', 'draft'].includes(a.status)) return null;
+  return waLink(a.patient_phone, summonsText(info(a), clinicOf(s)));
 }
