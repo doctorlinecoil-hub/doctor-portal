@@ -1,3 +1,4 @@
+import type { Settings } from '@/lib/constants';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase/server';
 import { TYPES, type ReferralType } from '@/lib/constants';
@@ -32,13 +33,13 @@ export async function POST(req: Request) {
   if (!body.trim()) return fail(400, 'אין עדיין טקסט לשפר.');
   if (action === 'custom' && !instructions.trim()) return fail(400, 'כתבו מה לשנות.');
 
-  const { data: s } = await supabase.from('settings').select('lh_name, lh_titles').eq('id', 1).single();
+  const { data: s } = await supabase.from('settings').select('lh_name, lh_titles, ai_style').eq('id', 1).single();
   const doctor = (s?.lh_name || 'הרופא') + (s?.lh_titles ? ` – ${String(s.lh_titles).replace(/\n+/g, '; ')}` : '');
   const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
   await supabase.rpc('log_event', { p_action: 'ai_refine', p_entity: 'appointment', p_entity_id: appointmentId, p_details: { model, action } });
 
   const client = new Anthropic();
-  const stream = client.messages.stream({ model, max_tokens: 16000, messages: [{ role: 'user', content: buildRefinePrompt({ action, body, instructions, letterType, doctor }) }] });
+  const stream = client.messages.stream({ model, max_tokens: 16000, messages: [{ role: 'user', content: buildRefinePrompt({ action, body, instructions, letterType, doctor, style: (s?.ai_style ?? {}) as Settings['ai_style'] }) }] });
   const enc = new TextEncoder();
   const out = new ReadableStream<Uint8Array>({
     async start(controller) {
